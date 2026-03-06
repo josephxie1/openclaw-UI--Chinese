@@ -50,7 +50,29 @@
 
 ## 📦 安装
 
-### 方式一：npm 全局安装（推荐）
+### 先决条件
+
+- **Node.js 22** 或更新版本
+
+```bash
+# 检查 Node 版本
+node --version
+# 应输出 v22.x.x 或更高
+```
+
+> 如未安装 Node.js，前往 [nodejs.org](https://nodejs.org/) 下载安装，或使用 `nvm install 22`。
+
+---
+
+### macOS / Linux
+
+#### 方式一：一键安装（推荐）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/josephxie1/openclaw-UI-ZN/main/scripts/install-remote.sh | bash
+```
+
+#### 方式二：手动下载安装
 
 从 [Releases](https://github.com/josephxie1/openclaw-UI-ZN/releases) 下载最新的 `.tgz` 文件，然后：
 
@@ -65,33 +87,48 @@ openclaw --version
 openclaw gateway
 ```
 
-> **注意**：这会替换已有的 `openclaw` 全局安装。如需恢复官方版，运行 `npm install -g openclaw`。
-
-### 方式二：一键安装脚本
+#### 方式三：从源码构建
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/josephxie1/openclaw-UI-ZN/main/scripts/install-remote.sh | bash
-```
-
-### 方式三：从源码构建
-
-```bash
-# 1. 克隆仓库
 git clone https://github.com/josephxie1/openclaw-UI-ZN.git
 cd openclaw-UI-ZN
-
-# 2. 安装依赖
 pnpm install
-
-# 3. 构建
 pnpm build
-
-# 4. 打包
 pnpm pack
-
-# 5. 全局安装
 npm install -g openclaw-*.tgz
 ```
+
+---
+
+### Windows
+
+#### 方式一：手动下载安装（推荐）
+
+1. 从 [Releases](https://github.com/josephxie1/openclaw-UI-ZN/releases) 下载最新的 `.tgz` 文件
+2. 以 **管理员身份** 打开 PowerShell 或 CMD，运行：
+
+```powershell
+npm install -g openclaw-2026.3.2.tgz
+
+# 验证安装
+openclaw --version
+
+# 启动网关
+openclaw gateway
+```
+
+#### 方式二：从源码构建
+
+```powershell
+git clone https://github.com/josephxie1/openclaw-UI-ZN.git
+cd openclaw-UI-ZN
+pnpm install
+pnpm build
+pnpm pack
+npm install -g openclaw-2026.3.2.tgz
+```
+
+> **注意**：安装会替换已有的 `openclaw` 全局安装。如需恢复官方版，运行 `npm install -g openclaw`。
 
 ## ⚙️ 初始配置
 
