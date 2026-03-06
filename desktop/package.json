@@ -2,6 +2,7 @@
   "name": "openclaw-desktop",
   "version": "1.0.0",
   "description": "OpenClaw 中文版桌面客户端",
+  "author": "josephxie1",
   "main": "main.js",
   "scripts": {
     "build": "electron-builder",
@@ -25,6 +26,17 @@
       "preload.js",
       "icon.png"
     ],
+    "extraResources": [
+      {
+        "from": "gateway",
+        "to": "gateway",
+        "filter": [
+          "**/*",
+          "!.git",
+          "!src/**"
+        ]
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "icon.png",
@@ -32,8 +44,7 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64",
-            "x64"
+            "arm64"
           ]
         }
       ]
@@ -50,6 +61,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "dmg": {
+      "artifactName": "OpenClaw-${version}-standalone-${arch}.${ext}"
     }
   }
 }

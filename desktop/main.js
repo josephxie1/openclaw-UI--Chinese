@@ -1,9 +1,10 @@
 /* eslint-disable */
 // @ts-nocheck
 const { app, BrowserWindow, Tray, Menu, shell, dialog } = require("electron");
-const { spawn } = require("child_process");
+const { fork, execFile } = require("child_process");
 const path = require("path");
 const http = require("http");
+const fs = require("fs");
 
 // ── Config ──────────────────────────────────────
 const GATEWAY_PORT = 18789;
@@ -15,7 +16,25 @@ let mainWindow = null;
 let tray = null;
 let gatewayProcess = null;
 let isQuitting = false;
-let externalGateway = false; // true if we connected to an already-running gateway
+let externalGateway = false;
+
+// ── Resolve bundled gateway path ────────────────
+
+function getGatewayPath() {
+  // In packaged app: resources/gateway/
+  // In dev: ./gateway/
+  const candidates = [
+    path.join(process.resourcesPath || "", "gateway"),
+    path.join(__dirname, "gateway"),
+  ];
+  for (const dir of candidates) {
+    const entry = path.join(dir, "openclaw.mjs");
+    if (fs.existsSync(entry)) {
+      return { dir, entry };
+    }
+  }
+  return null;
+}
 
 // ── Check if gateway is already running ─────────
 
@@ -36,28 +55,48 @@ function isGatewayRunning() {
 // ── Gateway lifecycle ───────────────────────────
 
 function startGateway() {
-  const bin = "openclaw";
-  console.log(`[desktop] Starting gateway: ${bin} gateway`);
+  const bundled = getGatewayPath();
 
-  gatewayProcess = spawn(bin, ["gateway"], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: Object.assign({}, process.env),
-    detached: false,
-  });
+  if (bundled) {
+    // ── Standalone mode: use Electron's Node to run bundled gateway ──
+    console.log("[desktop] Starting bundled gateway from:", bundled.dir);
 
-  gatewayProcess.stdout.on("data", (data) => {
-    process.stdout.write("[gateway] " + data);
-  });
+    // Use process.execPath (Electron binary, which includes Node.js)
+    // with --require to ensure ESM compatibility
+    gatewayProcess = execFile(process.execPath, ["--no-warnings", bundled.entry, "gateway"], {
+      cwd: bundled.dir,
+      env: Object.assign({}, process.env, {
+        ELECTRON_RUN_AS_NODE: "1",
+        NODE_PATH: path.join(bundled.dir, "node_modules"),
+      }),
+    });
+  } else {
+    // ── Fallback: use system openclaw command ──
+    console.log("[desktop] No bundled gateway found, using system openclaw");
+    const { spawn } = require("child_process");
+    gatewayProcess = spawn("openclaw", ["gateway"], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: Object.assign({}, process.env),
+      detached: false,
+    });
+  }
 
-  gatewayProcess.stderr.on("data", (data) => {
-    process.stderr.write("[gateway] " + data);
-  });
+  if (gatewayProcess.stdout) {
+    gatewayProcess.stdout.on("data", (data) => {
+      process.stdout.write("[gateway] " + data);
+    });
+  }
+  if (gatewayProcess.stderr) {
+    gatewayProcess.stderr.on("data", (data) => {
+      process.stderr.write("[gateway] " + data);
+    });
+  }
 
   gatewayProcess.on("error", (err) => {
     console.error("[desktop] Failed to start gateway:", err.message);
     dialog.showErrorBox(
       "OpenClaw 启动失败",
-      "无法启动 openclaw gateway：" + err.message + "\n\n请确保已安装 openclaw 并在 PATH 中。",
+      "无法启动网关：" + err.message + "\n\n请检查应用是否完整。",
     );
   });
 
@@ -67,7 +106,7 @@ function startGateway() {
     if (!isQuitting) {
       dialog.showErrorBox(
         "OpenClaw 网关已退出",
-        "openclaw gateway 进程意外退出 (code: " + code + ")。\n应用将关闭。",
+        "网关进程意外退出 (code: " + code + ")。\n应用将关闭。",
       );
       app.quit();
     }
@@ -191,7 +230,58 @@ function createTray() {
   });
 }
 
+// ── launchctl (macOS auto-start) ────────────────
+
+function installLaunchAgent() {
+  if (process.platform !== "darwin") return;
+
+  const plistName = "com.openclaw.gateway";
+  const plistDir = path.join(app.getPath("home"), "Library", "LaunchAgents");
+  const plistPath = path.join(plistDir, plistName + ".plist");
+  const appPath = app.getPath("exe");
+
+  // Only install if not already present
+  if (fs.existsSync(plistPath)) return;
+
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${plistName}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${appPath}</string>
+        <string>--hidden</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/openclaw-gateway.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/openclaw-gateway.err</string>
+</dict>
+</plist>`;
+
+  try {
+    if (!fs.existsSync(plistDir)) {
+      fs.mkdirSync(plistDir, { recursive: true });
+    }
+    fs.writeFileSync(plistPath, plist);
+    console.log("[desktop] Installed LaunchAgent:", plistPath);
+  } catch (err) {
+    console.error("[desktop] Failed to install LaunchAgent:", err.message);
+  }
+}
+
 // ── App lifecycle ───────────────────────────────
+
+const startHidden = process.argv.includes("--hidden");
 
 app
   .whenReady()
@@ -200,18 +290,14 @@ app
     const alreadyRunning = await isGatewayRunning();
 
     if (alreadyRunning) {
-      console.log("[desktop] Gateway already running on port " + GATEWAY_PORT + ", connecting...");
+      console.log("[desktop] Gateway already running on port " + GATEWAY_PORT);
       externalGateway = true;
     } else {
-      // Start our own gateway
       startGateway();
       try {
         await waitForGateway();
       } catch (err) {
-        dialog.showErrorBox(
-          "OpenClaw 启动超时",
-          "网关未能在 30 秒内启动。\n请检查 openclaw 是否已正确安装。",
-        );
+        dialog.showErrorBox("OpenClaw 启动超时", "网关未能在 30 秒内启动。\n请检查应用是否完整。");
         app.quit();
         return;
       }
@@ -219,6 +305,12 @@ app
 
     createWindow();
     createTray();
+    installLaunchAgent();
+
+    // If started with --hidden (e.g. from launchctl), don't show window
+    if (startHidden && mainWindow) {
+      mainWindow.hide();
+    }
 
     app.on("activate", () => {
       if (mainWindow) {
