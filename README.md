@@ -69,12 +69,12 @@ node --version
 #### 方式一：一键安装（推荐）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/josephxie1/openclaw-UI-ZN/main/scripts/install-remote.sh | bash
+curl -fsSL https://raw.githubusercontent.com/josephxie1/openclaw-UI--Chinese/main/scripts/install-remote.sh | bash
 ```
 
 #### 方式二：手动下载安装
 
-从 [Releases](https://github.com/josephxie1/openclaw-UI-ZN/releases) 下载最新的 `.tgz` 文件，然后：
+从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载最新的 `.tgz` 文件，然后：
 
 ```bash
 # 安装（后端 + UI 完整替换）
@@ -90,8 +90,8 @@ openclaw gateway
 #### 方式三：从源码构建
 
 ```bash
-git clone https://github.com/josephxie1/openclaw-UI-ZN.git
-cd openclaw-UI-ZN
+git clone https://github.com/josephxie1/openclaw-UI--Chinese.git
+cd openclaw-UI--Chinese
 pnpm install
 pnpm build
 pnpm pack
@@ -102,9 +102,17 @@ npm install -g openclaw-*.tgz
 
 ### Windows
 
-#### 方式一：手动下载安装（推荐）
+#### 方式一：一键安装（推荐）
 
-1. 从 [Releases](https://github.com/josephxie1/openclaw-UI-ZN/releases) 下载最新的 `.tgz` 文件
+以 **管理员身份** 打开 PowerShell，运行：
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/josephxie1/openclaw-UI--Chinese/main/scripts/install-remote.ps1 | iex
+```
+
+#### 方式二：手动下载安装
+
+1. 从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载最新的 `.tgz` 文件
 2. 以 **管理员身份** 打开 PowerShell 或 CMD，运行：
 
 ```powershell
@@ -117,11 +125,11 @@ openclaw --version
 openclaw gateway
 ```
 
-#### 方式二：从源码构建
+#### 方式三：从源码构建
 
 ```powershell
-git clone https://github.com/josephxie1/openclaw-UI-ZN.git
-cd openclaw-UI-ZN
+git clone https://github.com/josephxie1/openclaw-UI--Chinese.git
+cd openclaw-UI--Chinese
 pnpm install
 pnpm build
 pnpm pack
