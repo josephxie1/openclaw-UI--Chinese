@@ -14,6 +14,7 @@ import { loadChatHistory } from "./controllers/chat.ts";
 import {
   applyConfig,
   loadConfig,
+  loadConfigRaw,
   runUpdate,
   saveConfig,
   updateConfigFormValue,
@@ -81,6 +82,8 @@ import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
+import { renderModelsQuickAdd, PROVIDER_PRESETS } from "./views/models-quick-add.ts";
+import { renderChannelsQuickAdd } from "./views/channels-quick-add.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -242,7 +245,7 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">OPENCLAW</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-sub">${t("global.brandSub")}</div>
             </div>
           </div>
         </div>
@@ -309,13 +312,13 @@ export function renderApp(state: AppViewState) {
         ${
           availableUpdate
             ? html`<div class="update-banner callout danger" role="alert">
-              <strong>Update available:</strong> v${availableUpdate.latestVersion}
-              (running v${availableUpdate.currentVersion}).
+              <strong>${t("global.updateAvailable")}</strong> v${availableUpdate.latestVersion}
+              (${t("global.running")} v${availableUpdate.currentVersion}).
               <button
                 class="btn btn--sm update-banner__btn"
                 ?disabled=${state.updateRunning || !state.connected}
                 @click=${() => runUpdate(state)}
-              >${state.updateRunning ? "Updating…" : "Update now"}</button>
+              >${state.updateRunning ? t("global.updating") : t("global.updateNow")}</button>
             </div>`
             : nothing
         }
@@ -365,7 +368,135 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "channels"
-            ? renderChannels({
+            ? html`
+                ${(() => {
+                  // Build available models list from config providers
+                  const providersObj = ((state.configForm as Record<string, unknown>)?.models as Record<string, unknown>)?.providers as Record<string, unknown> | undefined;
+                  const availableModels: Array<{ value: string; label: string }> = [];
+                  if (providersObj) {
+                    for (const [provId, provData] of Object.entries(providersObj)) {
+                      const prov = provData as Record<string, unknown>;
+                      const models = prov.models as Array<{ id: string; name?: string }> | undefined;
+                      if (models) {
+                        for (const m of models) {
+                          availableModels.push({
+                            value: `${provId}/${m.id}`,
+                            label: `${provId}/${m.name || m.id}`,
+                          });
+                        }
+                      }
+                    }
+                  }
+                  // Build available agents list
+                  const agentsObj = (state.configForm as Record<string, unknown>)?.agents as Record<string, unknown> | undefined;
+                  const agentsList = (agentsObj?.list ?? []) as Array<{ id: string; identity?: { name?: string } }>;
+                  const availableAgents = agentsList.map((a) => ({
+                    id: a.id,
+                    name: a.identity?.name ?? a.id,
+                  }));
+                  return renderChannelsQuickAdd({
+                    form: state.channelQuickAddForm,
+                    expanded: state.channelQuickAddExpanded,
+                    busy: state.channelQuickAddBusy,
+                    error: state.channelQuickAddError,
+                    availableModels,
+                    availableAgents,
+                    onToggle: () => {
+                      state.channelQuickAddExpanded = !state.channelQuickAddExpanded;
+                    },
+                    onChannelTypeChange: (type) => {
+                      state.channelQuickAddForm = { ...state.channelQuickAddForm, channelType: type };
+                    },
+                    onFieldChange: (field, value) => {
+                      state.channelQuickAddForm = { ...state.channelQuickAddForm, [field]: value };
+                    },
+                    onSubmit: async () => {
+                      const f = state.channelQuickAddForm;
+                      state.channelQuickAddBusy = true;
+                      state.channelQuickAddError = null;
+                      try {
+                        const channel = f.channelType;
+                        const accountId = f.accountId.trim();
+
+                        // 1. Write channel account config
+                        if (channel === "telegram") {
+                          const accountObj: Record<string, unknown> = {
+                            dmPolicy: "pairing",
+                            botToken: f.botToken.trim(),
+                            groupPolicy: "allowlist",
+                            streaming: "off",
+                          };
+                          updateConfigFormValue(state, ["channels", "telegram", "enabled"], true);
+                          updateConfigFormValue(state, ["channels", "telegram", "accounts", accountId], accountObj);
+                        } else {
+                          const accountObj: Record<string, unknown> = {
+                            appId: f.appId.trim(),
+                            appSecret: f.appSecret.trim(),
+                            botName: f.botName.trim() || accountId,
+                          };
+                          updateConfigFormValue(state, ["channels", "feishu", "enabled"], true);
+                          updateConfigFormValue(state, ["channels", "feishu", "accounts", accountId], accountObj);
+                        }
+
+                        // 2. Create agent if needed
+                        const agentIdToUse = f.createAgent
+                          ? (f.agentId || accountId)
+                          : "";
+                        if (f.createAgent && f.agentId === "") {
+                          // New agent
+                          const newAgent: Record<string, unknown> = {
+                            id: accountId,
+                            workspace: `~/.openclaw/workspace-${accountId}`,
+                            identity: {
+                              name: f.agentName.trim() || accountId,
+                              emoji: f.agentEmoji,
+                            },
+                          };
+                          if (f.agentModel) {
+                            newAgent.model = { primary: f.agentModel };
+                          }
+                          const currentAgents = (((state.configForm as Record<string, unknown>)?.agents as Record<string, unknown>)?.list ?? []) as unknown[];
+                          updateConfigFormValue(state, ["agents", "list"], [...currentAgents, newAgent]);
+                        }
+
+                        // 3. Create binding
+                        if (f.createAgent && agentIdToUse) {
+                          const newBinding = {
+                            agentId: agentIdToUse,
+                            match: { channel, accountId },
+                          };
+                          const currentBindings = ((state.configForm as Record<string, unknown>)?.bindings ?? []) as unknown[];
+                          updateConfigFormValue(state, ["bindings"], [...currentBindings, newBinding]);
+                        }
+
+                        // Save
+                        await saveConfig(state);
+                        await applyConfig(state);
+
+                        // Reset form
+                        state.channelQuickAddForm = {
+                          channelType: f.channelType,
+                          accountId: "",
+                          botToken: "",
+                          appId: "",
+                          appSecret: "",
+                          botName: "",
+                          createAgent: true,
+                          agentId: "",
+                          agentName: "",
+                          agentEmoji: "🤖",
+                          agentModel: "",
+                        };
+                        state.channelQuickAddExpanded = false;
+                      } catch (err) {
+                        state.channelQuickAddError = String(err);
+                      } finally {
+                        state.channelQuickAddBusy = false;
+                      }
+                    },
+                  });
+                })()}
+                ${renderChannels({
                 connected: state.connected,
                 loading: state.channelsLoading,
                 snapshot: state.channelsSnapshot,
@@ -398,7 +529,7 @@ export function renderApp(state: AppViewState) {
                 onNostrProfileSave: () => state.handleNostrProfileSave(),
                 onNostrProfileImport: () => state.handleNostrProfileImport(),
                 onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
-              })
+              })}`
             : nothing
         }
 
@@ -1093,6 +1224,7 @@ export function renderApp(state: AppViewState) {
                 schemaLoading: state.configSchemaLoading,
                 uiHints: state.configUiHints,
                 formMode: state.configFormMode,
+                configRawLoading: state.configRawLoading,
                 formValue: state.configForm,
                 originalValue: state.configFormOriginal,
                 searchQuery: state.configSearchQuery,
@@ -1102,6 +1234,7 @@ export function renderApp(state: AppViewState) {
                   state.configRaw = next;
                 },
                 onFormModeChange: (mode) => (state.configFormMode = mode),
+                onLoadRaw: () => void loadConfigRaw(state),
                 onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
                 onSearchChange: (query) => (state.configSearchQuery = query),
                 onSectionChange: (section) => {
@@ -1110,6 +1243,261 @@ export function renderApp(state: AppViewState) {
                 },
                 onSubsectionChange: (section) => (state.configActiveSubsection = section),
                 onReload: () => loadConfig(state),
+                onSave: () => saveConfig(state),
+                onApply: () => applyConfig(state),
+                onUpdate: () => runUpdate(state),
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "models"
+            ? renderConfig({
+                raw: state.configRaw,
+                originalRaw: state.configRawOriginal,
+                valid: state.configValid,
+                issues: state.configIssues,
+                loading: state.configLoading,
+                saving: state.configSaving,
+                applying: state.configApplying,
+                updating: state.updateRunning,
+                connected: state.connected,
+                schema: state.configSchema,
+                schemaLoading: state.configSchemaLoading,
+                uiHints: state.configUiHints,
+                formMode: state.configFormMode,
+                configRawLoading: state.configRawLoading,
+                formValue: state.configForm,
+                originalValue: state.configFormOriginal,
+                searchQuery: "",
+                activeSection: "models",
+                activeSubsection: state.modelsActiveSubsection,
+                hideSidebar: true,
+                quickAddContent: renderModelsQuickAdd({
+                  form: state.modelsQuickAddForm,
+                  busy: state.modelsQuickAddBusy,
+                  error: state.modelsQuickAddError,
+                  selectedPreset: state.modelsQuickAddPreset,
+                  selectedModelIds: new Set(state.modelsQuickAddSelectedIds),
+                  onPresetChange: (presetId: string) => {
+                    state.modelsQuickAddPreset = presetId;
+                    if (presetId === "") {
+                      state.modelsQuickAddForm = {
+                        provider: "",
+                        baseUrl: "",
+                        api: "openai-completions",
+                        apiKey: "",
+                        models: [{ id: "", name: "" }],
+                      };
+                      state.modelsQuickAddSelectedIds = [];
+                    } else {
+                      const preset = PROVIDER_PRESETS.find((p) => p.id === presetId);
+                      if (preset) {
+                        state.modelsQuickAddForm = {
+                          provider: preset.provider,
+                          baseUrl: preset.baseUrl,
+                          api: preset.api,
+                          apiKey: state.modelsQuickAddForm.apiKey,
+                          models: [],
+                        };
+                        // Auto-select first (recommended) model
+                        const first = preset.models[0];
+                        state.modelsQuickAddSelectedIds = first ? [first.id] : [];
+                      }
+                    }
+                  },
+                  onPresetModelToggle: (modelId: string) => {
+                    const ids = new Set(state.modelsQuickAddSelectedIds);
+                    if (ids.has(modelId)) {
+                      ids.delete(modelId);
+                    } else {
+                      ids.add(modelId);
+                    }
+                    state.modelsQuickAddSelectedIds = [...ids];
+                  },
+                  onPresetSelectAll: () => {
+                    const preset = PROVIDER_PRESETS.find((p) => p.id === state.modelsQuickAddPreset);
+                    if (!preset) return;
+                    if (state.modelsQuickAddSelectedIds.length === preset.models.length) {
+                      state.modelsQuickAddSelectedIds = [];
+                    } else {
+                      state.modelsQuickAddSelectedIds = preset.models.map((m) => m.id);
+                    }
+                  },
+                  onFieldChange: (field, value) => {
+                    state.modelsQuickAddForm = { ...state.modelsQuickAddForm, [field]: value };
+                  },
+                  onModelChange: (index, field, value) => {
+                    const models = [...state.modelsQuickAddForm.models];
+                    models[index] = { ...models[index], [field]: value };
+                    state.modelsQuickAddForm = { ...state.modelsQuickAddForm, models };
+                  },
+                  onAddModel: () => {
+                    state.modelsQuickAddForm = {
+                      ...state.modelsQuickAddForm,
+                      models: [...state.modelsQuickAddForm.models, { id: "", name: "" }],
+                    };
+                  },
+                  onRemoveModel: (index) => {
+                    const models = state.modelsQuickAddForm.models.filter((_, i) => i !== index);
+                    state.modelsQuickAddForm = { ...state.modelsQuickAddForm, models };
+                  },
+                  onSubmit: async () => {
+                    const f = state.modelsQuickAddForm;
+                    const isCustom = state.modelsQuickAddPreset === "";
+                    // Build models from preset selection or manual input
+                    let newModels: Array<{ id: string; name: string; input: string[] }>;
+                    if (isCustom) {
+                      newModels = f.models
+                        .filter((m) => m.id.trim() !== "")
+                        .map((m) => ({
+                          id: m.id.trim(),
+                          name: m.name.trim() || m.id.trim(),
+                          input: m.supportsImage ? ["text", "image"] : ["text"],
+                        }));
+                    } else {
+                      const preset = PROVIDER_PRESETS.find((p) => p.id === state.modelsQuickAddPreset);
+                      const selectedIds = new Set(state.modelsQuickAddSelectedIds);
+                      newModels = (preset?.models ?? [])
+                        .filter((m) => selectedIds.has(m.id))
+                        .map((m) => ({
+                          id: m.id,
+                          name: m.name,
+                          input: m.supportsImage ? ["text", "image"] : ["text"],
+                        }));
+                    }
+                    if (!f.provider.trim() || !f.baseUrl.trim() || !f.api.trim() || !f.apiKey.trim() || newModels.length === 0) {
+                      state.modelsQuickAddError = t("modelsQuickAdd.errorMissing");
+                      return;
+                    }
+                    state.modelsQuickAddBusy = true;
+                    state.modelsQuickAddError = null;
+                    try {
+                      const providerObj: Record<string, unknown> = {
+                        baseUrl: f.baseUrl.trim(),
+                        apiKey: f.apiKey.trim(),
+                        api: f.api,
+                        models: newModels,
+                      };
+                      updateConfigFormValue(state, ["models", "mode"], "merge");
+                      const existing = (state.configForm as Record<string, unknown>)?.models as Record<string, unknown> | undefined;
+                      const existingProviders = (existing?.providers ?? {}) as Record<string, unknown>;
+                      const existingProvider = existingProviders[f.provider.trim()] as Record<string, unknown> | undefined;
+                      if (existingProvider && Array.isArray(existingProvider.models)) {
+                        providerObj.baseUrl = existingProvider.baseUrl ?? f.baseUrl.trim();
+                        providerObj.apiKey = existingProvider.apiKey ?? f.apiKey.trim();
+                        providerObj.api = existingProvider.api ?? f.api;
+                        providerObj.models = [...existingProvider.models, ...newModels];
+                      }
+                      updateConfigFormValue(state, ["models", "providers", f.provider.trim()], providerObj);
+                      await applyConfig(state);
+                      state.modelsQuickAddForm = {
+                        provider: "",
+                        baseUrl: "",
+                        api: "openai-completions",
+                        apiKey: "",
+                        models: [{ id: "", name: "" }],
+                      };
+                      state.modelsActiveSubsection = null;
+                    } catch (err) {
+                      state.modelsQuickAddError = String(err);
+                    } finally {
+                      state.modelsQuickAddBusy = false;
+                    }
+                  },
+                }),
+                onRawChange: (next) => {
+                  state.configRaw = next;
+                },
+                onFormModeChange: (mode) => (state.configFormMode = mode),
+                onLoadRaw: () => void loadConfigRaw(state),
+                onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onSearchChange: () => {},
+                onSectionChange: () => {},
+                onSubsectionChange: (section) => (state.modelsActiveSubsection = section),
+                onReload: () => loadConfig(state),
+                onSave: () => saveConfig(state),
+                onApply: () => applyConfig(state),
+                onUpdate: () => runUpdate(state),
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "agents-config"
+            ? renderConfig({
+                raw: state.configRaw,
+                originalRaw: state.configRawOriginal,
+                valid: state.configValid,
+                issues: state.configIssues,
+                loading: state.configLoading,
+                saving: state.configSaving,
+                applying: state.configApplying,
+                updating: state.updateRunning,
+                connected: state.connected,
+                schema: state.configSchema,
+                schemaLoading: state.configSchemaLoading,
+                uiHints: state.configUiHints,
+                formMode: state.configFormMode,
+                configRawLoading: state.configRawLoading,
+                formValue: state.configForm,
+                originalValue: state.configFormOriginal,
+                searchQuery: "",
+                activeSection: "agents",
+                activeSubsection: state.agentsConfigActiveSubsection,
+                hideSidebar: true,
+                onRawChange: (next) => {
+                  state.configRaw = next;
+                },
+                onFormModeChange: (mode) => (state.configFormMode = mode),
+                onLoadRaw: () => void loadConfigRaw(state),
+                onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onSearchChange: () => {},
+                onSectionChange: () => {},
+                onSubsectionChange: (section) => (state.agentsConfigActiveSubsection = section),
+                onReload: () => loadConfig(state),
+                onSave: () => saveConfig(state),
+                onApply: () => applyConfig(state),
+                onUpdate: () => runUpdate(state),
+              })
+            : nothing
+        }
+        ${
+          state.tab === "json-edit"
+            ? renderConfig({
+                raw: state.configRaw,
+                originalRaw: state.configRawOriginal,
+                valid: state.configValid,
+                issues: state.configIssues,
+                loading: state.configLoading,
+                saving: state.configSaving,
+                applying: state.configApplying,
+                updating: state.updateRunning,
+                connected: state.connected,
+                schema: state.configSchema,
+                schemaLoading: false,
+                uiHints: state.configUiHints,
+                formMode: "raw" as const,
+                configRawLoading: state.configRawLoading,
+                formValue: state.configForm,
+                originalValue: state.configFormOriginal,
+                searchQuery: "",
+                activeSection: null,
+                activeSubsection: null,
+                hideSidebar: true,
+                onRawChange: (next) => {
+                  state.configRaw = next;
+                },
+                onFormModeChange: () => {},
+                onLoadRaw: () => void loadConfigRaw(state),
+                onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onSearchChange: () => {},
+                onSectionChange: () => {},
+                onSubsectionChange: () => {},
+                onReload: async () => {
+                  await loadConfig(state);
+                  await loadConfigRaw(state);
+                },
                 onSave: () => saveConfig(state),
                 onApply: () => applyConfig(state),
                 onUpdate: () => runUpdate(state),

@@ -26,7 +26,8 @@ class I18nManager {
     if (isSupportedLocale(saved)) {
       return saved;
     }
-    return resolveNavigatorLocale(navigator.language);
+    // Chinese build: default to zh-CN
+    return "zh-CN";
   }
 
   private loadLocale() {

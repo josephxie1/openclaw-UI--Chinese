@@ -11,7 +11,7 @@ import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-iden
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
-import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
+import { loadConfig, loadConfigRaw, loadConfigSchema } from "./controllers/config.ts";
 import {
   loadCronJobs,
   loadCronModelSuggestions,
@@ -224,6 +224,14 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "config") {
     await loadConfigSchema(host as unknown as OpenClawApp);
     await loadConfig(host as unknown as OpenClawApp);
+  }
+  if (host.tab === "models") {
+    await loadConfigSchema(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as OpenClawApp);
+  }
+  if (host.tab === "json-edit") {
+    await loadConfig(host as unknown as OpenClawApp);
+    await loadConfigRaw(host as unknown as OpenClawApp);
   }
   if (host.tab === "debug") {
     await loadDebug(host as unknown as OpenClawApp);

@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import type { EventLogEntry } from "../app-events.ts";
 import { formatEventPayload } from "../presenter.ts";
 
@@ -30,7 +31,7 @@ export function renderDebug(props: DebugProps) {
   const info = securitySummary?.info ?? 0;
   const securityTone = critical > 0 ? "danger" : warn > 0 ? "warn" : "success";
   const securityLabel =
-    critical > 0 ? `${critical} critical` : warn > 0 ? `${warn} warnings` : "No critical issues";
+    critical > 0 ? t("debugView.critical", { count: String(critical) }) : warn > 0 ? t("debugView.warnings", { count: String(warn) }) : t("debugView.noCritical");
 
   return html`
     <section class="grid grid-cols-2">
@@ -41,7 +42,7 @@ export function renderDebug(props: DebugProps) {
             <div class="card-sub">Status, health, and heartbeat data.</div>
           </div>
           <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-            ${props.loading ? "Refreshing…" : "Refresh"}
+            ${props.loading ? t("shared.refreshing") : t("shared.refresh")}
           </button>
         </div>
         <div class="stack" style="margin-top: 12px;">

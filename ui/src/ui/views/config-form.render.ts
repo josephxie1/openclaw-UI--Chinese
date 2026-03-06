@@ -297,12 +297,22 @@ function matchesSearch(params: {
     return true;
   }
 
-  // Check label and description
+  // Check label and description (both hardcoded and translated)
   if (q && meta) {
     if (meta.label.toLowerCase().includes(q)) {
       return true;
     }
     if (meta.description.toLowerCase().includes(q)) {
+      return true;
+    }
+  }
+  // Also check uiHints translated label/help
+  if (q) {
+    const hint = hintForPath([params.key], params.uiHints);
+    if (hint?.label && hint.label.toLowerCase().includes(q)) {
+      return true;
+    }
+    if (hint?.help && hint.help.includes(q)) {
       return true;
     }
   }
@@ -442,16 +452,20 @@ export function renderConfigForm(props: ConfigFormProps) {
                 label: key.charAt(0).toUpperCase() + key.slice(1),
                 description: node.description ?? "",
               };
+              // Check uiHints for i18n overrides (from schema-i18n-zh.ts etc.)
+              const hint = hintForPath([key], props.uiHints);
+              const sectionLabel = hint?.label ?? meta.label;
+              const sectionDesc = hint?.help ?? meta.description;
 
               return html`
               <section class="config-section-card" id="config-section-${key}">
                 <div class="config-section-card__header">
                   <span class="config-section-card__icon">${getSectionIcon(key)}</span>
                   <div class="config-section-card__titles">
-                    <h3 class="config-section-card__title">${meta.label}</h3>
+                    <h3 class="config-section-card__title">${sectionLabel}</h3>
                     ${
-                      meta.description
-                        ? html`<p class="config-section-card__desc">${meta.description}</p>`
+                      sectionDesc
+                        ? html`<p class="config-section-card__desc">${sectionDesc}</p>`
                         : nothing
                     }
                   </div>

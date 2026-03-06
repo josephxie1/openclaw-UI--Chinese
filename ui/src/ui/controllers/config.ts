@@ -8,6 +8,7 @@ import {
   serializeConfigForm,
   setPathValue,
 } from "./config/form-utils.ts";
+import { applySchemaTranslations } from "./schema-i18n.ts";
 
 export type ConfigState = {
   client: GatewayBrowserClient | null;
@@ -29,11 +30,16 @@ export type ConfigState = {
   configForm: Record<string, unknown> | null;
   configFormOriginal: Record<string, unknown> | null;
   configFormDirty: boolean;
+  configRawLoading: boolean;
   configFormMode: "form" | "raw";
   configSearchQuery: string;
   configActiveSection: string | null;
   configActiveSubsection: string | null;
   lastError: string | null;
+  /** Cache of per-plugin schemas loaded on demand. Keys are plugin IDs. */
+  pluginSchemaCache: Record<string, unknown>;
+  /** Set of plugin IDs currently being loaded. */
+  pluginSchemaLoading: Set<string>;
 };
 
 export async function loadConfig(state: ConfigState) {
@@ -52,7 +58,35 @@ export async function loadConfig(state: ConfigState) {
   }
 }
 
-export async function loadConfigSchema(state: ConfigState) {
+/**
+ * Lazily load the raw JSON5 config text from the gateway.
+ * Called when the user switches to raw editing mode.
+ */
+export async function loadConfigRaw(state: ConfigState) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  state.configRawLoading = true;
+  try {
+    const res = await state.client.request<{ raw: string | null; hash?: string }>(
+      "config.raw",
+      {},
+    );
+    if (typeof res?.raw === "string") {
+      state.configRaw = res.raw;
+      state.configRawOriginal = res.raw;
+    }
+  } catch (err) {
+    state.lastError = String(err);
+  } finally {
+    state.configRawLoading = false;
+  }
+}
+
+export async function loadConfigSchema(
+  state: ConfigState,
+  requestUpdate?: () => void,
+) {
   if (!state.client || !state.connected) {
     return;
   }
@@ -63,6 +97,16 @@ export async function loadConfigSchema(state: ConfigState) {
   try {
     const res = await state.client.request<ConfigSchemaResponse>("config.schema", {});
     applyConfigSchema(state, res);
+    // After base schema is loaded, fire off per-plugin schema loads in parallel.
+    // Each plugin schema is loaded individually to avoid serialization size limits.
+    const config = state.configSnapshot?.config ?? state.configForm;
+    const pluginEntries = (config as Record<string, unknown>)?.plugins as Record<string, unknown> | undefined;
+    const entries = pluginEntries?.entries as Record<string, unknown> | undefined;
+    if (entries) {
+      for (const pluginId of Object.keys(entries)) {
+        void loadPluginSchema(state, pluginId, requestUpdate);
+      }
+    }
   } catch (err) {
     state.lastError = String(err);
   } finally {
@@ -72,8 +116,78 @@ export async function loadConfigSchema(state: ConfigState) {
 
 export function applyConfigSchema(state: ConfigState, res: ConfigSchemaResponse) {
   state.configSchema = res.schema ?? null;
-  state.configUiHints = res.uiHints ?? {};
+  state.configUiHints = applySchemaTranslations(res.uiHints ?? {});
   state.configSchemaVersion = res.version ?? null;
+}
+
+/**
+ * Load the schema for a single plugin on demand.
+ * Merges the result into configSchema so the form can render plugin fields.
+ */
+export async function loadPluginSchema(
+  state: ConfigState,
+  pluginId: string,
+  requestUpdate?: () => void,
+) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  // Already loaded or loading
+  if (state.pluginSchemaCache[pluginId] || state.pluginSchemaLoading.has(pluginId)) {
+    return;
+  }
+  state.pluginSchemaLoading.add(pluginId);
+  requestUpdate?.();
+  try {
+    const res = await state.client.request<{ pluginSchema: Record<string, unknown> | null }>(
+      "config.schema",
+      { section: `plugin:${pluginId}` },
+    );
+    if (res?.pluginSchema?.entry) {
+      state.pluginSchemaCache[pluginId] = res.pluginSchema;
+      // Merge into configSchema
+      mergePluginSchemaIntoState(state, pluginId, res.pluginSchema);
+    }
+  } catch (err) {
+    // Non-fatal: plugin form will just show raw fields
+    console.warn(`Failed to load plugin schema for ${pluginId}:`, err);
+  } finally {
+    state.pluginSchemaLoading.delete(pluginId);
+    requestUpdate?.();
+  }
+}
+
+function mergePluginSchemaIntoState(
+  state: ConfigState,
+  pluginId: string,
+  pluginSchema: Record<string, unknown>,
+) {
+  const schema = state.configSchema as Record<string, unknown> | null;
+  if (!schema) {
+    return;
+  }
+  const root = schema as Record<string, unknown>;
+  const plugins = root.properties as Record<string, unknown> | undefined;
+  if (!plugins) {
+    return;
+  }
+  const pluginsObj = (plugins as Record<string, unknown>).plugins as Record<string, unknown> | undefined;
+  if (!pluginsObj) {
+    return;
+  }
+  const entries = (pluginsObj.properties as Record<string, unknown> | undefined)?.entries as Record<string, unknown> | undefined;
+  if (!entries) {
+    return;
+  }
+  const entryProps = (entries.properties ?? {}) as Record<string, unknown>;
+  entryProps[pluginId] = pluginSchema.entry;
+  entries.properties = entryProps;
+  // Merge $defs if present
+  if (pluginSchema.$defs) {
+    const defs = ((root as Record<string, unknown>).$defs ?? {}) as Record<string, unknown>;
+    Object.assign(defs, pluginSchema.$defs);
+    (root as Record<string, unknown>).$defs = defs;
+  }
 }
 
 export function applyConfigSnapshot(state: ConfigState, snapshot: ConfigSnapshot) {

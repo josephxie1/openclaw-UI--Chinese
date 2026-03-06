@@ -14,10 +14,11 @@ import { applyLegacyMigrations } from "../../config/legacy.js";
 import { applyMergePatch } from "../../config/merge-patch.js";
 import {
   redactConfigObject,
+  redactConfigRaw,
   redactConfigSnapshot,
   restoreRedactedValues,
 } from "../../config/redact-snapshot.js";
-import { buildConfigSchema, type ConfigSchemaResponse } from "../../config/schema.js";
+import { buildConfigHints, buildConfigSchema, type ConfigSchemaResponse } from "../../config/schema.js";
 import { extractDeliveryInfo } from "../../config/sessions.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import {
@@ -39,6 +40,7 @@ import {
   validateConfigApplyParams,
   validateConfigGetParams,
   validateConfigPatchParams,
+  validateConfigRawParams,
   validateConfigSchemaParams,
   validateConfigSetParams,
 } from "../protocol/index.js";
@@ -128,7 +130,7 @@ function parseValidateConfigFromRawOrRespond(
     respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, parsedRes.error));
     return null;
   }
-  const schema = loadSchemaWithPlugins();
+  const schema = loadHintsWithPlugins();
   const restored = restoreRedactedValues(parsedRes.parsed, snapshot.config, schema.uiHints);
   if (!restored.ok) {
     respond(
@@ -209,6 +211,26 @@ async function tryWriteRestartSentinelPayload(
 }
 
 function loadSchemaWithPlugins(): ConfigSchemaResponse {
+  const { pluginEntries, channelEntries } = loadPluginAndChannelEntries();
+  return buildConfigSchema({
+    plugins: pluginEntries,
+    channels: channelEntries,
+  });
+}
+
+/**
+ * Load only the merged uiHints (fast path — skips the expensive JSON Schema merge).
+ * Use this for handlers that never send the schema object to the client.
+ */
+function loadHintsWithPlugins(): ConfigSchemaResponse {
+  const { pluginEntries, channelEntries } = loadPluginAndChannelEntries();
+  return buildConfigHints({
+    plugins: pluginEntries,
+    channels: channelEntries,
+  });
+}
+
+function loadPluginAndChannelEntries() {
   const cfg = loadConfig();
   const workspaceDir = resolveAgentWorkspaceDir(cfg, resolveDefaultAgentId(cfg));
   const pluginRegistry = loadOpenClawPlugins({
@@ -222,25 +244,21 @@ function loadSchemaWithPlugins(): ConfigSchemaResponse {
       debug: () => {},
     },
   });
-  // Note: We can't easily cache this, as there are no callback that can invalidate
-  // our cache. However, both loadConfig() and loadOpenClawPlugins() already cache
-  // their results, and buildConfigSchema() is just a cheap transformation.
-  return buildConfigSchema({
-    plugins: pluginRegistry.plugins.map((plugin) => ({
-      id: plugin.id,
-      name: plugin.name,
-      description: plugin.description,
-      configUiHints: plugin.configUiHints,
-      configSchema: plugin.configJsonSchema,
-    })),
-    channels: listChannelPlugins().map((entry) => ({
-      id: entry.id,
-      label: entry.meta.label,
-      description: entry.meta.blurb,
-      configSchema: entry.configSchema?.schema,
-      configUiHints: entry.configSchema?.uiHints,
-    })),
-  });
+  const pluginEntries = pluginRegistry.plugins.map((plugin) => ({
+    id: plugin.id,
+    name: plugin.name,
+    description: plugin.description,
+    configUiHints: plugin.configUiHints,
+    configSchema: plugin.configJsonSchema,
+  }));
+  const channelEntries = listChannelPlugins().map((entry) => ({
+    id: entry.id,
+    label: entry.meta.label,
+    description: entry.meta.blurb,
+    configSchema: entry.configSchema?.schema,
+    configUiHints: entry.configSchema?.uiHints,
+  }));
+  return { pluginEntries, channelEntries };
 }
 
 export const configHandlers: GatewayRequestHandlers = {
@@ -249,8 +267,16 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const snapshot = await readConfigFileSnapshot();
-    const schema = loadSchemaWithPlugins();
-    respond(true, redactConfigSnapshot(snapshot, schema.uiHints), undefined);
+    const hints = loadHintsWithPlugins();
+    respond(true, redactConfigSnapshot(snapshot, hints.uiHints, { slim: true }), undefined);
+  },
+  "config.raw": async ({ params, respond }) => {
+    if (!assertValidParams(params, validateConfigRawParams, "config.raw", respond)) {
+      return;
+    }
+    const snapshot = await readConfigFileSnapshot();
+    const hints = loadHintsWithPlugins();
+    respond(true, redactConfigRaw(snapshot, hints.uiHints), undefined);
   },
   "config.schema": ({ params, respond }) => {
     if (!assertValidParams(params, validateConfigSchemaParams, "config.schema", respond)) {
@@ -329,7 +355,7 @@ export const configHandlers: GatewayRequestHandlers = {
     const merged = applyMergePatch(snapshot.config, parsedRes.parsed, {
       mergeObjectArraysById: true,
     });
-    const schemaPatch = loadSchemaWithPlugins();
+    const schemaPatch = loadHintsWithPlugins();
     const restoredMerge = restoreRedactedValues(merged, snapshot.config, schemaPatch.uiHints);
     if (!restoredMerge.ok) {
       respond(

@@ -1,4 +1,5 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import type { ConfigUiHints } from "../types.ts";
 import type { ChannelsProps } from "./channels.types.ts";
 import { analyzeConfigSchema, renderNode, schemaType, type JsonSchema } from "./config-form.ts";
@@ -108,13 +109,13 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const normalized = analysis.schema;
   if (!normalized) {
     return html`
-      <div class="callout danger">Schema unavailable. Use Raw.</div>
+      <div class="callout danger">${t("channelsView.schemaUnavailable")}</div>
     `;
   }
   const node = resolveSchemaNode(normalized, ["channels", props.channelId]);
   if (!node) {
     return html`
-      <div class="callout danger">Channel config schema unavailable.</div>
+      <div class="callout danger">${t("channelsView.channelSchemaUnavailable")}</div>
     `;
   }
   const configValue = props.configValue ?? {};
@@ -136,15 +137,19 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   `;
 }
 
-export function renderChannelConfigSection(params: { channelId: string; props: ChannelsProps }) {
-  const { channelId, props } = params;
+export function renderChannelConfigSection(params: {
+  channelId: string;
+  props: ChannelsProps;
+  extraButtons?: unknown;
+}) {
+  const { channelId, props, extraButtons } = params;
   const disabled = props.configSaving || props.configSchemaLoading;
   return html`
-    <div style="margin-top: 16px;">
+    <div style="margin-top: auto; padding-top: 16px;">
       ${
         props.configSchemaLoading
           ? html`
-              <div class="muted">Loading config schema…</div>
+              <div class="muted">${t("channelsView.loadingSchema")}</div>
             `
           : renderChannelConfigForm({
               channelId,
@@ -155,21 +160,22 @@ export function renderChannelConfigSection(params: { channelId: string; props: C
               onPatch: props.onConfigPatch,
             })
       }
-      <div class="row" style="margin-top: 12px;">
+      <div class="row" style="margin-top: 12px; flex-wrap: wrap;">
         <button
           class="btn primary"
           ?disabled=${disabled || !props.configFormDirty}
           @click=${() => props.onConfigSave()}
         >
-          ${props.configSaving ? "Saving…" : "Save"}
+          ${props.configSaving ? t("shared.saving") : t("shared.save")}
         </button>
         <button
           class="btn"
           ?disabled=${disabled}
           @click=${() => props.onConfigReload()}
         >
-          Reload
+          ${t("shared.reload")}
         </button>
+        ${extraButtons ?? nothing}
       </div>
     </div>
   `;

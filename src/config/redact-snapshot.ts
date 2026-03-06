@@ -317,6 +317,7 @@ export function redactConfigObject<T>(value: T, uiHints?: ConfigUiHints): T {
 export function redactConfigSnapshot(
   snapshot: ConfigFileSnapshot,
   uiHints?: ConfigUiHints,
+  options?: { slim?: boolean },
 ): ConfigFileSnapshot {
   if (!snapshot.valid) {
     // This is bad. We could try to redact the raw string using known key names,
@@ -338,6 +339,19 @@ export function redactConfigSnapshot(
   // readConfigFileSnapshot() does when it creates the snapshot.
 
   const redactedConfig = redactObject(snapshot.config, uiHints) as ConfigFileSnapshot["config"];
+
+  if (options?.slim) {
+    // Slim mode: return only the config object + metadata.
+    // raw/parsed/resolved are omitted to keep the WS payload small.
+    return {
+      ...snapshot,
+      config: redactedConfig,
+      raw: null,
+      parsed: null,
+      resolved: {},
+    };
+  }
+
   const redactedRaw = snapshot.raw ? redactRawText(snapshot.raw, snapshot.config, uiHints) : null;
   const redactedParsed = snapshot.parsed ? redactObject(snapshot.parsed, uiHints) : snapshot.parsed;
   // Also redact the resolved config (contains values after ${ENV} substitution)
@@ -349,6 +363,23 @@ export function redactConfigSnapshot(
     raw: redactedRaw,
     parsed: redactedParsed,
     resolved: redactedResolved,
+  };
+}
+
+/**
+ * Redact just the raw JSON5 text of a config file.
+ * Used by the `config.raw` handler to lazily serve the raw text on demand.
+ */
+export function redactConfigRaw(
+  snapshot: ConfigFileSnapshot,
+  uiHints?: ConfigUiHints,
+): { raw: string | null; hash?: string } {
+  if (!snapshot.valid || !snapshot.raw) {
+    return { raw: null, hash: snapshot.hash };
+  }
+  return {
+    raw: redactRawText(snapshot.raw, snapshot.config, uiHints),
+    hash: snapshot.hash,
   };
 }
 

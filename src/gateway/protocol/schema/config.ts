@@ -3,6 +3,8 @@ import { NonEmptyString } from "./primitives.js";
 
 export const ConfigGetParamsSchema = Type.Object({}, { additionalProperties: false });
 
+export const ConfigRawParamsSchema = Type.Object({}, { additionalProperties: false });
+
 export const ConfigSetParamsSchema = Type.Object(
   {
     raw: NonEmptyString,

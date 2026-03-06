@@ -27,6 +27,8 @@ describe("config view", () => {
     activeSubsection: null,
     onRawChange: vi.fn(),
     onFormModeChange: vi.fn(),
+    onLoadRaw: vi.fn(),
+    configRawLoading: false,
     onFormPatch: vi.fn(),
     onSearchChange: vi.fn(),
     onSectionChange: vi.fn(),
@@ -134,23 +136,24 @@ describe("config view", () => {
     expect(applyButton?.disabled).toBe(false);
   });
 
-  it("switches mode via the sidebar toggle", () => {
+  it("switches mode via the sidebar nav entry", () => {
     const container = document.createElement("div");
     const onFormModeChange = vi.fn();
+    const onLoadRaw = vi.fn();
     render(
       renderConfig({
         ...baseProps(),
         onFormModeChange,
+        onLoadRaw,
       }),
       container,
     );
 
-    const btn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.trim() === "Raw",
-    );
+    const btn = container.querySelector(".config-nav__item--raw") as HTMLButtonElement | null;
     expect(btn).toBeTruthy();
     btn?.click();
     expect(onFormModeChange).toHaveBeenCalledWith("raw");
+    expect(onLoadRaw).toHaveBeenCalled();
   });
 
   it("switches sections from the sidebar", () => {

@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import { formatRelativeTimestamp } from "../format.ts";
 import type { SlackStatus } from "../types.ts";
 import { renderChannelConfigSection } from "./channels.config.ts";
@@ -13,25 +14,25 @@ export function renderSlackCard(params: {
 
   return html`
     <div class="card">
-      <div class="card-title">Slack</div>
-      <div class="card-sub">Socket mode status and channel configuration.</div>
+      <div class="card-title">${t("channelsView.slack")}</div>
+      <div class="card-sub">${t("channelsView.slackSub")}</div>
       ${accountCountLabel}
 
       <div class="status-list" style="margin-top: 16px;">
         <div>
-          <span class="label">Configured</span>
-          <span>${slack?.configured ? "Yes" : "No"}</span>
+          <span class="label">${t("channelsView.configured")}</span>
+          <span>${slack?.configured ? t("shared.yes") : t("shared.no")}</span>
         </div>
         <div>
-          <span class="label">Running</span>
-          <span>${slack?.running ? "Yes" : "No"}</span>
+          <span class="label">${t("channelsView.running")}</span>
+          <span>${slack?.running ? t("shared.yes") : t("shared.no")}</span>
         </div>
         <div>
-          <span class="label">Last start</span>
+          <span class="label">${t("channelsView.lastStart")}</span>
           <span>${slack?.lastStartAt ? formatRelativeTimestamp(slack.lastStartAt) : "n/a"}</span>
         </div>
         <div>
-          <span class="label">Last probe</span>
+          <span class="label">${t("channelsView.lastProbe")}</span>
           <span>${slack?.lastProbeAt ? formatRelativeTimestamp(slack.lastProbeAt) : "n/a"}</span>
         </div>
       </div>
@@ -47,19 +48,21 @@ export function renderSlackCard(params: {
       ${
         slack?.probe
           ? html`<div class="callout" style="margin-top: 12px;">
-            Probe ${slack.probe.ok ? "ok" : "failed"} ·
+            ${t("channelsView.probe")} ${slack.probe.ok ? "ok" : "failed"} ·
             ${slack.probe.status ?? ""} ${slack.probe.error ?? ""}
           </div>`
           : nothing
       }
 
-      ${renderChannelConfigSection({ channelId: "slack", props })}
-
-      <div class="row" style="margin-top: 12px;">
-        <button class="btn" @click=${() => props.onRefresh(true)}>
-          Probe
-        </button>
-      </div>
+      ${renderChannelConfigSection({
+        channelId: "slack",
+        props,
+        extraButtons: html`
+          <button class="btn" @click=${() => props.onRefresh(true)}>
+            ${t("channelsView.probe")}
+          </button>
+        `,
+      })}
     </div>
   `;
 }

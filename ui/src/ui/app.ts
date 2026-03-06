@@ -189,14 +189,48 @@ export class OpenClawApp extends LitElement {
   @state() configSchema: unknown = null;
   @state() configSchemaVersion: string | null = null;
   @state() configSchemaLoading = false;
+  @state() pluginSchemaCache: Record<string, unknown> = {};
+  pluginSchemaLoading = new Set<string>();
   @state() configUiHints: ConfigUiHints = {};
   @state() configForm: Record<string, unknown> | null = null;
   @state() configFormOriginal: Record<string, unknown> | null = null;
   @state() configFormDirty = false;
+  @state() configRawLoading = false;
   @state() configFormMode: "form" | "raw" = "form";
   @state() configSearchQuery = "";
   @state() configActiveSection: string | null = null;
   @state() configActiveSubsection: string | null = null;
+  @state() modelsActiveSubsection: string | null = null;
+  @state() agentsConfigActiveSubsection: string | null = null;
+  @state() modelsQuickAddExpanded = false;
+  @state() modelsQuickAddForm = {
+    provider: "",
+    baseUrl: "",
+    api: "openai-completions",
+    apiKey: "",
+    models: [{ id: "", name: "" }],
+  };
+  @state() modelsQuickAddBusy = false;
+  @state() modelsQuickAddError: string | null = null;
+  @state() modelsQuickAddPreset = "";
+  @state() modelsQuickAddSelectedIds: string[] = [];
+
+  @state() channelQuickAddExpanded = false;
+  @state() channelQuickAddBusy = false;
+  @state() channelQuickAddError: string | null = null;
+  @state() channelQuickAddForm = {
+    channelType: "telegram" as "telegram" | "feishu",
+    accountId: "",
+    botToken: "",
+    appId: "",
+    appSecret: "",
+    botName: "",
+    createAgent: true,
+    agentId: "",
+    agentName: "",
+    agentEmoji: "🤖",
+    agentModel: "",
+  };
 
   @state() channelsLoading = false;
   @state() channelsSnapshot: ChannelsStatusSnapshot | null = null;

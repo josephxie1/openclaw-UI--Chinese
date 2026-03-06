@@ -157,8 +157,25 @@ export function attachGatewayWsConnectionHandler(params: {
     const send = (obj: unknown) => {
       try {
         socket.send(JSON.stringify(obj));
-      } catch {
-        /* ignore */
+      } catch (err) {
+        if (err instanceof RangeError) {
+          // Payload too large for JSON.stringify (V8 string length limit).
+          // Try to send a compact error response so the client knows what happened.
+          const id = (obj as { id?: unknown })?.id;
+          try {
+            socket.send(
+              JSON.stringify({
+                type: "res",
+                id: id ?? "unknown",
+                ok: false,
+                error: { code: "UNAVAILABLE", message: "response payload too large" },
+              }),
+            );
+          } catch {
+            /* last-resort: ignore */
+          }
+        }
+        /* ignore other errors (e.g. socket already closed) */
       }
     };
 

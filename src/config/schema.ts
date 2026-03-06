@@ -229,53 +229,65 @@ function applyHeartbeatTargetHints(
   return next;
 }
 
-function applyPluginSchemas(schema: ConfigSchema, plugins: PluginUiMetadata[]): ConfigSchema {
-  const next = cloneSchema(schema);
-  const root = asSchemaObject(next);
+function applyPluginSchemas(schema: ConfigSchema, plugins: PluginUiMetadata[]): void {
+  const root = asSchemaObject(schema);
   const pluginsNode = asSchemaObject(root?.properties?.plugins);
   const entriesNode = asSchemaObject(pluginsNode?.properties?.entries);
   if (!entriesNode) {
-    return next;
+    return;
   }
 
   const entryBase = asSchemaObject(entriesNode.additionalProperties);
   const entryProperties = entriesNode.properties ?? {};
   entriesNode.properties = entryProperties;
 
+  // Store the shared entry base in $defs so it is serialized once, not N times.
+  if (entryBase && plugins.some((p) => p.configSchema)) {
+    const defs = ((root as Record<string, unknown>).$defs ?? {}) as Record<string, unknown>;
+    defs.pluginEntryBase = cloneSchema(entryBase);
+    (root as Record<string, unknown>).$defs = defs;
+  }
+
   for (const plugin of plugins) {
     if (!plugin.configSchema) {
       continue;
     }
-    const entrySchema = entryBase
-      ? cloneSchema(entryBase)
-      : ({ type: "object" } as JsonSchemaObject);
-    const entryObject = asSchemaObject(entrySchema) ?? ({ type: "object" } as JsonSchemaObject);
-    const baseConfigSchema = asSchemaObject(entryObject.properties?.config);
     const pluginSchema = asSchemaObject(plugin.configSchema);
-    const nextConfigSchema =
-      baseConfigSchema &&
-      pluginSchema &&
-      isObjectSchema(baseConfigSchema) &&
-      isObjectSchema(pluginSchema)
-        ? mergeObjectSchema(baseConfigSchema, pluginSchema)
-        : cloneSchema(plugin.configSchema);
-
-    entryObject.properties = {
-      ...entryObject.properties,
-      config: nextConfigSchema,
-    };
-    entryProperties[plugin.id] = entryObject;
+    // Build the plugin-specific config schema override.
+    let configOverride: JsonSchemaObject;
+    if (entryBase) {
+      const baseConfigSchema = asSchemaObject(entryBase.properties?.config);
+      configOverride =
+        baseConfigSchema &&
+        pluginSchema &&
+        isObjectSchema(baseConfigSchema) &&
+        isObjectSchema(pluginSchema)
+          ? mergeObjectSchema(cloneSchema(baseConfigSchema), pluginSchema)
+          : cloneSchema(plugin.configSchema);
+      // Use allOf with $ref to avoid duplicating the full entry base for every plugin.
+      entryProperties[plugin.id] = {
+        allOf: [
+          { $ref: "#/$defs/pluginEntryBase" },
+          { type: "object", properties: { config: configOverride } },
+        ],
+      };
+    } else {
+      configOverride = pluginSchema
+        ? cloneSchema(plugin.configSchema)
+        : ({ type: "object" } as JsonSchemaObject);
+      entryProperties[plugin.id] = {
+        type: "object",
+        properties: { config: configOverride },
+      };
+    }
   }
-
-  return next;
 }
 
-function applyChannelSchemas(schema: ConfigSchema, channels: ChannelUiMetadata[]): ConfigSchema {
-  const next = cloneSchema(schema);
-  const root = asSchemaObject(next);
+function applyChannelSchemas(schema: ConfigSchema, channels: ChannelUiMetadata[]): void {
+  const root = asSchemaObject(schema);
   const channelsNode = asSchemaObject(root?.properties?.channels);
   if (!channelsNode) {
-    return next;
+    return;
   }
   const channelProps = channelsNode.properties ?? {};
   channelsNode.properties = channelProps;
@@ -292,8 +304,6 @@ function applyChannelSchemas(schema: ConfigSchema, channels: ChannelUiMetadata[]
       channelProps[channel.id] = cloneSchema(channel.configSchema);
     }
   }
-
-  return next;
 }
 
 let cachedBase: ConfigSchemaResponse | null = null;
@@ -339,6 +349,47 @@ function buildBaseConfigSchema(): ConfigSchemaResponse {
   return next;
 }
 
+/**
+ * Compute only the merged uiHints (skips the expensive JSON Schema merge).
+ * Use this from handlers that never send the schema to clients.
+ */
+export function buildConfigHints(params?: {
+  plugins?: PluginUiMetadata[];
+  channels?: ChannelUiMetadata[];
+}): ConfigSchemaResponse {
+  const base = buildBaseConfigSchema();
+  const plugins = params?.plugins ?? [];
+  const channels = params?.channels ?? [];
+  if (plugins.length === 0 && channels.length === 0) {
+    return base;
+  }
+  const mergedHints = buildMergedHints(base.uiHints, plugins, channels);
+  return {
+    ...base,
+    uiHints: mergedHints,
+  };
+}
+
+/** Shared helper: merge plugin + channel UI hints with derived tags. */
+function buildMergedHints(
+  baseHints: ConfigUiHints,
+  plugins: PluginUiMetadata[],
+  channels: ChannelUiMetadata[],
+): ConfigUiHints {
+  const mergedWithoutSensitiveHints = applyHeartbeatTargetHints(
+    applyChannelHints(applyPluginHints(baseHints, plugins), channels),
+    channels,
+  );
+  const extensionHintKeys = collectExtensionHintKeys(
+    mergedWithoutSensitiveHints,
+    plugins,
+    channels,
+  );
+  return applyDerivedTags(
+    applySensitiveHints(mergedWithoutSensitiveHints, extensionHintKeys),
+  );
+}
+
 export function buildConfigSchema(params?: {
   plugins?: PluginUiMetadata[];
   channels?: ChannelUiMetadata[];
@@ -349,22 +400,49 @@ export function buildConfigSchema(params?: {
   if (plugins.length === 0 && channels.length === 0) {
     return base;
   }
-  const mergedWithoutSensitiveHints = applyHeartbeatTargetHints(
-    applyChannelHints(applyPluginHints(base.uiHints, plugins), channels),
-    channels,
-  );
-  const extensionHintKeys = collectExtensionHintKeys(
-    mergedWithoutSensitiveHints,
-    plugins,
-    channels,
-  );
-  const mergedHints = applyDerivedTags(
-    applySensitiveHints(mergedWithoutSensitiveHints, extensionHintKeys),
-  );
-  const mergedSchema = applyChannelSchemas(applyPluginSchemas(base.schema, plugins), channels);
+  const mergedHints = buildMergedHints(base.uiHints, plugins, channels);
+  // Clone the base schema once, then apply ONLY channel schemas (lightweight).
+  // Plugin schemas are loaded on-demand via buildSinglePluginSchema().
+  const mergedSchema = cloneSchema(base.schema);
+  applyChannelSchemas(mergedSchema, channels);
   return {
     ...base,
     schema: mergedSchema,
     uiHints: mergedHints,
+  };
+}
+
+/**
+ * Build the JSON Schema fragment for a single plugin entry.
+ * Used by the on-demand `config.schema` handler when the client
+ * requests a specific plugin section.
+ */
+export function buildSinglePluginSchema(
+  pluginId: string,
+  plugins: PluginUiMetadata[],
+): { pluginSchema: Record<string, unknown> } | null {
+  const plugin = plugins.find((p) => p.id === pluginId);
+  if (!plugin?.configSchema) {
+    return null;
+  }
+  const base = buildBaseConfigSchema();
+  const schema = cloneSchema(base.schema);
+  // Apply only this single plugin's schema.
+  applyPluginSchemas(schema, [plugin]);
+  // Extract just the plugin entry from the schema tree.
+  const root = asSchemaObject(schema);
+  const pluginsNode = asSchemaObject(root?.properties?.plugins);
+  const entriesNode = asSchemaObject(pluginsNode?.properties?.entries);
+  const pluginEntry = entriesNode?.properties?.[pluginId];
+  if (!pluginEntry) {
+    return null;
+  }
+  // Also include $defs if we used $ref.
+  const defs = (root as Record<string, unknown>)?.$defs;
+  return {
+    pluginSchema: {
+      entry: pluginEntry,
+      ...(defs ? { $defs: defs } : {}),
+    },
   };
 }

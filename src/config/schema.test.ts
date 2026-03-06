@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildConfigSchema } from "./schema.js";
+import { buildConfigSchema, buildSinglePluginSchema } from "./schema.js";
 import { applyDerivedTags, CONFIG_TAGS, deriveTagsForPath } from "./schema.tags.js";
 
 describe("config schema", () => {
@@ -61,7 +61,7 @@ describe("config schema", () => {
     expect(res.uiHints["plugins.entries.voice-call.config.tokens"]?.sensitive).toBe(false);
   });
 
-  it("merges plugin + channel schemas", () => {
+  it("merges channel schemas (plugins are loaded on demand)", () => {
     const res = buildConfigSchema({
       plugins: [
         {
@@ -92,21 +92,39 @@ describe("config schema", () => {
     const schema = res.schema as {
       properties?: Record<string, unknown>;
     };
+
+    // Plugin schemas are NOT included in buildConfigSchema anymore (lazy-loaded).
     const pluginsNode = schema.properties?.plugins as Record<string, unknown> | undefined;
     const entriesNode = pluginsNode?.properties as Record<string, unknown> | undefined;
     const entriesProps = entriesNode?.entries as Record<string, unknown> | undefined;
     const entryProps = entriesProps?.properties as Record<string, unknown> | undefined;
-    const pluginEntry = entryProps?.["voice-call"] as Record<string, unknown> | undefined;
-    const pluginConfig = pluginEntry?.properties as Record<string, unknown> | undefined;
-    const pluginConfigSchema = pluginConfig?.config as Record<string, unknown> | undefined;
-    const pluginConfigProps = pluginConfigSchema?.properties as Record<string, unknown> | undefined;
-    expect(pluginConfigProps?.provider).toBeTruthy();
+    expect(entryProps?.["voice-call"]).toBeUndefined();
 
+    // Channel schemas ARE still included.
     const channelsNode = schema.properties?.channels as Record<string, unknown> | undefined;
     const channelsProps = channelsNode?.properties as Record<string, unknown> | undefined;
     const channelSchema = channelsProps?.matrix as Record<string, unknown> | undefined;
     const channelProps = channelSchema?.properties as Record<string, unknown> | undefined;
     expect(channelProps?.accessToken).toBeTruthy();
+  });
+
+  it("loads single plugin schema on demand", () => {
+    const plugins = [
+      {
+        id: "voice-call",
+        name: "Voice Call",
+        configSchema: {
+          type: "object" as const,
+          properties: {
+            provider: { type: "string" },
+          },
+        },
+      },
+    ];
+    const result = buildSinglePluginSchema("voice-call", plugins);
+    expect(result).toBeTruthy();
+    const entry = result!.pluginSchema.entry as Record<string, unknown>;
+    expect(entry).toBeTruthy();
   });
 
   it("adds heartbeat target hints with dynamic channels", () => {
