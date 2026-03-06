@@ -3,6 +3,7 @@ import type { OpenClawConfig } from "../../config/config.js";
 import { loadSessionStore, resolveStorePath, type SessionEntry } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
+import { recordChannelActivity } from "../../infra/channel-activity.js";
 import { isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
 import {
   logMessageProcessed,
@@ -105,7 +106,8 @@ export async function dispatchReplyFromConfig(params: {
   const messageId = ctx.MessageSid ?? ctx.MessageSidFirst ?? ctx.MessageSidLast;
   const sessionKey = ctx.SessionKey;
   const startTime = diagnosticsEnabled ? Date.now() : 0;
-  const canTrackSession = diagnosticsEnabled && Boolean(sessionKey);
+  const canTrackSession = Boolean(sessionKey);
+  const canLogDiagnostics = diagnosticsEnabled && canTrackSession;
 
   const recordProcessed = (
     outcome: "completed" | "skipped" | "error",
@@ -133,7 +135,9 @@ export async function dispatchReplyFromConfig(params: {
     if (!canTrackSession || !sessionKey) {
       return;
     }
-    logMessageQueued({ sessionKey, channel, source: "dispatch" });
+    if (canLogDiagnostics) {
+      logMessageQueued({ sessionKey, channel, source: "dispatch" });
+    }
     logSessionStateChange({
       sessionKey,
       state: "processing",
@@ -155,6 +159,23 @@ export async function dispatchReplyFromConfig(params: {
   if (shouldSkipDuplicateInbound(ctx)) {
     recordProcessed("skipped", { reason: "duplicate" });
     return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
+  }
+
+  // Record inbound activity for all channels centrally.
+  // This ensures lastInboundAt is tracked even for external plugins
+  // that don't explicitly call recordChannelActivity themselves.
+  const inboundChannel = (
+    ctx.OriginatingChannel ??
+    ctx.Surface ??
+    ctx.Provider ??
+    ""
+  ).toLowerCase();
+  if (inboundChannel) {
+    recordChannelActivity({
+      channel: inboundChannel as never,
+      accountId: ctx.AccountId,
+      direction: "inbound",
+    });
   }
 
   const sessionStoreEntry = resolveSessionStoreEntry(ctx, cfg);

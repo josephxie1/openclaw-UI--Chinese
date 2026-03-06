@@ -149,7 +149,7 @@ describe("config view", () => {
       container,
     );
 
-    const btn = container.querySelector(".config-nav__item--raw") as HTMLButtonElement | null;
+    const btn = container.querySelector(".config-nav__item--raw");
     expect(btn).toBeTruthy();
     btn?.click();
     expect(onFormModeChange).toHaveBeenCalledWith("raw");

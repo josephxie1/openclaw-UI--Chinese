@@ -4,6 +4,8 @@ import {
   stopLogsPolling,
   startDebugPolling,
   stopDebugPolling,
+  startActivityPolling,
+  stopActivityPolling,
 } from "./app-polling.ts";
 import { scheduleChatScroll, scheduleLogsScroll } from "./app-scroll.ts";
 import type { OpenClawApp } from "./app.ts";
@@ -24,8 +26,9 @@ import { loadExecApprovals } from "./controllers/exec-approvals.ts";
 import { loadLogs } from "./controllers/logs.ts";
 import { loadNodes } from "./controllers/nodes.ts";
 import { loadPresence } from "./controllers/presence.ts";
-import { loadSessions } from "./controllers/sessions.ts";
+import { loadSessions, loadSessionActivity } from "./controllers/sessions.ts";
 import { loadSkills } from "./controllers/skills.ts";
+import { loadUsage } from "./controllers/usage.ts";
 import {
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -242,6 +245,9 @@ export async function refreshActiveTab(host: SettingsHost) {
     await loadLogs(host as unknown as OpenClawApp, { reset: true });
     scheduleLogsScroll(host as unknown as Parameters<typeof scheduleLogsScroll>[0], true);
   }
+  if (host.tab === "usage") {
+    await loadUsage(host as unknown as OpenClawApp);
+  }
 }
 
 export function inferBasePath() {
@@ -364,6 +370,11 @@ function applyTabSelection(
   } else {
     stopDebugPolling(host as unknown as Parameters<typeof stopDebugPolling>[0]);
   }
+  if (next === "overview") {
+    startActivityPolling(host as unknown as Parameters<typeof startActivityPolling>[0]);
+  } else {
+    stopActivityPolling(host as unknown as Parameters<typeof stopActivityPolling>[0]);
+  }
 
   if (options.refreshPolicy === "always" || host.connected) {
     void refreshActiveTab(host);
@@ -417,6 +428,7 @@ export async function loadOverview(host: SettingsHost) {
     loadChannels(host as unknown as OpenClawApp, false),
     loadPresence(host as unknown as OpenClawApp),
     loadSessions(host as unknown as OpenClawApp),
+    loadSessionActivity(host as unknown as OpenClawApp),
     loadCronStatus(host as unknown as OpenClawApp),
     loadDebug(host as unknown as OpenClawApp),
   ]);

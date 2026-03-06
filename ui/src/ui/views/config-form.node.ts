@@ -99,6 +99,7 @@ type FieldMeta = {
   label: string;
   help?: string;
   tags: string[];
+  defaultValue?: unknown;
 };
 
 export type ConfigSearchCriteria = {
@@ -166,6 +167,7 @@ function resolveFieldMeta(
     label,
     help,
     tags: hintTags.length > 0 ? hintTags : schemaTags,
+    defaultValue: hint?.defaultValue,
   };
 }
 
@@ -337,14 +339,14 @@ export function renderNode(params: {
   const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
   const showLabel = params.showLabel ?? true;
   const type = schemaType(schema);
-  const { label, help, tags } = resolveFieldMeta(path, schema, hints);
+  const { label, help, tags, defaultValue: hintDefault } = resolveFieldMeta(path, schema, hints);
   const key = pathKey(path);
   const criteria = params.searchCriteria;
 
   if (unsupported.has(key)) {
     return html`<div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">${t('configForm.unsupportedNode')}</div>
+      <div class="cfg-field__error">${t("configForm.unsupportedNode")}</div>
     </div>`;
   }
   if (
@@ -381,31 +383,32 @@ export function renderNode(params: {
 
     if (allLiterals && literals.length > 0 && literals.length <= 5) {
       // Use segmented control for small sets
-      const resolvedValue = value ?? schema.default;
+      const effectiveDefault = schema.default ?? hintDefault;
+      const resolvedValue = value ?? effectiveDefault;
+      const isUsingDefault = value == null && effectiveDefault !== undefined;
       return html`
         <div class="cfg-field">
           ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
           ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
           ${renderTags(tags)}
           <div class="cfg-segmented">
-            ${literals.map(
-              (lit) => html`
+            ${literals.map((lit) => {
+              // oxlint-disable typescript/no-base-to-string
+              const isActive = lit === resolvedValue || String(lit) === String(resolvedValue);
+              const isDefault =
+                effectiveDefault !== undefined &&
+                (lit === effectiveDefault || String(lit) === String(effectiveDefault));
+              return html`
               <button
                 type="button"
-                class="cfg-segmented__btn ${
-                  // oxlint-disable typescript/no-base-to-string
-                  lit === resolvedValue || String(lit) === String(resolvedValue) ? "active" : ""
-                }"
+                class="cfg-segmented__btn ${isActive ? "active" : ""} ${isActive && isUsingDefault ? "is-default" : ""}"
                 ?disabled=${disabled}
                 @click=${() => onPatch(path, lit)}
               >
-                ${
-                  // oxlint-disable typescript/no-base-to-string
-                  String(lit)
-                }
+                ${String(lit)}${isDefault ? html`<span class="cfg-segmented__default-tag">${t("configForm.defaultTag") ?? "默认"}</span>` : nothing}
               </button>
-            `,
-            )}
+            `;
+            })}
           </div>
         </div>
       `;
@@ -447,25 +450,33 @@ export function renderNode(params: {
   if (schema.enum) {
     const options = schema.enum;
     if (options.length <= 5) {
-      const resolvedValue = value ?? schema.default;
+      const resolvedValue = value ?? schema.default ?? hintDefault;
       return html`
         <div class="cfg-field">
           ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
           ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
           ${renderTags(tags)}
           <div class="cfg-segmented">
-            ${options.map(
-              (opt) => html`
-              <button
-                type="button"
-                class="cfg-segmented__btn ${opt === resolvedValue || String(opt) === String(resolvedValue) ? "active" : ""}"
-                ?disabled=${disabled}
-                @click=${() => onPatch(path, opt)}
-              >
-                ${String(opt)}
-              </button>
-            `,
-            )}
+            ${(() => {
+              const effectiveDefault = schema.default ?? hintDefault;
+              const isUsingDefault = value == null && effectiveDefault !== undefined;
+              return options.map((opt) => {
+                const isActive = opt === resolvedValue || String(opt) === String(resolvedValue);
+                const isDefault =
+                  effectiveDefault !== undefined &&
+                  (opt === effectiveDefault || String(opt) === String(effectiveDefault));
+                return html`
+                  <button
+                    type="button"
+                    class="cfg-segmented__btn ${isActive ? "active" : ""} ${isActive && isUsingDefault ? "is-default" : ""}"
+                    ?disabled=${disabled}
+                    @click=${() => onPatch(path, opt)}
+                  >
+                    ${String(opt)}${isDefault ? html`<span class="cfg-segmented__default-tag">${t("configForm.defaultTag") ?? "默认"}</span>` : nothing}
+                  </button>
+                `;
+              });
+            })()}
           </div>
         </div>
       `;
@@ -525,7 +536,7 @@ export function renderNode(params: {
   return html`
     <div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">${t('configForm.unsupportedType', { type: String(type) })}</div>
+      <div class="cfg-field__error">${t("configForm.unsupportedType", { type: String(type) })}</div>
     </div>
   `;
 }
@@ -553,7 +564,7 @@ function renderTextInput(params: {
     (isSensitive
       ? "••••"
       : schema.default !== undefined
-        ? t('configForm.defaultPrefix', { value: String(schema.default) })
+        ? t("configForm.defaultPrefix", { value: String(schema.default) })
         : "");
   const displayValue = value ?? "";
 
@@ -596,7 +607,7 @@ function renderTextInput(params: {
           <button
             type="button"
             class="cfg-input__reset"
-            title=${t('configForm.resetDefault')}
+            title=${t("configForm.resetDefault")}
             ?disabled=${disabled}
             @click=${() => onPatch(path, schema.default)}
           >↺</button>
@@ -692,7 +703,7 @@ function renderSelect(params: {
           onPatch(path, val === unset ? undefined : options[Number(val)]);
         }}
       >
-        <option value=${unset}>${t('configForm.selectPlaceholder')}</option>
+        <option value=${unset}>${t("configForm.selectPlaceholder")}</option>
         ${options.map(
           (opt, idx) => html`
           <option value=${String(idx)}>${String(opt)}</option>
@@ -835,7 +846,7 @@ function renderArray(params: {
     return html`
       <div class="cfg-field cfg-field--error">
         <div class="cfg-field__label">${label}</div>
-        <div class="cfg-field__error">${t('configForm.unsupportedArray')}</div>
+        <div class="cfg-field__error">${t("configForm.unsupportedArray")}</div>
       </div>
     `;
   }
@@ -849,7 +860,7 @@ function renderArray(params: {
           ${showLabel ? html`<span class="cfg-array__label">${label}</span>` : nothing}
           ${renderTags(tags)}
         </div>
-        <span class="cfg-array__count">${t('configForm.itemCount', { count: String(arr.length) })}</span>
+        <span class="cfg-array__count">${t("configForm.itemCount", { count: String(arr.length) })}</span>
         <button
           type="button"
           class="cfg-array__add"
@@ -860,7 +871,7 @@ function renderArray(params: {
           }}
         >
           <span class="cfg-array__add-icon">${icons.plus}</span>
-          ${t('configForm.add')}
+          ${t("configForm.add")}
         </button>
       </div>
       ${help ? html`<div class="cfg-array__help">${help}</div>` : nothing}
@@ -868,7 +879,7 @@ function renderArray(params: {
       ${
         arr.length === 0
           ? html`
-              <div class="cfg-array__empty">${t('configForm.noItems')}</div>
+              <div class="cfg-array__empty">${t("configForm.noItems")}</div>
             `
           : html`
         <div class="cfg-array__items">
@@ -880,7 +891,7 @@ function renderArray(params: {
                 <button
                   type="button"
                   class="cfg-array__item-remove"
-                  title=${t('configForm.removeItem')}
+                  title=${t("configForm.removeItem")}
                   ?disabled=${disabled}
                   @click=${() => {
                     const next = [...arr];
@@ -954,7 +965,7 @@ function renderMapField(params: {
   return html`
     <div class="cfg-map">
       <div class="cfg-map__header">
-        <span class="cfg-map__label">${t('configForm.customEntries')}</span>
+        <span class="cfg-map__label">${t("configForm.customEntries")}</span>
         <button
           type="button"
           class="cfg-map__add"
@@ -972,14 +983,14 @@ function renderMapField(params: {
           }}
         >
           <span class="cfg-map__add-icon">${icons.plus}</span>
-          ${t('configForm.addEntry')}
+          ${t("configForm.addEntry")}
         </button>
       </div>
 
       ${
         visibleEntries.length === 0
           ? html`
-              <div class="cfg-map__empty">${t('configForm.noCustomEntries')}</div>
+              <div class="cfg-map__empty">${t("configForm.noCustomEntries")}</div>
             `
           : html`
         <div class="cfg-map__items">
@@ -993,7 +1004,7 @@ function renderMapField(params: {
                     <input
                       type="text"
                       class="cfg-input cfg-input--sm"
-                      placeholder=${t('configForm.keyPlaceholder')}
+                      placeholder=${t("configForm.keyPlaceholder")}
                       .value=${key}
                       ?disabled=${disabled}
                       @change=${(e: Event) => {
@@ -1014,7 +1025,7 @@ function renderMapField(params: {
                   <button
                     type="button"
                     class="cfg-map__item-remove"
-                    title=${t('configForm.removeEntry')}
+                    title=${t("configForm.removeEntry")}
                     ?disabled=${disabled}
                     @click=${() => {
                       const next = { ...value };
@@ -1031,7 +1042,7 @@ function renderMapField(params: {
                       ? html`
                         <textarea
                           class="cfg-textarea cfg-textarea--sm"
-                          placeholder=${t('configForm.jsonValuePlaceholder')}
+                          placeholder=${t("configForm.jsonValuePlaceholder")}
                           rows="2"
                           .value=${fallback}
                           ?disabled=${disabled}

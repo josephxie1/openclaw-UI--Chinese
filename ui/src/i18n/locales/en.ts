@@ -97,6 +97,22 @@ export const en: TranslationMap = {
       cronTitle: "Cron reminders",
       cronText: "Use isolated sessions for recurring runs.",
     },
+    activity: {
+      title: "Session Activity",
+      subtitle: "Real-time session processing status.",
+      processing: "Processing",
+      waiting: "Waiting",
+      idle: "Idle",
+      empty: "No active sessions.",
+      loading: "Loading…",
+      justNow: "just now",
+      queued: "queued: {count}",
+      state: {
+        processing: "Processing",
+        waiting: "Waiting",
+        idle: "Idle",
+      },
+    },
     auth: {
       required: "This gateway requires auth. Add a token or password, then click Connect.",
       failed:
@@ -116,7 +132,7 @@ export const en: TranslationMap = {
     disconnected: "Disconnected from gateway.",
     refreshTitle: "Refresh chat data",
     thinkingToggle: "Toggle assistant thinking/working output",
-    focusToggle: "Toggle focus mode (hide sidebar + page header)",
+    focusToggle: "Fullscreen",
     hideCronSessions: "Hide cron sessions",
     showCronSessions: "Show cron sessions",
     showCronSessionsHidden: "Show cron sessions ({count} hidden)",
@@ -229,7 +245,8 @@ export const en: TranslationMap = {
     allSubsection: "All",
     unsavedChangesCount: "{count} unsaved change(s)",
     viewPendingChanges: "View {count} pending change(s)",
-    formUnsafeWarning: "Form view can't safely edit some fields. Use Raw to avoid losing config entries.",
+    formUnsafeWarning:
+      "Form view can't safely edit some fields. Use Raw to avoid losing config entries.",
   },
   configForm: {
     unsupportedNode: "Unsupported schema node. Use Raw mode.",
@@ -240,7 +257,7 @@ export const en: TranslationMap = {
     defaultPrefix: "Default: {value}",
     itemCount: "{count} item(s)",
     add: "Add",
-    noItems: "No items yet. Click \"Add\" to create one.",
+    noItems: 'No items yet. Click "Add" to create one.',
     removeItem: "Remove item",
     customEntries: "Custom entries",
     addEntry: "Add Entry",
@@ -248,6 +265,7 @@ export const en: TranslationMap = {
     removeEntry: "Remove entry",
     keyPlaceholder: "Key",
     jsonValuePlaceholder: "JSON value",
+    defaultTag: "default",
   },
   modelsQuickAdd: {
     title: "Quick Add Model Provider",
@@ -307,6 +325,7 @@ export const en: TranslationMap = {
     primaryModel: "Primary model",
     primaryModelDefault: "Primary model (default)",
     fallbacks: "Fallbacks (comma-separated)",
+    fallbacksPlaceholder: "Select fallback models",
     // Sidebar
     agents: "Agents",
     configured: "{count} configured.",
@@ -380,8 +399,10 @@ export const en: TranslationMap = {
     disableAll: "Disable All",
     fallbackCatalog: "Could not load runtime tool catalog. Showing fallback list.",
     loadConfigTools: "Load the gateway config to adjust tool profiles.",
-    explicitAllowlist: "This agent is using an explicit allowlist in config. Tool overrides are managed in the Config tab.",
-    globalAllowSet: "Global tools.allow is set. Agent overrides cannot enable tools that are globally blocked.",
+    explicitAllowlist:
+      "This agent is using an explicit allowlist in config. Tool overrides are managed in the Config tab.",
+    globalAllowSet:
+      "Global tools.allow is set. Agent overrides cannot enable tools that are globally blocked.",
     profileLabel: "Profile",
     source: "Source",
     agentOverride: "agent override",
@@ -400,7 +421,8 @@ export const en: TranslationMap = {
     skillsSub: "Per-agent skill allowlist and workspace skills.",
     useAll: "Use All",
     customAllowlist: "This agent uses a custom skill allowlist.",
-    allSkillsEnabled: "All skills are enabled. Disabling any skill will create a per-agent allowlist.",
+    allSkillsEnabled:
+      "All skills are enabled. Disabling any skill will create a per-agent allowlist.",
     loadSkillsHint: "Load skills for this agent to view workspace-specific entries.",
     filter: "Filter",
     searchSkills: "Search skills",
@@ -471,7 +493,7 @@ export const en: TranslationMap = {
     node: "Node",
     anyNode: "Any node",
     binding: "Binding",
-    switchToForm: 'Switch the Config tab to <strong>Form</strong> mode to edit bindings here.',
+    switchToForm: "Switch the Config tab to <strong>Form</strong> mode to edit bindings here.",
     loadConfigHint: "Load config to edit bindings.",
     defaultBinding: "Default binding",
     defaultBindingSub: "Used when agents do not override a node binding.",
@@ -508,7 +530,8 @@ export const en: TranslationMap = {
     chipConnected: "connected",
     chipOffline: "offline",
     execNodeBinding: "Exec node binding",
-    execNodeBindingSub: "Pin agents to a specific node when using <span class=\"mono\">exec host=node</span>.",
+    execNodeBindingSub:
+      'Pin agents to a specific node when using <span class="mono">exec host=node</span>.',
   },
   execApprovals: {
     title: "Exec approvals",
@@ -594,7 +617,7 @@ export const en: TranslationMap = {
     // nostr profile
     profilePicAlt: "Profile picture",
     profilePicPreview: "Profile picture preview",
-    noProfileSet: "No profile set. Click \"Edit Profile\" to add your name, bio, and avatar.",
+    noProfileSet: 'No profile set. Click "Edit Profile" to add your name, bio, and avatar.',
     editProfile: "Edit Profile",
     username: "Username",
     displayName: "Display Name",
@@ -640,6 +663,7 @@ export const en: TranslationMap = {
     schemaUnavailable: "Schema unavailable. Use Raw.",
     channelSchemaUnavailable: "Channel config schema unavailable.",
     loadingSchema: "Loading config schema…",
+    advancedSettings: "Advanced Settings",
   },
   instancesView: {
     title: "Connected Instances",
@@ -705,7 +729,8 @@ export const en: TranslationMap = {
     clear: "Clear",
     matchingSessions: "{count} of {total} sessions match",
     sessionsInRange: "{total} sessions in range",
-    filterPlaceholder: "Filter sessions (e.g. key:agent:main:cron* model:gpt-4o has:errors minTokens:2000)",
+    filterPlaceholder:
+      "Filter sessions (e.g. key:agent:main:cron* model:gpt-4o has:errors minTokens:2000)",
     agent: "Agent",
     channel: "Channel",
     provider: "Provider",
@@ -739,7 +764,8 @@ export const en: TranslationMap = {
     toolResult: "Tool result",
     searchConversation: "Search conversation",
     you: "You",
-    avgCostMissing: "Average cost per message when providers report costs. Cost data is missing for some or all sessions in this range.",
+    avgCostMissing:
+      "Average cost per message when providers report costs. Cost data is missing for some or all sessions in this range.",
     avgCostNormal: "Average cost per message when providers report costs.",
     mosaicDescription: "Estimated from session spans (first/last activity). Time zone: ",
     timeZoneUtc: "UTC",

@@ -17,6 +17,10 @@ import {
 import { unbindThreadBindingsBySessionKey } from "../../discord/monitor/thread-bindings.js";
 import { logVerbose } from "../../globals.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
+import {
+  diagnosticSessionStates,
+  pruneDiagnosticSessionStates,
+} from "../../logging/diagnostic-session-state.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import {
   isSubagentSessionKey,
@@ -710,5 +714,77 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       },
       undefined,
     );
+  },
+  "sessions.activity": ({ respond }) => {
+    pruneDiagnosticSessionStates(Date.now(), true);
+    const now = Date.now();
+    type ActivityEntry = {
+      key: string;
+      state: string;
+      lastActivityAgo: number;
+      queueDepth: number;
+    };
+    const sessionsMap = new Map<string, ActivityEntry>();
+    let processing = 0;
+    let idle = 0;
+    let waiting = 0;
+
+    // 1) Real-time diagnostic state (processing / idle / waiting)
+    for (const [key, entry] of diagnosticSessionStates) {
+      const ago = now - entry.lastActivity;
+      if (ago > 30 * 60 * 1000) {
+        continue;
+      }
+      const sessionKey = entry.sessionKey ?? key;
+      sessionsMap.set(sessionKey.toLowerCase(), {
+        key: sessionKey,
+        state: entry.state,
+        lastActivityAgo: ago,
+        queueDepth: entry.queueDepth,
+      });
+      if (entry.state === "processing") {
+        processing++;
+      } else if (entry.state === "waiting") {
+        waiting++;
+      } else {
+        idle++;
+      }
+    }
+
+    // 2) Session store — add sessions not yet in diagnosticSessionStates as "idle"
+    try {
+      const cfg = loadConfig();
+      const { store } = loadCombinedSessionStoreForGateway(cfg);
+      for (const [key, entry] of Object.entries(store)) {
+        const lower = key.toLowerCase();
+        if (sessionsMap.has(lower)) {
+          continue;
+        }
+        const updatedAt = entry.updatedAt ?? 0;
+        const ago = updatedAt > 0 ? now - updatedAt : 0;
+        sessionsMap.set(lower, {
+          key,
+          state: "idle",
+          lastActivityAgo: ago,
+          queueDepth: 0,
+        });
+        idle++;
+      }
+    } catch {
+      // session store may not be loadable; continue with diagnostic data only
+    }
+
+    const sessions = Array.from(sessionsMap.values());
+    // Sort: processing first, then waiting, then idle; within each, most recent first
+    const stateOrder: Record<string, number> = { processing: 0, waiting: 1, idle: 2 };
+    sessions.sort((a, b) => {
+      const sa = stateOrder[a.state] ?? 9;
+      const sb = stateOrder[b.state] ?? 9;
+      if (sa !== sb) {
+        return sa - sb;
+      }
+      return a.lastActivityAgo - b.lastActivityAgo;
+    });
+    respond(true, { ts: now, processing, waiting, idle, sessions }, undefined);
   },
 };

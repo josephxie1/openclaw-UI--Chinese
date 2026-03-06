@@ -22,6 +22,7 @@ import type {
   LogLevel,
   NostrProfile,
   PresenceEntry,
+  SessionActivityResult,
   SessionsUsageResult,
   CostUsageSummary,
   SessionUsageTimeSeries,
@@ -165,6 +166,13 @@ export type AppViewState = {
   toolsCatalogError: string | null;
   toolsCatalogResult: ToolsCatalogResult | null;
   agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron";
+  modelDropdownOpen: boolean;
+  modelDropdownExpandedGroups: Set<string>;
+  fallbackDropdownOpen: boolean;
+  fallbackDropdownExpandedGroups: Set<string>;
+  chAgentDropdownOpen: boolean;
+  chModelDropdownOpen: boolean;
+  chModelDropdownExpandedGroups: Set<string>;
   agentFilesLoading: boolean;
   agentFilesError: string | null;
   agentFilesList: AgentsFilesListResult | null;
@@ -182,6 +190,7 @@ export type AppViewState = {
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;
+  sessionActivity: SessionActivityResult | null;
   sessionsFilterActive: string;
   sessionsFilterLimit: string;
   sessionsIncludeGlobal: boolean;

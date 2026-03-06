@@ -14,11 +14,14 @@ import { applyLegacyMigrations } from "../../config/legacy.js";
 import { applyMergePatch } from "../../config/merge-patch.js";
 import {
   redactConfigObject,
-  redactConfigRaw,
   redactConfigSnapshot,
   restoreRedactedValues,
 } from "../../config/redact-snapshot.js";
-import { buildConfigHints, buildConfigSchema, type ConfigSchemaResponse } from "../../config/schema.js";
+import {
+  buildConfigHints,
+  buildConfigSchema,
+  type ConfigSchemaResponse,
+} from "../../config/schema.js";
 import { extractDeliveryInfo } from "../../config/sessions.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import {
@@ -274,9 +277,32 @@ export const configHandlers: GatewayRequestHandlers = {
     if (!assertValidParams(params, validateConfigRawParams, "config.raw", respond)) {
       return;
     }
-    const snapshot = await readConfigFileSnapshot();
-    const hints = loadHintsWithPlugins();
-    respond(true, redactConfigRaw(snapshot, hints.uiHints), undefined);
+    // Read the raw config file directly — avoid readConfigFileSnapshot() and
+    // loadHintsWithPlugins() which load the entire plugin schema tree and can
+    // trigger RangeError on large configurations.
+    const { existsSync, readFileSync } = await import("node:fs");
+    const crypto = await import("node:crypto");
+    if (!existsSync(CONFIG_PATH)) {
+      respond(true, { raw: null, hash: null }, undefined);
+      return;
+    }
+    const raw = readFileSync(CONFIG_PATH, "utf-8");
+    const hash = crypto.createHash("sha256").update(raw).digest("hex");
+    // Parse minimally to collect sensitive values for redaction.
+    // No hints needed — redaction uses key-name guessing (e.g. apiKey, token).
+    const parseResult = parseConfigJson5(raw);
+    if (parseResult.ok) {
+      const { redactConfigRaw: doRedact } = await import("../../config/redact-snapshot.js");
+      const redacted = doRedact({
+        raw,
+        config: parseResult.parsed,
+        valid: true,
+        hash,
+      } as Parameters<typeof doRedact>[0]);
+      respond(true, redacted, undefined);
+    } else {
+      respond(true, { raw, hash }, undefined);
+    }
   },
   "config.schema": ({ params, respond }) => {
     if (!assertValidParams(params, validateConfigSchemaParams, "config.schema", respond)) {

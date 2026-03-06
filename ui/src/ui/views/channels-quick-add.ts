@@ -1,5 +1,7 @@
 import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
+import { renderDropdown } from "../components/dropdown.ts";
+import type { DropdownGroup } from "../components/dropdown.ts";
 
 export type ChannelType = "telegram" | "feishu";
 
@@ -26,11 +28,18 @@ export interface ChannelsQuickAddProps {
   busy: boolean;
   error: string | null;
   availableModels: Array<{ value: string; label: string }>;
+  modelGroups?: DropdownGroup[];
   availableAgents: Array<{ id: string; name: string }>;
   onToggle: () => void;
   onChannelTypeChange: (type: ChannelType) => void;
   onFieldChange: (field: keyof ChannelQuickAddForm, value: string | boolean) => void;
   onSubmit: () => void;
+  agentDropdownOpen: boolean;
+  onAgentDropdownToggle: () => void;
+  modelDropdownOpen: boolean;
+  modelDropdownExpandedGroups: Set<string>;
+  onModelDropdownToggle: () => void;
+  onModelDropdownGroupToggle: (label: string) => void;
 }
 
 const EMOJI_OPTIONS = ["🤖", "🧠", "💻", "✍️", "💝", "🍌", "🦞", "🎨", "📊", "🔧", "🎯", "🚀"];
@@ -44,7 +53,9 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
   const hasChannelInfo = isTelegram
     ? form.accountId.trim() !== "" && form.botToken.trim() !== ""
     : form.accountId.trim() !== "" && form.appId.trim() !== "" && form.appSecret.trim() !== "";
-  const hasAgentInfo = !form.createAgent || (form.agentId.trim() !== "" && form.agentModel.trim() !== "");
+  const hasAgentInfo =
+    !form.createAgent ||
+    ((form.agentId.trim() !== "" || form.accountId.trim() !== "") && form.agentModel.trim() !== "");
   const canSubmit = !busy && hasChannelInfo && hasAgentInfo;
 
   return html`
@@ -61,8 +72,9 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
         </span>
       </div>
 
-      ${expanded
-        ? html`
+      ${
+        expanded
+          ? html`
             <div class="channel-quick-add__body">
               <!-- Channel type selector -->
               <div class="quick-add__presets" style="margin-top: 16px;">
@@ -80,9 +92,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                 </button>
               </div>
 
-              ${error
-                ? html`<div class="quick-add__error">${error}</div>`
-                : nothing}
+              ${error ? html`<div class="quick-add__error">${error}</div>` : nothing}
 
               <!-- Channel account fields -->
               <div class="quick-add__grid" style="margin-top: 16px;">
@@ -98,8 +108,9 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                   />
                 </label>
 
-                ${isTelegram
-                  ? html`
+                ${
+                  isTelegram
+                    ? html`
                       <label class="quick-add__field" style="grid-column: span 2;">
                         <span class="quick-add__label">Bot Token</span>
                         <input
@@ -112,7 +123,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                         />
                       </label>
                     `
-                  : html`
+                    : html`
                       <label class="quick-add__field">
                         <span class="quick-add__label">App ID</span>
                         <input
@@ -146,7 +157,8 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                             props.onFieldChange("botName", (e.target as HTMLInputElement).value)}
                         />
                       </label>
-                    `}
+                    `
+                }
               </div>
 
               <!-- Agent binding section -->
@@ -163,38 +175,41 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                   </label>
                 </div>
 
-                ${form.createAgent
-                  ? html`
+                ${
+                  form.createAgent
+                    ? html`
                       <div class="channel-quick-add__agent-form">
                         <!-- Select existing or create new -->
                         <div class="quick-add__grid">
-                          <label class="quick-add__field">
+                          <div class="quick-add__field">
                             <span class="quick-add__label">${t("channelsQuickAdd.agentSelect")}</span>
-                            <select
-                              class="quick-add__select"
-                              .value=${form.agentId}
-                              @change=${(e: Event) => {
-                                const val = (e.target as HTMLSelectElement).value;
+                            ${renderDropdown({
+                              value: form.agentId || null,
+                              placeholder: t("channelsQuickAdd.newAgent") ?? "— 新建Agent —",
+                              items: [
+                                {
+                                  value: "",
+                                  label: t("channelsQuickAdd.newAgent") ?? "— 新建Agent —",
+                                },
+                                ...availableAgents.map((a) => ({
+                                  value: a.id,
+                                  label: `${a.name} (${a.id})`,
+                                })),
+                              ],
+                              open: props.agentDropdownOpen,
+                              onSelect: (val) => {
                                 props.onFieldChange("agentId", val);
-                                // Auto-fill accountId from agent ID
                                 if (val && form.accountId.trim() === "") {
                                   props.onFieldChange("accountId", val);
                                 }
-                              }}
-                            >
-                              <option value="">${t("channelsQuickAdd.newAgent")}</option>
-                              ${availableAgents.map(
-                                (agent) => html`
-                                  <option value=${agent.id} ?selected=${form.agentId === agent.id}>
-                                    ${agent.name} (${agent.id})
-                                  </option>
-                                `,
-                              )}
-                            </select>
-                          </label>
+                              },
+                              onToggle: props.onAgentDropdownToggle,
+                            })}
+                          </div>
 
-                          ${form.agentId === ""
-                            ? html`
+                          ${
+                            form.agentId === ""
+                              ? html`
                                 <!-- New agent fields -->
                                 <label class="quick-add__field">
                                   <span class="quick-add__label">${t("channelsQuickAdd.agentId")}</span>
@@ -214,7 +229,10 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                     placeholder="${t("channelsQuickAdd.agentNamePlaceholder")}"
                                     .value=${form.agentName}
                                     @input=${(e: Event) =>
-                                      props.onFieldChange("agentName", (e.target as HTMLInputElement).value)}
+                                      props.onFieldChange(
+                                        "agentName",
+                                        (e.target as HTMLInputElement).value,
+                                      )}
                                   />
                                 </label>
                                 <label class="quick-add__field">
@@ -233,30 +251,33 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                     )}
                                   </div>
                                 </label>
-                                <label class="quick-add__field" style="grid-column: span 2;">
+                                <div class="quick-add__field" style="grid-column: span 2;">
                                   <span class="quick-add__label">${t("channelsQuickAdd.agentModel")}</span>
-                                  <select
-                                    class="quick-add__select"
-                                    .value=${form.agentModel}
-                                    @change=${(e: Event) =>
-                                      props.onFieldChange("agentModel", (e.target as HTMLSelectElement).value)}
-                                  >
-                                    <option value="">${t("channelsQuickAdd.selectModel")}</option>
-                                    ${availableModels.map(
-                                      (m) => html`
-                                        <option value=${m.value} ?selected=${form.agentModel === m.value}>
-                                          ${m.label}
-                                        </option>
-                                      `,
-                                    )}
-                                  </select>
-                                </label>
+                                  ${renderDropdown({
+                                    value: form.agentModel || null,
+                                    placeholder: t("channelsQuickAdd.selectModel") ?? "选择模型",
+                                    groups: props.modelGroups,
+                                    items: props.modelGroups
+                                      ? undefined
+                                      : availableModels.map((m) => ({
+                                          value: m.value,
+                                          label: m.label,
+                                        })),
+                                    open: props.modelDropdownOpen,
+                                    expandedGroups: props.modelDropdownExpandedGroups,
+                                    onSelect: (val) => props.onFieldChange("agentModel", val),
+                                    onToggle: props.onModelDropdownToggle,
+                                    onGroupToggle: props.onModelDropdownGroupToggle,
+                                  })}
+                                </div>
                               `
-                            : nothing}
+                              : nothing
+                          }
                         </div>
                       </div>
                     `
-                  : nothing}
+                    : nothing
+                }
               </div>
 
               <div class="quick-add__actions">
@@ -270,7 +291,8 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
               </div>
             </div>
           `
-        : nothing}
+          : nothing
+      }
     </section>
   `;
 }

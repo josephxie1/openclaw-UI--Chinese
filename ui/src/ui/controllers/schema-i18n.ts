@@ -13,6 +13,7 @@ import type { ConfigUiHints } from "../types.ts";
 type HintOverride = {
   label?: string;
   help?: string;
+  defaultValue?: unknown;
 };
 
 export type SchemaTranslationMap = Record<string, HintOverride>;
@@ -46,11 +47,13 @@ export function applySchemaTranslations(hints: ConfigUiHints): ConfigUiHints {
         ...existing,
         ...(override.label ? { label: override.label } : {}),
         ...(override.help ? { help: override.help } : {}),
+        ...(override.defaultValue !== undefined ? { defaultValue: override.defaultValue } : {}),
       };
     } else {
       next[path] = {
         ...(override.label ? { label: override.label } : {}),
         ...(override.help ? { help: override.help } : {}),
+        ...(override.defaultValue !== undefined ? { defaultValue: override.defaultValue } : {}),
       };
     }
   }

@@ -68,10 +68,7 @@ export async function loadConfigRaw(state: ConfigState) {
   }
   state.configRawLoading = true;
   try {
-    const res = await state.client.request<{ raw: string | null; hash?: string }>(
-      "config.raw",
-      {},
-    );
+    const res = await state.client.request<{ raw: string | null; hash?: string }>("config.raw", {});
     if (typeof res?.raw === "string") {
       state.configRaw = res.raw;
       state.configRawOriginal = res.raw;
@@ -83,10 +80,7 @@ export async function loadConfigRaw(state: ConfigState) {
   }
 }
 
-export async function loadConfigSchema(
-  state: ConfigState,
-  requestUpdate?: () => void,
-) {
+export async function loadConfigSchema(state: ConfigState, requestUpdate?: () => void) {
   if (!state.client || !state.connected) {
     return;
   }
@@ -100,7 +94,9 @@ export async function loadConfigSchema(
     // After base schema is loaded, fire off per-plugin schema loads in parallel.
     // Each plugin schema is loaded individually to avoid serialization size limits.
     const config = state.configSnapshot?.config ?? state.configForm;
-    const pluginEntries = (config as Record<string, unknown>)?.plugins as Record<string, unknown> | undefined;
+    const pluginEntries = (config as Record<string, unknown>)?.plugins as
+      | Record<string, unknown>
+      | undefined;
     const entries = pluginEntries?.entries as Record<string, unknown> | undefined;
     if (entries) {
       for (const pluginId of Object.keys(entries)) {
@@ -166,16 +162,18 @@ function mergePluginSchemaIntoState(
   if (!schema) {
     return;
   }
-  const root = schema as Record<string, unknown>;
+  const root = schema;
   const plugins = root.properties as Record<string, unknown> | undefined;
   if (!plugins) {
     return;
   }
-  const pluginsObj = (plugins as Record<string, unknown>).plugins as Record<string, unknown> | undefined;
+  const pluginsObj = plugins.plugins as Record<string, unknown> | undefined;
   if (!pluginsObj) {
     return;
   }
-  const entries = (pluginsObj.properties as Record<string, unknown> | undefined)?.entries as Record<string, unknown> | undefined;
+  const entries = (pluginsObj.properties as Record<string, unknown> | undefined)?.entries as
+    | Record<string, unknown>
+    | undefined;
   if (!entries) {
     return;
   }
@@ -184,9 +182,9 @@ function mergePluginSchemaIntoState(
   entries.properties = entryProps;
   // Merge $defs if present
   if (pluginSchema.$defs) {
-    const defs = ((root as Record<string, unknown>).$defs ?? {}) as Record<string, unknown>;
+    const defs = (root.$defs ?? {}) as Record<string, unknown>;
     Object.assign(defs, pluginSchema.$defs);
-    (root as Record<string, unknown>).$defs = defs;
+    root.$defs = defs;
   }
 }
 

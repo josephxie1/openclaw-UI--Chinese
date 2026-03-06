@@ -104,6 +104,38 @@ function renderExtraChannelFields(value: Record<string, unknown>) {
   `;
 }
 
+/** Fields shown by default for every channel */
+const BASIC_FIELDS = new Set(["accounts", "enabled"]);
+/** Fields shown by default for each account entry inside accounts */
+const BASIC_ACCOUNT_FIELDS = new Set(["appId", "appSecret", "botName", "enabled", "name"]);
+
+/**
+ * Strip advanced sub-fields from the accounts schema so only basic
+ * account fields are rendered in the main view.
+ */
+function filterAccountSchema(accountsSchema: JsonSchema): JsonSchema {
+  // accounts is a map → additionalProperties is the per-account schema
+  const perAccount = accountsSchema.additionalProperties;
+  if (!perAccount || typeof perAccount !== "object") {
+    return accountsSchema;
+  }
+  const perAccountSchema = perAccount;
+  const props = perAccountSchema.properties;
+  if (!props) {
+    return accountsSchema;
+  }
+  const filtered: Record<string, JsonSchema> = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (BASIC_ACCOUNT_FIELDS.has(k)) {
+      filtered[k] = v;
+    }
+  }
+  return {
+    ...accountsSchema,
+    additionalProperties: { ...perAccountSchema, properties: filtered },
+  };
+}
+
 export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const analysis = analyzeConfigSchema(props.schema);
   const normalized = analysis.schema;
@@ -120,18 +152,54 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   }
   const configValue = props.configValue ?? {};
   const value = resolveChannelValue(configValue, props.channelId);
+
+  // Split schema properties into basic and advanced
+  const allProps = node.properties ?? {};
+  const basicProps: Record<string, JsonSchema> = {};
+  const advancedProps: Record<string, JsonSchema> = {};
+  for (const [k, v] of Object.entries(allProps)) {
+    if (BASIC_FIELDS.has(k)) {
+      // For accounts, further filter to only show basic account fields
+      basicProps[k] = k === "accounts" ? filterAccountSchema(v) : v;
+    } else {
+      advancedProps[k] = v;
+    }
+  }
+
+  const basicSchema: JsonSchema = { ...node, properties: basicProps };
+  const advancedSchema: JsonSchema = { ...node, properties: advancedProps };
+
+  const commonOpts = {
+    path: ["channels", props.channelId] as Array<string | number>,
+    hints: props.uiHints,
+    unsupported: new Set(analysis.unsupportedPaths),
+    disabled: props.disabled,
+    showLabel: false,
+    onPatch: props.onPatch,
+  };
+
+  const hasAdvanced = Object.keys(advancedProps).length > 0;
+
   return html`
     <div class="config-form">
-      ${renderNode({
-        schema: node,
-        value,
-        path: ["channels", props.channelId],
-        hints: props.uiHints,
-        unsupported: new Set(analysis.unsupportedPaths),
-        disabled: props.disabled,
-        showLabel: false,
-        onPatch: props.onPatch,
-      })}
+      ${renderNode({ schema: basicSchema, value, ...commonOpts })}
+      ${
+        hasAdvanced
+          ? html`
+            <details class="channel-advanced-section">
+              <summary class="channel-advanced-toggle">
+                <span>${t("channelsView.advancedSettings") ?? "高级设置"}</span>
+                <svg class="channel-advanced-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </summary>
+              <div class="channel-advanced-content">
+                ${renderNode({ schema: advancedSchema, value, ...commonOpts })}
+              </div>
+            </details>
+          `
+          : nothing
+      }
     </div>
     ${renderExtraChannelFields(value)}
   `;

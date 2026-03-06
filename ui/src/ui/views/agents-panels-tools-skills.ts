@@ -1,6 +1,6 @@
 import { html, nothing } from "lit";
-import { t } from "../../i18n/index.ts";
 import { normalizeToolName } from "../../../../src/agents/tool-policy-shared.js";
+import { t } from "../../i18n/index.ts";
 import type { SkillStatusEntry, SkillStatusReport, ToolsCatalogResult } from "../types.ts";
 import {
   isAllowedByPolicy,
@@ -19,14 +19,14 @@ import {
 } from "./skills-shared.ts";
 
 function translateSectionLabel(sectionId: string, fallback: string): string {
-  const key = `agentsView.toolSection_${sectionId}` as Parameters<typeof t>[0];
+  const key = `agentsView.toolSection_${sectionId}`;
   const result = t(key);
   return result !== key ? result : fallback;
 }
 
 function translateToolDesc(toolId: string, fallback: string): string {
   const mapped = toolId === "nodes" ? "nodes_tool" : toolId;
-  const key = `agentsView.toolDesc_${mapped}` as Parameters<typeof t>[0];
+  const key = `agentsView.toolDesc_${mapped}`;
   const result = t(key);
   return result !== key ? result : fallback;
 }

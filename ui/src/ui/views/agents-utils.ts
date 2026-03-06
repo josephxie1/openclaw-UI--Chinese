@@ -1,5 +1,4 @@
 import { html } from "lit";
-import { t } from "../../i18n/index.ts";
 import {
   listCoreToolSections,
   PROFILE_OPTIONS as TOOL_PROFILE_OPTIONS,
@@ -9,6 +8,7 @@ import {
   normalizeToolName,
   resolveToolProfilePolicy,
 } from "../../../../src/agents/tool-policy-shared.js";
+import { t } from "../../i18n/index.ts";
 import type { AgentIdentityResult, AgentsFilesListResult, AgentsListResult } from "../types.ts";
 
 export const TOOL_SECTIONS = listCoreToolSections();
@@ -173,7 +173,9 @@ export function buildAgentContext(
     model: modelLabel,
     identityName,
     identityEmoji,
-    skillsLabel: skillFilter ? t("agentsView.selectedSkills", { count: String(skillCount) }) : t("agentsView.allSkills"),
+    skillsLabel: skillFilter
+      ? t("agentsView.selectedSkills", { count: String(skillCount) })
+      : t("agentsView.allSkills"),
     isDefault: Boolean(defaultId && agent.id === defaultId),
   };
 }
@@ -335,30 +337,114 @@ type ConfiguredModelOption = {
   label: string;
 };
 
+type ModelGroup = {
+  providerId: string;
+  models: ConfiguredModelOption[];
+};
+
 function resolveConfiguredModels(
   configForm: Record<string, unknown> | null,
 ): ConfiguredModelOption[] {
   const cfg = configForm as ConfigSnapshot | null;
-  const models = cfg?.agents?.defaults?.models;
-  if (!models || typeof models !== "object") {
-    return [];
-  }
+  const seen = new Set<string>();
   const options: ConfiguredModelOption[] = [];
-  for (const [modelId, modelRaw] of Object.entries(models)) {
-    const trimmed = modelId.trim();
-    if (!trimmed) {
+
+  // 1. Collect from agents.defaults.models (explicit aliases)
+  const agentModels = cfg?.agents?.defaults?.models;
+  if (agentModels && typeof agentModels === "object") {
+    for (const [modelId, modelRaw] of Object.entries(agentModels)) {
+      const trimmed = modelId.trim();
+      if (!trimmed) {
+        continue;
+      }
+      const alias =
+        modelRaw && typeof modelRaw === "object" && "alias" in modelRaw
+          ? typeof (modelRaw as { alias?: unknown }).alias === "string"
+            ? (modelRaw as { alias?: string }).alias?.trim()
+            : undefined
+          : undefined;
+      const label = alias && alias !== trimmed ? `${alias} (${trimmed})` : trimmed;
+      options.push({ value: trimmed, label });
+      seen.add(trimmed);
+    }
+  }
+
+  // 2. Collect from models.providers (auto-discover configured models)
+  const providers = (cfg as Record<string, unknown> | null)?.models;
+  if (providers && typeof providers === "object") {
+    const providerMap = (providers as { providers?: Record<string, unknown> }).providers;
+    if (providerMap && typeof providerMap === "object") {
+      for (const [providerId, providerRaw] of Object.entries(providerMap)) {
+        if (!providerRaw || typeof providerRaw !== "object") {
+          continue;
+        }
+        const providerModels = (providerRaw as { models?: unknown[] }).models;
+        if (!Array.isArray(providerModels)) {
+          continue;
+        }
+        for (const model of providerModels) {
+          if (!model || typeof model !== "object") {
+            continue;
+          }
+          const modelRecord = model as { id?: string; name?: string };
+          const modelId = modelRecord.id?.trim();
+          if (!modelId) {
+            continue;
+          }
+          const fullId = `${providerId}/${modelId}`;
+          if (seen.has(fullId)) {
+            continue;
+          }
+          const modelName = modelRecord.name?.trim();
+          const label = modelName || modelId;
+          options.push({ value: fullId, label });
+          seen.add(fullId);
+        }
+      }
+    }
+  }
+
+  return options;
+}
+
+export function resolveGroupedModels(configForm: Record<string, unknown> | null): ModelGroup[] {
+  const cfg = configForm as ConfigSnapshot | null;
+  const groups: ModelGroup[] = [];
+  const providers = (cfg as Record<string, unknown> | null)?.models;
+  if (!providers || typeof providers !== "object") {
+    return groups;
+  }
+  const providerMap = (providers as { providers?: Record<string, unknown> }).providers;
+  if (!providerMap || typeof providerMap !== "object") {
+    return groups;
+  }
+  for (const [providerId, providerRaw] of Object.entries(providerMap)) {
+    if (!providerRaw || typeof providerRaw !== "object") {
       continue;
     }
-    const alias =
-      modelRaw && typeof modelRaw === "object" && "alias" in modelRaw
-        ? typeof (modelRaw as { alias?: unknown }).alias === "string"
-          ? (modelRaw as { alias?: string }).alias?.trim()
-          : undefined
-        : undefined;
-    const label = alias && alias !== trimmed ? `${alias} (${trimmed})` : trimmed;
-    options.push({ value: trimmed, label });
+    const providerModels = (providerRaw as { models?: unknown[] }).models;
+    if (!Array.isArray(providerModels) || providerModels.length === 0) {
+      continue;
+    }
+    const models: ConfiguredModelOption[] = [];
+    for (const model of providerModels) {
+      if (!model || typeof model !== "object") {
+        continue;
+      }
+      const modelRecord = model as { id?: string; name?: string };
+      const modelId = modelRecord.id?.trim();
+      if (!modelId) {
+        continue;
+      }
+      const fullId = `${providerId}/${modelId}`;
+      const modelName = modelRecord.name?.trim();
+      models.push({ value: fullId, label: modelName || modelId });
+    }
+    if (models.length > 0) {
+      groups.push({ providerId, models });
+    }
   }
-  return options;
+  return groups;
 }
 
 export function buildModelOptions(

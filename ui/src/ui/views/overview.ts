@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { ConnectErrorDetailCodes } from "../../../../src/gateway/protocol/connect-error-details.js";
 import { t, i18n, SUPPORTED_LOCALES, type Locale } from "../../i18n/index.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../external-link.ts";
@@ -6,6 +6,7 @@ import { formatRelativeTimestamp, formatDurationHuman } from "../format.ts";
 import type { GatewayHelloOk } from "../gateway.ts";
 import { formatNextRun } from "../presenter.ts";
 import type { UiSettings } from "../storage.ts";
+import type { SessionActivityResult } from "../types.ts";
 import { shouldShowPairingHint } from "./overview-hints.ts";
 
 export type OverviewProps = {
@@ -25,6 +26,7 @@ export type OverviewProps = {
   onSessionKeyChange: (next: string) => void;
   onConnect: () => void;
   onRefresh: () => void;
+  sessionActivity: SessionActivityResult | null;
 };
 
 export function renderOverview(props: OverviewProps) {
@@ -335,6 +337,68 @@ export function renderOverview(props: OverviewProps) {
         </div>
         <div class="muted">${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
       </div>
+    </section>
+
+    <section class="card" style="margin-top: 18px;">
+      <div class="card-title">${t("overview.activity.title")}</div>
+      <div class="card-sub">${t("overview.activity.subtitle")}</div>
+      ${
+        props.sessionActivity
+          ? html`
+          <div class="stat-grid" style="margin-top: 14px;">
+            <div class="stat">
+              <div class="stat-label">${t("overview.activity.processing")}</div>
+              <div class="stat-value ${props.sessionActivity.processing > 0 ? "ok" : ""}">
+                ${props.sessionActivity.processing}
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">${t("overview.activity.waiting")}</div>
+              <div class="stat-value ${props.sessionActivity.waiting > 0 ? "warn" : ""}">
+                ${props.sessionActivity.waiting}
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">${t("overview.activity.idle")}</div>
+              <div class="stat-value">${props.sessionActivity.idle}</div>
+            </div>
+          </div>
+          ${
+            props.sessionActivity.sessions.length > 0
+              ? html`
+              <div class="activity-cards" style="margin-top: 14px;">
+                ${props.sessionActivity.sessions.map(
+                  (s) => html`
+                    <div class="activity-card ${s.state}">
+                      <div class="activity-card__header">
+                        <span class="activity-dot ${s.state}"></span>
+                        <span class="activity-card__badge ${s.state}">
+                          ${t(`overview.activity.state.${s.state}`)}
+                        </span>
+                      </div>
+                      <div class="activity-card__key mono">${s.key}</div>
+                      <div class="activity-card__meta muted">
+                        ${
+                          s.lastActivityAgo < 5000
+                            ? t("overview.activity.justNow")
+                            : formatRelativeTimestamp(Date.now() - s.lastActivityAgo)
+                        }
+                        ${
+                          s.queueDepth > 0
+                            ? html` · ${t("overview.activity.queued", { count: String(s.queueDepth) })}`
+                            : nothing
+                        }
+                      </div>
+                    </div>
+                  `,
+                )}
+              </div>
+            `
+              : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.empty")}</div>`
+          }
+        `
+          : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.loading")}</div>`
+      }
     </section>
 
     <section class="card" style="margin-top: 18px;">

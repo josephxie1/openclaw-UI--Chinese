@@ -257,6 +257,13 @@ export class OpenClawApp extends LitElement {
   @state() toolsCatalogResult: ToolsCatalogResult | null = null;
   @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" =
     "overview";
+  @state() modelDropdownOpen = false;
+  @state() modelDropdownExpandedGroups: Set<string> = new Set();
+  @state() fallbackDropdownOpen = false;
+  @state() fallbackDropdownExpandedGroups: Set<string> = new Set();
+  @state() chAgentDropdownOpen = false;
+  @state() chModelDropdownOpen = false;
+  @state() chModelDropdownExpandedGroups: Set<string> = new Set();
   @state() agentFilesLoading = false;
   @state() agentFilesError: string | null = null;
   @state() agentFilesList: AgentsFilesListResult | null = null;
@@ -275,6 +282,7 @@ export class OpenClawApp extends LitElement {
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
   @state() sessionsError: string | null = null;
+  @state() sessionActivity: import("./types.js").SessionActivityResult | null = null;
   @state() sessionsFilterActive = "";
   @state() sessionsFilterLimit = "120";
   @state() sessionsIncludeGlobal = true;
@@ -417,6 +425,7 @@ export class OpenClawApp extends LitElement {
   private nodesPollInterval: number | null = null;
   private logsPollInterval: number | null = null;
   private debugPollInterval: number | null = null;
+  private activityPollInterval: number | null = null;
   private logsScrollFrame: number | null = null;
   private toolStreamById = new Map<string, ToolStreamEntry>();
   private toolStreamOrder: string[] = [];

@@ -1,6 +1,6 @@
 import { toNumber } from "../format.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
-import type { SessionsListResult } from "../types.ts";
+import type { SessionsListResult, SessionActivityResult } from "../types.ts";
 
 export type SessionsState = {
   client: GatewayBrowserClient | null;
@@ -124,4 +124,27 @@ export async function deleteSessionAndRefresh(state: SessionsState, key: string)
   }
   await loadSessions(state);
   return true;
+}
+
+export type SessionActivityState = {
+  client: GatewayBrowserClient | null;
+  connected: boolean;
+  sessionActivity: SessionActivityResult | null;
+};
+
+export async function loadSessionActivity(state: SessionActivityState) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  try {
+    const res = await state.client.request<SessionActivityResult | undefined>(
+      "sessions.activity",
+      {},
+    );
+    if (res) {
+      state.sessionActivity = res;
+    }
+  } catch (err) {
+    console.warn("[sessions.activity]", err);
+  }
 }

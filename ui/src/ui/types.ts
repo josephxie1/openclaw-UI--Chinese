@@ -293,6 +293,7 @@ export type ConfigUiHint = {
   sensitive?: boolean;
   placeholder?: string;
   itemTemplate?: unknown;
+  defaultValue?: unknown;
 };
 
 export type ConfigUiHints = Record<string, ConfigUiHint>;
@@ -440,6 +441,21 @@ export type SessionsListResult = {
   count: number;
   defaults: GatewaySessionsDefaults;
   sessions: GatewaySessionRow[];
+};
+
+export type SessionActivityEntry = {
+  key: string;
+  state: "processing" | "idle" | "waiting";
+  lastActivityAgo: number;
+  queueDepth: number;
+};
+
+export type SessionActivityResult = {
+  ts: number;
+  processing: number;
+  waiting: number;
+  idle: number;
+  sessions: SessionActivityEntry[];
 };
 
 export type SessionsPatchResult = {
