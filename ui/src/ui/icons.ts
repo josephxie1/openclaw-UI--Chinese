@@ -106,6 +106,37 @@ export const icons = {
   check: html`
     <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
   `,
+  circleCheckBig: html`
+    <svg viewBox="0 0 24 24">
+      <path d="M21.801 10A10 10 0 1 1 17 3.335" />
+      <path d="m9 11 3 3L22 4" />
+    </svg>
+  `,
+  loadingPyramid: html`
+    <svg
+      viewBox="0 0 100 100"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <circle cx="50" cy="20" r="20">
+        <animateMotion path="M 0 0 L -30 60" dur="2s" repeatCount="indefinite" calcMode="linear" />
+      </circle>
+      <circle cx="20" cy="80" r="20">
+        <animateMotion path="M 0 0 L 60 0" dur="2s" repeatCount="indefinite" calcMode="linear" />
+      </circle>
+      <circle cx="80" cy="80" r="20">
+        <animateMotion path="M 0 0 L -30 -60" dur="2s" repeatCount="indefinite" calcMode="linear" />
+      </circle>
+    </svg>
+  `,
+  circleAlert: html`
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" x2="12" y1="8" y2="12" />
+      <line x1="12" x2="12.01" y1="16" y2="16" />
+    </svg>
+  `,
   arrowDown: html`
     <svg viewBox="0 0 24 24">
       <path d="M12 5v14" />
@@ -230,7 +261,9 @@ export const icons = {
   `,
   cube: html`
     <svg viewBox="0 0 24 24">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path
+        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+      />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
     </svg>

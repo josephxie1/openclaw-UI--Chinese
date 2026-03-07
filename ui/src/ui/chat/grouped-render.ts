@@ -2,7 +2,8 @@ import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { AssistantIdentity } from "../assistant-identity.ts";
 import { avatarFromName } from "../helpers/multiavatar.ts";
-import { toSanitizedMarkdownHtml } from "../markdown.ts";
+import { icons } from "../icons.ts";
+import { toSanitizedMarkdownHtml, toSanitizedMarkdownHtmlBlocks } from "../markdown.ts";
 import { openExternalUrlSafe } from "../open-external-url.ts";
 import { detectTextDirection } from "../text-direction.ts";
 import type { MessageGroup } from "../types/chat-types.ts";
@@ -13,7 +14,7 @@ import {
   formatReasoningMarkdown,
 } from "./message-extract.ts";
 import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
-import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
+import { extractToolCards, pairToolCards, renderToolCardCollapsible } from "./tool-cards.ts";
 
 type ImageBlock = {
   url: string;
@@ -88,6 +89,10 @@ export function renderStreamingGroup(
     <div class="chat-group assistant">
       ${renderAvatar("assistant", assistant)}
       <div class="chat-group-messages">
+        <div class="chat-group-header">
+          <span class="chat-sender-name">${name}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </div>
         ${renderGroupedMessage(
           {
             role: "assistant",
@@ -97,10 +102,6 @@ export function renderStreamingGroup(
           { isStreaming: true, showReasoning: false },
           onOpenSidebar,
         )}
-        <div class="chat-group-footer">
-          <span class="chat-sender-name">${name}</span>
-          <span class="chat-group-timestamp">${timestamp}</span>
-        </div>
       </div>
     </div>
   `;
@@ -137,6 +138,10 @@ export function renderMessageGroup(
         avatar: opts.assistantAvatar ?? null,
       })}
       <div class="chat-group-messages">
+        <div class="chat-group-header">
+          <span class="chat-sender-name">${who}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </div>
         ${group.messages.map((item, index) =>
           renderGroupedMessage(
             item.message,
@@ -147,10 +152,6 @@ export function renderMessageGroup(
             opts.onOpenSidebar,
           ),
         )}
-        <div class="chat-group-footer">
-          <span class="chat-sender-name">${who}</span>
-          <span class="chat-group-timestamp">${timestamp}</span>
-        </div>
       </div>
     </div>
   `;
@@ -165,17 +166,9 @@ function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" |
       ? "U"
       : normalized === "assistant"
         ? assistantName.charAt(0).toUpperCase() || "A"
-        : normalized === "tool"
-          ? "⚙"
-          : "?";
+        : "?";
   const className =
-    normalized === "user"
-      ? "user"
-      : normalized === "assistant"
-        ? "assistant"
-        : normalized === "tool"
-          ? "tool"
-          : "other";
+    normalized === "user" ? "user" : normalized === "assistant" ? "assistant" : "other";
 
   if (assistantAvatar && normalized === "assistant") {
     if (isAvatarUrl(assistantAvatar)) {
@@ -235,7 +228,7 @@ function renderMessageImages(images: ImageBlock[]) {
 function renderGroupedMessage(
   message: unknown,
   opts: { isStreaming: boolean; showReasoning: boolean },
-  onOpenSidebar?: (content: string) => void,
+  _onOpenSidebar?: (content: string) => void,
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
@@ -268,8 +261,16 @@ function renderGroupedMessage(
     .filter(Boolean)
     .join(" ");
 
-  if (!markdown && hasToolCards && isToolResult) {
-    return html`${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}`;
+  if (hasToolCards && isToolResult) {
+    // Tool result messages: render only as collapsible tool cards.
+    // The text is already captured in the card's result field.
+    const paired = pairToolCards(toolCards);
+    return html`${paired.map((card) => renderToolCardCollapsible(card, opts.isStreaming))}`;
+  }
+
+  // Assistant messages with ONLY tool_use blocks (no real text) — render cards without bubble
+  if (hasToolCards && !markdown && !hasImages) {
+    return html`${pairToolCards(toolCards).map((card) => renderToolCardCollapsible(card, opts.isStreaming))}`;
   }
 
   if (!markdown && !hasToolCards && !hasImages) {
@@ -278,21 +279,42 @@ function renderGroupedMessage(
 
   return html`
     <div class="${bubbleClasses}">
-      ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown!) : nothing}
       ${renderMessageImages(images)}
       ${
         reasoningMarkdown
-          ? html`<div class="chat-thinking">${unsafeHTML(
-              toSanitizedMarkdownHtml(reasoningMarkdown),
-            )}</div>`
+          ? (() => {
+              // Extract first meaningful line as summary label
+              const firstLine =
+                reasoningMarkdown
+                  .trim()
+                  .split("\n")
+                  .find((l: string) => l.trim().length > 0)
+                  ?.trim() ?? "Thinking";
+              const label = firstLine.length > 60 ? firstLine.slice(0, 57) + "..." : firstLine;
+              return html`
+                <details class="chat-thinking-panel">
+                  <summary class="chat-thinking-panel__trigger">
+                    <span class="chat-thinking-panel__icon">${icons.brain}</span>
+                    <span class="chat-thinking-panel__label">${label}</span>
+                    <span class="chat-thinking-panel__toggle"></span>
+                  </summary>
+                  <div class="chat-thinking-panel__content">
+                    ${unsafeHTML(toSanitizedMarkdownHtml(reasoningMarkdown))}
+                  </div>
+                </details>
+              `;
+            })()
           : nothing
       }
       ${
         markdown
-          ? html`<div class="chat-text" dir="${detectTextDirection(markdown)}">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
+          ? html`<div class="chat-text ${canCopyMarkdown ? "has-copy" : ""}" dir="${detectTextDirection(markdown)}">
+              ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown) : nothing}
+              ${unsafeHTML(toSanitizedMarkdownHtmlBlocks(markdown))}
+            </div>`
           : nothing
       }
-      ${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}
+      ${pairToolCards(toolCards).map((card) => renderToolCardCollapsible(card, opts.isStreaming))}
     </div>
   `;
 }

@@ -79,14 +79,15 @@ export function normalizeRoleForGrouping(role: string): string {
   if (role === "system") {
     return "system";
   }
-  // Keep tool-related roles distinct so the UI can style/toggle them.
+  // Group tool-related roles with assistant so tool calls appear
+  // under the same avatar in the chat flow.
   if (
     lower === "toolresult" ||
     lower === "tool_result" ||
     lower === "tool" ||
     lower === "function"
   ) {
-    return "tool";
+    return "assistant";
   }
   return role;
 }

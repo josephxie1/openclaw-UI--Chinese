@@ -1,11 +1,9 @@
 import { html, nothing } from "lit";
 import { icons } from "../icons.ts";
-import { formatToolDetail, resolveToolDisplay } from "../tool-display.ts";
+import { resolveToolDisplay } from "../tool-display.ts";
 import type { ToolCard } from "../types/chat-types.ts";
-import { TOOL_INLINE_THRESHOLD } from "./constants.ts";
 import { extractTextCached } from "./message-extract.ts";
 import { isToolResultMessage } from "./message-normalizer.ts";
-import { formatToolOutputForSidebar, getTruncatedPreview } from "./tool-helpers.ts";
 
 export function extractToolCards(message: unknown): ToolCard[] {
   const m = message as Record<string, unknown>;
@@ -48,74 +46,161 @@ export function extractToolCards(message: unknown): ToolCard[] {
   return cards;
 }
 
-export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: string) => void) {
-  const display = resolveToolDisplay({ name: card.name, args: card.args });
-  const detail = formatToolDetail(display);
-  const hasText = Boolean(card.text?.trim());
+/**
+ * Pair tool call cards with their result cards by name.
+ * Returns merged entries with both args and text when available.
+ */
+export function pairToolCards(cards: ToolCard[]): ToolCard[] {
+  const calls = cards.filter((c) => c.kind === "call");
+  const results = cards.filter((c) => c.kind === "result");
 
-  const canClick = Boolean(onOpenSidebar);
-  const handleClick = canClick
-    ? () => {
-        if (hasText) {
-          onOpenSidebar!(formatToolOutputForSidebar(card.text!));
-          return;
+  if (calls.length === 0 && results.length === 0) {
+    return [];
+  }
+
+  // Merge call + result by matching name
+  const merged: ToolCard[] = [];
+  const usedResults = new Set<number>();
+
+  for (const call of calls) {
+    const resultIdx = results.findIndex((r, i) => !usedResults.has(i) && r.name === call.name);
+    if (resultIdx >= 0) {
+      usedResults.add(resultIdx);
+      merged.push({
+        kind: "call",
+        name: call.name,
+        args: call.args,
+        text: results[resultIdx].text,
+      });
+    } else {
+      merged.push(call);
+    }
+  }
+
+  // Add any unmatched results
+  for (let i = 0; i < results.length; i++) {
+    if (!usedResults.has(i)) {
+      merged.push(results[i]);
+    }
+  }
+
+  return merged;
+}
+
+function formatArgsJson(args: unknown): string {
+  if (args == null) {
+    return "";
+  }
+  try {
+    return typeof args === "string" ? args : JSON.stringify(args, null, 2);
+  } catch {
+    return typeof args === "string" ? args : JSON.stringify(args);
+  }
+}
+
+function formatResultJson(text: string | undefined): string {
+  if (!text?.trim()) {
+    return "";
+  }
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.stringify(JSON.parse(trimmed), null, 2);
+    } catch {
+      return text;
+    }
+  }
+  return text;
+}
+
+type ToolStatus = "loading" | "done" | "error";
+
+function detectToolStatus(card: ToolCard, isStreaming = false): ToolStatus {
+  // Call without result while actively streaming → loading
+  if (card.kind === "call" && !card.text && isStreaming) {
+    return "loading";
+  }
+  // Check for error in result text
+  if (card.text?.trim()) {
+    const t = card.text.trim();
+    if (t.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(t);
+        if (parsed.status === "error" || parsed.error || parsed.Error) {
+          return "error";
         }
-        const info = `## ${display.label}\n\n${
-          detail ? `**Command:** \`${detail}\`\n\n` : ""
-        }*No output — tool completed successfully.*`;
-        onOpenSidebar!(info);
+      } catch {
+        // not JSON, not an error
       }
-    : undefined;
+    }
+  }
+  return "done";
+}
 
-  const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
-  const showCollapsed = hasText && !isShort;
-  const showInline = hasText && isShort;
-  const isEmpty = !hasText;
+function statusIcon(status: ToolStatus) {
+  switch (status) {
+    case "loading":
+      return icons.loadingPyramid;
+    case "error":
+      return icons.circleAlert;
+    default:
+      return icons.circleCheckBig;
+  }
+}
+
+export function renderToolCardCollapsible(card: ToolCard, isStreaming = false) {
+  const display = resolveToolDisplay({ name: card.name, args: card.args });
+  const argsJson = formatArgsJson(card.args);
+  const resultJson = formatResultJson(card.text);
+  const hasArgs = Boolean(argsJson.trim());
+  const hasResult = Boolean(resultJson.trim());
+  const hasDetails = hasArgs || hasResult;
+  const status = detectToolStatus(card, isStreaming);
+  const isError = status === "error";
+  const cardClass = `chat-tool-card ${isError ? "chat-tool-card--error" : ""}`;
 
   return html`
-    <div
-      class="chat-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
-      @click=${handleClick}
-      role=${canClick ? "button" : nothing}
-      tabindex=${canClick ? "0" : nothing}
-      @keydown=${
-        canClick
-          ? (e: KeyboardEvent) => {
-              if (e.key !== "Enter" && e.key !== " ") {
-                return;
-              }
-              e.preventDefault();
-              handleClick?.();
-            }
-          : nothing
-      }
-    >
+    <div class="${cardClass}">
       <div class="chat-tool-card__header">
         <div class="chat-tool-card__title">
-          <span class="chat-tool-card__icon">${icons[display.icon]}</span>
-          <span>${display.label}</span>
+          <span class="chat-tool-card__status chat-tool-card__status--${status}">${statusIcon(status)}</span>
+          <span class="${isError ? "chat-tool-card__name--error" : ""}">${display.label}</span>
         </div>
-        ${
-          canClick
-            ? html`<span class="chat-tool-card__action">${hasText ? "View" : ""} ${icons.check}</span>`
-            : nothing
-        }
-        ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}
       </div>
-      ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
       ${
-        isEmpty
+        hasDetails
           ? html`
-              <div class="chat-tool-card__status-text muted">Completed</div>
-            `
+          <details class="chat-tool-card__details" ?open=${isError}>
+            <summary class="chat-tool-card__summary">
+              <span class="chat-tool-card__summary-label">Tool Details</span>
+              <span class="chat-tool-card__summary-toggle"></span>
+            </summary>
+            <div class="chat-tool-card__body">
+              ${
+                hasArgs
+                  ? html`
+                  <div class="chat-tool-card__section">
+                    <div class="chat-tool-card__section-label">ARGUMENTS</div>
+                    <pre class="chat-tool-card__code-block">${argsJson}</pre>
+                  </div>
+                `
+                  : nothing
+              }
+              ${
+                hasResult
+                  ? html`
+                  <div class="chat-tool-card__section">
+                    <div class="chat-tool-card__section-label">RESULT</div>
+                    <pre class="chat-tool-card__code-block">${resultJson}</pre>
+                  </div>
+                `
+                  : nothing
+              }
+            </div>
+          </details>
+        `
           : nothing
       }
-      ${
-        showCollapsed
-          ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
-          : nothing
-      }
-      ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
     </div>
   `;
 }

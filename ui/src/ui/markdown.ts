@@ -36,7 +36,17 @@ const allowedTags = [
   "img",
 ];
 
-const allowedAttrs = ["class", "href", "rel", "target", "title", "start", "src", "alt"];
+const allowedAttrs = [
+  "class",
+  "href",
+  "rel",
+  "target",
+  "title",
+  "start",
+  "src",
+  "alt",
+  "data-lang",
+];
 const sanitizeOptions = {
   ALLOWED_TAGS: allowedTags,
   ALLOWED_ATTR: allowedAttrs,
@@ -132,6 +142,13 @@ export function toSanitizedMarkdownHtml(markdown: string): string {
 const htmlEscapeRenderer = new marked.Renderer();
 htmlEscapeRenderer.html = ({ text }: { text: string }) => escapeHtml(text);
 
+// Custom code block renderer: add data-lang for Shiki pass
+htmlEscapeRenderer.code = ({ text, lang }: { text: string; lang?: string }) => {
+  const escaped = escapeHtml(text);
+  const langAttr = lang ? ` data-lang="${escapeHtml(lang)}"` : "";
+  return `<pre class="code-block"><code${langAttr}>${escaped}</code></pre>`;
+};
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -139,4 +156,60 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * Parse markdown into blocks using marked.lexer.
+ * Each block is a self-contained markdown unit (paragraph, heading, code, etc).
+ * During streaming, only the last block changes.
+ */
+export function parseMarkdownIntoBlocks(markdown: string): string[] {
+  if (!markdown) {
+    return [];
+  }
+  const tokens = marked.lexer(markdown);
+  return tokens.map((token) => token.raw);
+}
+
+/** Render a single markdown block with caching. */
+const blockCache = new Map<string, string>();
+const BLOCK_CACHE_LIMIT = 500;
+
+export function renderMarkdownBlock(block: string): string {
+  const cached = blockCache.get(block);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const rendered = marked.parse(block, {
+    renderer: htmlEscapeRenderer,
+  }) as string;
+  const sanitized = DOMPurify.sanitize(rendered, sanitizeOptions);
+
+  blockCache.set(block, sanitized);
+  if (blockCache.size > BLOCK_CACHE_LIMIT) {
+    const oldest = blockCache.keys().next().value;
+    if (oldest) {
+      blockCache.delete(oldest);
+    }
+  }
+  return sanitized;
+}
+
+/**
+ * Render markdown using block-level caching.
+ * Previous blocks use cached results, only last block may be re-rendered.
+ */
+export function toSanitizedMarkdownHtmlBlocks(markdown: string): string {
+  const input = markdown.trim();
+  if (!input) {
+    return "";
+  }
+  installHooks();
+  const truncated = truncateText(input, MARKDOWN_CHAR_LIMIT);
+  if (truncated.text.length > MARKDOWN_PARSE_LIMIT) {
+    const escaped = escapeHtml(truncated.text);
+    return DOMPurify.sanitize(`<pre class="code-block">${escaped}</pre>`, sanitizeOptions);
+  }
+  const blocks = parseMarkdownIntoBlocks(truncated.text);
+  return blocks.map(renderMarkdownBlock).join("");
 }

@@ -2,20 +2,70 @@
    CHAT TEXT STYLING
    ============================================= */
 
-.chat-thinking {
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
+/* Collapsible thinking/reasoning panel */
+.chat-thinking-panel {
+  margin: 8px 0;
 }
 
-:root[data-theme="light"] .chat-thinking {
-  border-color: rgba(16, 24, 40, 0.25);
-  background: rgba(16, 24, 40, 0.04);
+.chat-thinking-panel__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 150ms ease;
+  list-style: none;
+}
+
+.chat-thinking-panel__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.chat-thinking-panel__trigger:hover {
+  color: var(--text);
+}
+
+.chat-thinking-panel__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.chat-thinking-panel__icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chat-thinking-panel__label {
+  flex: 1;
+  word-break: break-all;
+}
+
+.chat-thinking-panel__toggle::after {
+  content: "expand";
+  font-size: 12px;
+  opacity: 0.7;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.chat-thinking-panel[open] .chat-thinking-panel__toggle::after {
+  content: "collapse";
+}
+
+.chat-thinking-panel__content {
+  padding: 8px 0 4px 24px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  border-left: 2px solid var(--border);
+  margin-left: 7px;
 }
 
 .chat-text {
@@ -112,7 +162,7 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-:root[data-theme="light"] .chat-text :where(pre) {
+:root[data-theme="light"] .chat-text :where(pre:not(.code-block)) {
   background: rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.1);
 }

@@ -1105,20 +1105,36 @@
    Code Blocks
    =========================================== */
 
-.code-block {
+pre.code-block {
   font-family: var(--mono);
   font-size: 13px;
-  line-height: 1.5;
-  background: var(--secondary);
-  padding: 12px;
-  border-radius: var(--radius-md);
+  line-height: 1.6;
+  background: #0d1117;
+  color: #e6edf3;
+  padding: 16px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  max-height: 360px;
+  max-height: 400px;
   overflow: auto;
   max-width: 100%;
 }
 
-:root[data-theme="light"] .code-block,
+.code-block code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Shiki-highlighted code inherits container styles */
+.code-block--highlighted {
+  background: #0d1117 !important;
+}
+
+/* Light theme: keep dark code background, softer border */
+:root[data-theme="light"] pre.code-block {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 :root[data-theme="light"] .list-item,
 :root[data-theme="light"] .table-row,
 :root[data-theme="light"] .chip {
@@ -1734,19 +1750,7 @@
   justify-items: end;
 }
 
-/* Chat bubbles */
-.chat-bubble {
-  border: 1px solid transparent;
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  padding: 10px 14px;
-  min-width: 0;
-}
-
-:root[data-theme="light"] .chat-bubble {
-  border-color: var(--border);
-  background: var(--bg);
-}
+/* Chat bubbles — see chat/grouped.css */
 
 .chat-line.user .chat-bubble {
   border-color: transparent;
@@ -1915,7 +1919,7 @@
   overflow: auto;
 }
 
-:root[data-theme="light"] .chat-text :where(pre) {
+:root[data-theme="light"] .chat-text :where(pre:not(.code-block)) {
   background: var(--bg-muted);
 }
 
@@ -1944,78 +1948,7 @@
   background: var(--secondary);
 }
 
-/* Tool cards */
-.chat-tool-card {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--secondary);
-  display: grid;
-  gap: 4px;
-}
-
-:root[data-theme="light"] .chat-tool-card {
-  background: var(--bg-muted);
-}
-
-.chat-tool-card__title {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.chat-tool-card__detail {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.chat-tool-card__details {
-  margin-top: 6px;
-}
-
-.chat-tool-card__summary {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  cursor: pointer;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.chat-tool-card__summary::-webkit-details-marker {
-  display: none;
-}
-
-.chat-tool-card__summary-meta {
-  color: var(--muted);
-  opacity: 0.7;
-}
-
-.chat-tool-card__details[open] .chat-tool-card__summary {
-  color: var(--text);
-}
-
-.chat-tool-card__output {
-  margin-top: 8px;
-  font-family: var(--mono);
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  color: var(--chat-text);
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--card);
-}
-
-:root[data-theme="light"] .chat-tool-card__output {
-  background: var(--bg);
-}
+/* Tool cards — see chat/tool-cards.css */
 
 .chat-stamp {
   font-size: 11px;
@@ -2032,6 +1965,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-left: 72px;
+  padding-right: 72px;
 }
 
 .shell--chat .chat-compose {
@@ -2057,7 +1992,7 @@
 .chat-compose__field textarea {
   min-height: 72px;
   padding: 10px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: 24px;
   resize: vertical;
   white-space: pre-wrap;
   font-family: var(--font-body);

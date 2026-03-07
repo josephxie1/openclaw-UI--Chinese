@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 import { t } from "../../i18n/index.ts";
+import { highlightCodeBlocks } from "../chat/code-highlight.ts";
 import {
   renderMessageGroup,
   renderReadingIndicatorGroup,
@@ -284,6 +285,11 @@ export function renderChat(props: ChatProps) {
       role="log"
       aria-live="polite"
       @scroll=${props.onChatScroll}
+      ${ref((el) => {
+        if (el) {
+          requestAnimationFrame(() => highlightCodeBlocks(el as HTMLElement));
+        }
+      })}
     >
       ${
         props.loading

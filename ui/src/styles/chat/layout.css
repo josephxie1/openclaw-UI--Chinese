@@ -272,7 +272,7 @@
   flex: 1;
   position: relative;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 18px;
   background: #fff;
   overflow: hidden;
   transition: border-color 0.15s ease;
