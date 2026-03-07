@@ -74,7 +74,11 @@
 
 - **OpenClaw-1.0.0-standalone-arm64.dmg** — Apple Silicon（M1/M2/M3/M4）
 
-打开 DMG，将 OpenClaw 拖入 Applications 即可使用。
+打开 DMG，将 OpenClaw 拖入 Applications。首次运行前需要移除隔离属性：
+
+```bash
+xattr -cr /Applications/OpenClaw.app
+```
 
 ### Desktop 版特性
 
