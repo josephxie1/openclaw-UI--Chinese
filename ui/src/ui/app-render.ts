@@ -352,25 +352,57 @@ export function renderApp(state: AppViewState) {
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
             <div class="nav-group ${isGroupCollapsed && !hasActiveTab ? "nav-group--collapsed" : ""}">
-              <button
-                class="nav-label"
-                @click=${() => {
-                  const next = { ...state.settings.navGroupsCollapsed };
-                  next[group.label] = !isGroupCollapsed;
-                  state.applySettings({
-                    ...state.settings,
-                    navGroupsCollapsed: next,
-                  });
-                }}
-                aria-expanded=${!isGroupCollapsed}
-              >
-                <span class="nav-label__text">${t(`nav.${group.label}`)}</span>
-                <span class="nav-label__chevron">${isGroupCollapsed ? "+" : "−"}</span>
-              </button>
-              <div class="nav-group__items">
-                ${group.tabs.map((tab) => renderTab(state, tab))}
-              </div>
-              ${group.label === "chat" && !isGroupCollapsed ? renderSessionList(state) : nothing}
+              ${
+                group.label === "chat"
+                  ? html`
+                <button
+                  class="nav-label ${state.tab === "chat" ? "nav-label--active" : ""}"
+                  @click=${() => {
+                    const next = { ...state.settings.navGroupsCollapsed };
+                    next[group.label] = !isGroupCollapsed;
+                    state.applySettings({
+                      ...state.settings,
+                      navGroupsCollapsed: next,
+                    });
+                    state.setTab("chat");
+                  }}
+                  aria-expanded=${!isGroupCollapsed}
+                >
+                  <span class="nav-label__text">${t(`nav.${group.label}`)}</span>
+                  <span class="nav-label__chevron">${isGroupCollapsed ? "+" : "−"}</span>
+                </button>
+                ${!isGroupCollapsed ? renderSessionList(state) : nothing}
+              `
+                  : group.tabs.length === 1
+                    ? html`
+                <button
+                  class="nav-label ${state.tab === group.tabs[0] ? "nav-label--active" : ""}"
+                  @click=${() => state.setTab(group.tabs[0])}
+                >
+                  <span class="nav-label__text">${t(`nav.${group.label}`)}</span>
+                </button>
+              `
+                    : html`
+                <button
+                  class="nav-label"
+                  @click=${() => {
+                    const next = { ...state.settings.navGroupsCollapsed };
+                    next[group.label] = !isGroupCollapsed;
+                    state.applySettings({
+                      ...state.settings,
+                      navGroupsCollapsed: next,
+                    });
+                  }}
+                  aria-expanded=${!isGroupCollapsed}
+                >
+                  <span class="nav-label__text">${t(`nav.${group.label}`)}</span>
+                  <span class="nav-label__chevron">${isGroupCollapsed ? "+" : "−"}</span>
+                </button>
+                <div class="nav-group__items">
+                  ${group.tabs.map((tab) => renderTab(state, tab))}
+                </div>
+              `
+              }
             </div>
           `;
         })}

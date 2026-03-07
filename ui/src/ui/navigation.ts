@@ -3,12 +3,13 @@ import type { IconName } from "./icons.js";
 
 export const TAB_GROUPS = [
   { label: "chat", tabs: ["chat"] },
+  { label: "models", tabs: ["models"] },
   {
     label: "control",
     tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"],
   },
   { label: "agent", tabs: ["agents", "skills", "nodes"] },
-  { label: "settings", tabs: ["models", "agents-config", "config", "json-edit", "debug", "logs"] },
+  { label: "settings", tabs: ["agents-config", "config", "json-edit", "debug", "logs"] },
 ] as const;
 
 export type Tab =

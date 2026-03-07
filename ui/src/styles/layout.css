@@ -326,6 +326,11 @@
   background: var(--bg-hover);
 }
 
+.nav-label--active {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
 .nav-label--static {
   cursor: default;
 }

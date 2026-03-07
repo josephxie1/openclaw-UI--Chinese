@@ -16,6 +16,7 @@ export const en: TranslationMap = {
   },
   nav: {
     chat: "Chat",
+    models: "Models",
     control: "Control",
     agent: "Agent",
     settings: "Settings",
