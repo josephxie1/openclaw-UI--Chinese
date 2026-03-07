@@ -11,6 +11,7 @@ import { loadAgentFileContent, loadAgentFiles, saveAgentFile } from "./controlle
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
+import { approveChannelPairing, loadChannelPairings } from "./controllers/channel-pairing.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
 import {
@@ -1702,6 +1703,12 @@ export function renderApp(state: AppViewState) {
                       : { kind: "gateway" as const };
                   return saveExecApprovals(state, target);
                 },
+                channelPairingsLoading: state.channelPairingsLoading,
+                channelPairings: state.channelPairings,
+                channelPairingsError: state.channelPairingsError,
+                onChannelPairingsRefresh: () => loadChannelPairings(state),
+                onChannelPairingApprove: (channel, code) =>
+                  approveChannelPairing(state, channel, code),
               })
             : nothing
         }

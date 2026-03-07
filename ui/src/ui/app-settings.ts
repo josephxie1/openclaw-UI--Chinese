@@ -12,6 +12,7 @@ import type { OpenClawApp } from "./app.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
+import { loadChannelPairings } from "./controllers/channel-pairing.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadConfig, loadConfigRaw, loadConfigSchema } from "./controllers/config.ts";
 import {
@@ -214,6 +215,7 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "nodes") {
     await loadNodes(host as unknown as OpenClawApp);
     await loadDevices(host as unknown as OpenClawApp);
+    await loadChannelPairings(host as unknown as OpenClawApp);
     await loadConfig(host as unknown as OpenClawApp);
     await loadExecApprovals(host as unknown as OpenClawApp);
   }

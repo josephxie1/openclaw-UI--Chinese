@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
+import type { ChannelPairingGroup } from "../controllers/channel-pairing.ts";
 import type {
   DevicePairingList,
   DeviceTokenSummary,
@@ -45,12 +46,18 @@ export type NodesProps = {
   onExecApprovalsPatch: (path: Array<string | number>, value: unknown) => void;
   onExecApprovalsRemove: (path: Array<string | number>) => void;
   onSaveExecApprovals: () => void;
+  channelPairingsLoading: boolean;
+  channelPairings: ChannelPairingGroup[];
+  channelPairingsError: string | null;
+  onChannelPairingsRefresh: () => void;
+  onChannelPairingApprove: (channel: string, code: string) => void;
 };
 
 export function renderNodes(props: NodesProps) {
   const bindingState = resolveBindingsState(props);
   const approvalsState = resolveExecApprovalsState(props);
   return html`
+    ${renderChannelPairings(props)}
     ${renderExecApprovals(approvalsState)}
     ${renderBindings(bindingState)}
     ${renderDevices(props)}
@@ -126,10 +133,72 @@ function renderDevices(props: NodesProps) {
   `;
 }
 
+function renderChannelPairings(props: NodesProps) {
+  const groups = props.channelPairings ?? [];
+  const totalPending = groups.reduce((sum, g) => sum + g.requests.length, 0);
+  return html`
+    <section class="card">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div class="card-title">渠道配对请求</div>
+          <div class="card-sub">来自飞书、Telegram 等渠道的用户配对审批</div>
+        </div>
+        <button class="btn" ?disabled=${props.channelPairingsLoading} @click=${props.onChannelPairingsRefresh}>
+          ${props.channelPairingsLoading ? "加载中..." : "刷新"}
+        </button>
+      </div>
+      ${
+        props.channelPairingsError
+          ? html`<div class="callout danger" style="margin-top: 12px;">${props.channelPairingsError}</div>`
+          : nothing
+      }
+      <div class="list" style="margin-top: 16px;">
+        ${
+          totalPending === 0
+            ? html`
+                <div class="muted">暂无待审批的渠道配对请求。</div>
+              `
+            : groups.map(
+                (group) => html`
+              <div class="muted" style="margin-bottom: 8px; margin-top: 4px;">
+                📢 ${group.channel}
+                <span style="opacity: 0.6;">(${group.requests.length})</span>
+              </div>
+              ${group.requests.map(
+                (req) => html`
+                <div class="list-item">
+                  <div class="list-main">
+                    <div class="list-title">用户 ID: ${req.id}</div>
+                    <div class="list-sub">
+                      配对码: ${req.code} · 时间: ${req.createdAt}
+                      ${req.meta ? ` · ${JSON.stringify(req.meta)}` : ""}
+                    </div>
+                  </div>
+                  <div class="list-meta">
+                    <button
+                      class="btn btn--sm primary"
+                      @click=${() => props.onChannelPairingApprove(group.channel, req.code)}
+                    >
+                      批准
+                    </button>
+                  </div>
+                </div>
+              `,
+              )}
+            `,
+              )
+        }
+      </div>
+    </section>
+  `;
+}
+
 function renderPendingDevice(req: PendingDevice, props: NodesProps) {
   const name = req.displayName?.trim() || req.deviceId;
   const age = typeof req.ts === "number" ? formatRelativeTimestamp(req.ts) : "n/a";
-  const role = req.role?.trim() ? `${t("nodesView.role")}: ${req.role}` : `${t("nodesView.role")}: -`;
+  const role = req.role?.trim()
+    ? `${t("nodesView.role")}: ${req.role}`
+    : `${t("nodesView.role")}: -`;
   const repair = req.isRepair ? ` · ${t("nodesView.repair")}` : "";
   const ip = req.remoteIp ? ` · ${req.remoteIp}` : "";
   return html`

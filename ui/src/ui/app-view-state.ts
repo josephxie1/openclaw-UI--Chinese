@@ -165,6 +165,9 @@ export type AppViewState = {
   presenceEntries: PresenceEntry[];
   presenceError: string | null;
   presenceStatus: string | null;
+  channelPairingsLoading: boolean;
+  channelPairings: import("./controllers/channel-pairing.ts").ChannelPairingGroup[];
+  channelPairingsError: string | null;
   agentsLoading: boolean;
   agentsList: AgentsListResult | null;
   agentsError: string | null;
