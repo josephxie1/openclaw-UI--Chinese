@@ -284,12 +284,39 @@ function startGateway(extraArgs = [], customHome = null) {
     console.log("[desktop] Gateway exited with code " + code);
     gatewayProcess = null;
     if (!isQuitting && !isRestarting) {
-      console.log("[desktop] Gateway crashed, auto-restarting in 2s...");
-      setTimeout(() => {
-        if (!isQuitting) {
-          startGateway(lastGatewayArgs, lastGatewayHome);
-        }
-      }, 2000);
+      // Gateway self-restart (SIGUSR1) exits with code 0 and spawns its own
+      // replacement. Check if the port is already taken before auto-restarting.
+      const checkUrl = GATEWAY_URL_ACTUAL || GATEWAY_URL;
+      const checkRestart = () => {
+        const req = http.get(checkUrl + "/api/v1/status", (res) => {
+          // Port is alive — gateway self-restarted, just reconnect the window
+          console.log("[desktop] Gateway self-restarted, reconnecting window...");
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.loadURL(checkUrl);
+          }
+          req.destroy();
+        });
+        req.on("error", () => {
+          // Port not in use — genuine crash, auto-restart
+          console.log("[desktop] Gateway crashed, auto-restarting in 2s...");
+          setTimeout(() => {
+            if (!isQuitting) {
+              startGateway(lastGatewayArgs, lastGatewayHome);
+            }
+          }, 2000);
+        });
+        req.setTimeout(2000, () => {
+          req.destroy();
+          console.log("[desktop] Gateway crashed (timeout), auto-restarting in 2s...");
+          setTimeout(() => {
+            if (!isQuitting) {
+              startGateway(lastGatewayArgs, lastGatewayHome);
+            }
+          }, 2000);
+        });
+      };
+      // Small delay to let the self-restarted process bind the port
+      setTimeout(checkRestart, 1000);
     }
   });
 }
