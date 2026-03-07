@@ -64,7 +64,39 @@
 
 ![Agent 管理](docs/agent-management.png)
 
-## 📦 安装
+## � Desktop 桌面版（macOS）
+
+独立 Electron 桌面应用，内置完整 Gateway 后端，无需单独安装 Node.js。
+
+### 下载
+
+从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载 DMG：
+
+- **OpenClaw-1.0.0-standalone-arm64.dmg** — Apple Silicon（M1/M2/M3/M4）
+
+打开 DMG，将 OpenClaw 拖入 Applications 即可使用。
+
+### Desktop 版特性
+
+- 🚀 开箱即用，内置 Gateway 后端
+- 🔄 Gateway 自动重启（崩溃恢复）
+- 🎯 macOS 原生托盘图标
+- 🦀 自定义螃蟹爪品牌图标
+- 📂 侧栏会话列表自动加载
+- 🖼️ Agent 头像与聊天区同步
+
+### 从源码构建 Desktop
+
+```bash
+# 1. 构建后端 + 前端 + 打包 DMG（一键脚本）
+./scripts/desktop-build.sh
+
+# DMG 输出位置：desktop/release/OpenClaw-1.0.0-standalone-arm64.dmg
+```
+
+---
+
+## �📦 安装
 
 ### 先决条件
 
