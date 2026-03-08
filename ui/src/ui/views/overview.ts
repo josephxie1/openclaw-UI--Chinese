@@ -250,9 +250,14 @@ export function renderOverview(props: OverviewProps) {
   ).desktop;
   if (!_systemStatsPending) {
     _systemStatsPending = true;
+    // Derive HTTP base URL from WebSocket URL (ws:// -> http://, wss:// -> https://)
+    const gwHttpBase = props.settings.gatewayUrl
+      .replace(/^wss:\/\//, "https://")
+      .replace(/^ws:\/\//, "http://")
+      .replace(/\/+$/, "");
     const statsPromise: Promise<SystemStats | null> = desktop?.getSystemStats
       ? desktop.getSystemStats()
-      : fetch("/api/system-stats")
+      : fetch(`${gwHttpBase}/api/system-stats`)
           .then((r) => (r.ok ? (r.json() as Promise<SystemStats>) : null))
           .catch(() => null);
     statsPromise
