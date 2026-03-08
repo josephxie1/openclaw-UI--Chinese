@@ -84,7 +84,7 @@ import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.t
 import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderModelsQuickAdd, PROVIDER_PRESETS } from "./views/models-quick-add.ts";
-import { renderNodes } from "./views/nodes.ts";
+import { renderNodes, renderChannelPairings } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSetupWizard } from "./views/setup-wizard.ts";
@@ -1055,6 +1055,14 @@ export function renderApp(state: AppViewState) {
                     },
                   });
                 })()}
+                ${renderChannelPairings({
+                  channelPairingsLoading: state.channelPairingsLoading,
+                  channelPairings: state.channelPairings,
+                  channelPairingsError: state.channelPairingsError,
+                  onChannelPairingsRefresh: () => loadChannelPairings(state),
+                  onChannelPairingApprove: (channel: string, code: string) =>
+                    approveChannelPairing(state, channel, code),
+                })}
                 ${renderChannels({
                   connected: state.connected,
                   loading: state.channelsLoading,
@@ -1730,12 +1738,6 @@ export function renderApp(state: AppViewState) {
                       : { kind: "gateway" as const };
                   return saveExecApprovals(state, target);
                 },
-                channelPairingsLoading: state.channelPairingsLoading,
-                channelPairings: state.channelPairings,
-                channelPairingsError: state.channelPairingsError,
-                onChannelPairingsRefresh: () => loadChannelPairings(state),
-                onChannelPairingApprove: (channel, code) =>
-                  approveChannelPairing(state, channel, code),
               })
             : nothing
         }

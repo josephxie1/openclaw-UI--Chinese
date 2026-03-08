@@ -46,6 +46,9 @@ export type NodesProps = {
   onExecApprovalsPatch: (path: Array<string | number>, value: unknown) => void;
   onExecApprovalsRemove: (path: Array<string | number>) => void;
   onSaveExecApprovals: () => void;
+};
+
+export type ChannelPairingsProps = {
   channelPairingsLoading: boolean;
   channelPairings: ChannelPairingGroup[];
   channelPairingsError: string | null;
@@ -57,7 +60,6 @@ export function renderNodes(props: NodesProps) {
   const bindingState = resolveBindingsState(props);
   const approvalsState = resolveExecApprovalsState(props);
   return html`
-    ${renderChannelPairings(props)}
     ${renderExecApprovals(approvalsState)}
     ${renderBindings(bindingState)}
     ${renderDevices(props)}
@@ -133,7 +135,7 @@ function renderDevices(props: NodesProps) {
   `;
 }
 
-function renderChannelPairings(props: NodesProps) {
+export function renderChannelPairings(props: ChannelPairingsProps) {
   const groups = props.channelPairings ?? [];
   const totalPending = groups.reduce((sum, g) => sum + g.requests.length, 0);
   return html`
