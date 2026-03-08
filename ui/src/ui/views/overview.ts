@@ -422,6 +422,32 @@ export function renderOverview(props: OverviewProps) {
           </div>
         </div>
 
+
+        <div data-swapy-slot="agents">
+          <div data-swapy-item="agents">
+            <div class="card">
+              <div class="card-header-row">${dragHandleFree}
+                <div><div class="card-title">Agent</div>
+                <div class="card-sub">${props.agents.length} 个已配置。</div></div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
+                ${props.agents.map((agent) => {
+                  const avatarSrc = resolveAgentAvatarSrc(agent);
+                  return html`
+                    <div class="agent-row-display">
+                      ${avatarSrc ? html`<img class="agent-avatar-sm" src="${avatarSrc}" alt="" />` : nothing}
+                      <div class="agent-info-sm">
+                        <div class="agent-name">${agent.identity?.name ?? agent.name ?? agent.id}</div>
+                        <div class="agent-id mono muted">${agent.id}</div>
+                      </div>
+                    </div>
+                  `;
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div data-swapy-slot="activity">
           <div data-swapy-item="activity">
             <div class="card ov-card--activity">
@@ -493,31 +519,6 @@ export function renderOverview(props: OverviewProps) {
                 `
                   : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.loading")}</div>`
               }
-            </div>
-          </div>
-        </div>
-
-        <div data-swapy-slot="agents">
-          <div data-swapy-item="agents">
-            <div class="card">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">Agent</div>
-                <div class="card-sub">${props.agents.length} 个已配置。</div></div>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
-                ${props.agents.map((agent) => {
-                  const avatarSrc = resolveAgentAvatarSrc(agent);
-                  return html`
-                    <div class="agent-row-display">
-                      ${avatarSrc ? html`<img class="agent-avatar-sm" src="${avatarSrc}" alt="" />` : nothing}
-                      <div class="agent-info-sm">
-                        <div class="agent-name">${agent.identity?.name ?? agent.name ?? agent.id}</div>
-                        <div class="agent-id mono muted">${agent.id}</div>
-                      </div>
-                    </div>
-                  `;
-                })}
-              </div>
             </div>
           </div>
         </div>
