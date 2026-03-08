@@ -4,6 +4,7 @@ import { t, i18n, SUPPORTED_LOCALES, type Locale } from "../../i18n/index.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../external-link.ts";
 import { formatRelativeTimestamp, formatDurationHuman } from "../format.ts";
 import type { GatewayHelloOk } from "../gateway.ts";
+import { avatarFromName } from "../helpers/multiavatar.ts";
 import { formatNextRun } from "../presenter.ts";
 import type { UiSettings } from "../storage.ts";
 import type { SessionActivityResult } from "../types.ts";
@@ -482,6 +483,7 @@ export function renderOverview(props: OverviewProps) {
                           (s) => html`
                             <div class="activity-card ${s.state}">
                               <div class="activity-card__header">
+                                <img class="activity-card__avatar" src="${avatarFromName(s.key)}" alt="" />
                                 <span class="activity-dot ${s.state}"></span>
                                 <span class="activity-card__badge ${s.state}">
                                   ${t(`overview.activity.state.${s.state}`)}

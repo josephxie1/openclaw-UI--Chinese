@@ -2342,6 +2342,14 @@
   gap: 8px;
 }
 
+.activity-card__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
 .activity-dot {
   width: 8px;
   height: 8px;
