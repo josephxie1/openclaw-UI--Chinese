@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
+import { ensureAgentWorkspace } from "../../agents/workspace.js";
 import { loadConfig } from "../../config/config.js";
 import { normalizeAgentId } from "../../routing/session-key.js";
 import { ErrorCodes, errorShape } from "../protocol/index.js";
@@ -36,7 +37,7 @@ function decodeDataUri(dataUri: string): { buffer: Buffer; ext: string } | null 
 }
 
 export const agentAvatarHandlers: GatewayRequestHandlers = {
-  "agent.avatar.save": ({ params, respond }) => {
+  "agent.avatar.save": async ({ params, respond }) => {
     const p = params as { agentId?: string; dataUri?: string } | undefined;
     const agentIdRaw = typeof p?.agentId === "string" ? p.agentId.trim() : "";
     const dataUri = typeof p?.dataUri === "string" ? p.dataUri : "";
@@ -70,14 +71,17 @@ export const agentAvatarHandlers: GatewayRequestHandlers = {
     // Gateway resolves workspace automatically based on OPENCLAW_HOME / config
     const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
 
-    // Ensure workspace directory exists
+    // Initialize workspace with all bootstrap files (AGENTS.md, SOUL.md, etc.)
     try {
-      fs.mkdirSync(workspaceDir, { recursive: true });
+      await ensureAgentWorkspace({
+        dir: workspaceDir,
+        ensureBootstrapFiles: true,
+      });
     } catch (err) {
       respond(
         false,
         undefined,
-        errorShape(ErrorCodes.UNAVAILABLE, `failed to create workspace: ${String(err)}`),
+        errorShape(ErrorCodes.UNAVAILABLE, `failed to initialize workspace: ${String(err)}`),
       );
       return;
     }
