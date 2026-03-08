@@ -502,6 +502,17 @@ export function renderOverview(props: OverviewProps) {
                                     : nothing
                                 }
                               </div>
+                              ${
+                                s.totalTokens != null && s.contextTokens
+                                  ? html`
+                                  <div class="activity-card__tokens">
+                                    <div class="token-bar">
+                                      <div class="token-bar__fill" style="width: ${Math.min((s.totalTokens / s.contextTokens) * 100, 100)}%"></div>
+                                    </div>
+                                    <div class="token-bar__label muted">${s.totalTokens.toLocaleString()} / ${s.contextTokens.toLocaleString()}</div>
+                                  </div>`
+                                  : nothing
+                              }
                             </div>
                           `;
                         })}

@@ -723,6 +723,8 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       state: string;
       lastActivityAgo: number;
       queueDepth: number;
+      totalTokens?: number;
+      contextTokens?: number;
     };
     const sessionsMap = new Map<string, ActivityEntry>();
     let processing = 0;
@@ -752,12 +754,17 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     }
 
     // 2) Session store — add sessions not yet in diagnosticSessionStates as "idle"
+    //    Also enrich existing entries with token data.
     try {
       const cfg = loadConfig();
       const { store } = loadCombinedSessionStoreForGateway(cfg);
       for (const [key, entry] of Object.entries(store)) {
         const lower = key.toLowerCase();
-        if (sessionsMap.has(lower)) {
+        const existing = sessionsMap.get(lower);
+        if (existing) {
+          // Enrich diagnostic-only entries with token data from store
+          existing.totalTokens = entry.totalTokens;
+          existing.contextTokens = entry.contextTokens;
           continue;
         }
         const updatedAt = entry.updatedAt ?? 0;
@@ -767,6 +774,8 @@ export const sessionsHandlers: GatewayRequestHandlers = {
           state: "idle",
           lastActivityAgo: ago,
           queueDepth: 0,
+          totalTokens: entry.totalTokens,
+          contextTokens: entry.contextTokens,
         });
         idle++;
       }

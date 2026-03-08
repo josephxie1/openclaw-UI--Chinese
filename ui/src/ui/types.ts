@@ -448,6 +448,8 @@ export type SessionActivityEntry = {
   state: "processing" | "idle" | "waiting";
   lastActivityAgo: number;
   queueDepth: number;
+  totalTokens?: number;
+  contextTokens?: number;
 };
 
 export type SessionActivityResult = {

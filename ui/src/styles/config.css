@@ -2568,6 +2568,30 @@
    Cards inherit from base theme variables.
    =========================================== */
 
+/* Token progress bar in activity cards */
+.activity-card__tokens {
+  margin-top: 8px;
+}
+
+.token-bar {
+  height: 4px;
+  background: var(--surface-alt, rgba(255, 255, 255, 0.06));
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.token-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818cf8, #38bdf8);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.token-bar__label {
+  font-size: 11px;
+  margin-top: 3px;
+}
+
 /* Access card — 2-column form grid */
 .access-grid {
   display: grid;
