@@ -525,7 +525,7 @@ export function renderOverview(props: OverviewProps) {
     const saved = localStorage.getItem("oc-overview-card-order-v2");
     if (saved) {
       const parsed = JSON.parse(saved) as Array<{ slot: string; item: string }>;
-      const order = parsed.map((e) => e.slot).filter((s) => s in cards);
+      const order = parsed.map((e) => e.item).filter((s) => s in cards);
       if (order.length === defaultOrder.length) {
         cardOrder = order;
       }
