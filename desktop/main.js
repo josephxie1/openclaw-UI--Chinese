@@ -14,6 +14,7 @@ const { fork, execFile } = require("child_process");
 const path = require("path");
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 
 // Suppress EPIPE errors (harmless, happens when pipes close during shutdown)
 process.stdout.on("error", () => {});
@@ -423,6 +424,30 @@ function createWindow() {
   ipcMain.on("onboarding-done", () => {
     console.log("[desktop] Onboarding completed, clearing flag");
     delete process.env.OPENCLAW_ONBOARDING;
+  });
+
+  // IPC: return real system CPU and memory stats
+  ipcMain.handle("get-system-stats", () => {
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+    for (const cpu of cpus) {
+      for (const type of Object.keys(cpu.times)) {
+        totalTick += cpu.times[type];
+      }
+      totalIdle += cpu.times.idle;
+    }
+    const cpuPercent = Math.round(((totalTick - totalIdle) / totalTick) * 100);
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memPercent = Math.round(((totalMem - freeMem) / totalMem) * 100);
+    return {
+      cpuPercent,
+      memPercent,
+      totalMem,
+      freeMem,
+      usedMem: totalMem - freeMem,
+    };
   });
 
   // Show splash screen while gateway starts

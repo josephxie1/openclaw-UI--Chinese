@@ -9,6 +9,11 @@ import type { UiSettings } from "../storage.ts";
 import type { SessionActivityResult } from "../types.ts";
 import { shouldShowPairingHint } from "./overview-hints.ts";
 
+// Module-level cache for async system stats (Electron IPC)
+let _cachedCpu = 0;
+let _cachedMem = 0;
+let _systemStatsPending = false;
+
 export type OverviewProps = {
   connected: boolean;
   hello: GatewayHelloOk | null;
@@ -238,17 +243,27 @@ export function renderOverview(props: OverviewProps) {
     `;
   };
 
-  // --- CPU & Memory estimates ---
-  const perf = globalThis.performance as Performance & {
-    memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number };
-  };
-  const memPercent = perf?.memory
-    ? Math.round((perf.memory.usedJSHeapSize / perf.memory.jsHeapSizeLimit) * 100)
-    : 0;
-  // Estimate CPU from active sessions count (rough heuristic)
-  const activeSessions =
-    (props.sessionActivity?.processing ?? 0) + (props.sessionActivity?.waiting ?? 0);
-  const cpuPercent = Math.min(activeSessions * 15 + (props.connected ? 5 : 0), 100);
+  // --- System stats (real data from Electron main process) ---
+  const desktop = (
+    globalThis as unknown as {
+      desktop?: { getSystemStats?: () => Promise<{ cpuPercent: number; memPercent: number }> };
+    }
+  ).desktop;
+  if (desktop?.getSystemStats && !_systemStatsPending) {
+    _systemStatsPending = true;
+    desktop
+      .getSystemStats()
+      .then((stats) => {
+        _cachedCpu = stats.cpuPercent;
+        _cachedMem = stats.memPercent;
+        _systemStatsPending = false;
+      })
+      .catch(() => {
+        _systemStatsPending = false;
+      });
+  }
+  const cpuPercent = _cachedCpu;
+  const memPercent = _cachedMem;
 
   const handleSvg = html`
     <svg
