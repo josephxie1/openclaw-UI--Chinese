@@ -346,7 +346,7 @@ export function renderOverview(props: OverviewProps) {
           <div data-swapy-item="stats">
             <div class="card stat-cards-row">
               <div class="card-header-row">${dragHandle}
-                <div><div class="card-title">${t("overview.stats.title") ?? "统计概览"}</div></div>
+                <div><div class="card-title">${"统计概览"}</div></div>
               </div>
               <div class="stat-grid" style="margin-top: 12px;">
                 <div class="stat">
