@@ -1863,6 +1863,7 @@
 
 .models-page {
   display: flex;
+  gap: 18px;
   min-height: 100%;
   overflow-y: auto;
 }
