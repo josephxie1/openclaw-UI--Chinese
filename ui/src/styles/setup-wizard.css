@@ -25,7 +25,12 @@
     overflow: visible;
 }
 
-/* Saving overlay — covers full window */
+/* ── Content Area ── */
+.setup-wizard__content {
+    position: relative;
+    overflow: visible;
+}
+
 .setup-wizard__saving-overlay {
     position: fixed;
     inset: 0;
@@ -146,12 +151,6 @@
     }
 }
 
-/* ── Content Area ── */
-
-.setup-wizard__content {
-    position: relative;
-    overflow: visible;
-}
 
 .setup-wizard__slide {
     padding: 0 2rem 2rem;

@@ -387,16 +387,7 @@ export function renderApp(state: AppViewState) {
                 </button>
                 ${!isGroupCollapsed ? renderSessionList(state) : nothing}
               `
-                  : group.tabs.length === 1
-                    ? html`
-                <button
-                  class="nav-label ${state.tab === group.tabs[0] ? "nav-label--active" : ""}"
-                  @click=${() => state.setTab(group.tabs[0])}
-                >
-                  <span class="nav-label__text">${t(`nav.${group.label}`)}</span>
-                </button>
-              `
-                    : html`
+                  : html`
                 <button
                   class="nav-label"
                   @click=${() => {

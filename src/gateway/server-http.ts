@@ -50,6 +50,7 @@ import { sendGatewayAuthFailure, setDefaultSecurityHeaders } from "./http-common
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { isProtectedPluginRoutePath } from "./security-path.js";
+import { getAvailableMemory } from "./server-methods/system.js";
 import {
   authorizeCanvasRequest,
   enforcePluginRouteGatewayAuth,
@@ -553,26 +554,7 @@ export function createGatewayHttpServer(opts: {
         const cpuPercent =
           totalTick > 0 ? Math.round(((totalTick - totalIdle) / totalTick) * 100) : 0;
         const totalMem = os.totalmem();
-        // macOS os.freemem() only reports truly free pages (not cached/inactive),
-        // so it wildly overstates usage. Parse vm_stat for accurate available memory.
-        let availableMem: number;
-        if (process.platform === "darwin") {
-          try {
-            const { execSync } = await import("node:child_process");
-            const vmstat = execSync("vm_stat", { encoding: "utf-8" });
-            const pageSize = 16384; // macOS default
-            const pages = (key: string) => {
-              const m = vmstat.match(new RegExp(`${key}:\\s+(\\d+)`));
-              return m ? parseInt(m[1], 10) : 0;
-            };
-            availableMem =
-              (pages("Pages free") + pages("Pages inactive") + pages("Pages purgeable")) * pageSize;
-          } catch {
-            availableMem = os.freemem();
-          }
-        } else {
-          availableMem = os.freemem();
-        }
+        const availableMem = getAvailableMemory();
         const memPercent =
           totalMem > 0 ? Math.round(((totalMem - availableMem) / totalMem) * 100) : 0;
         sendJson(res, 200, {

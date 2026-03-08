@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import os from "node:os";
 import { resolveMainSessionKeyFromConfig } from "../../config/sessions.js";
 import { getLastHeartbeatEvent } from "../../infra/heartbeat-events.js";
@@ -7,6 +8,44 @@ import { listSystemPresence, updateSystemPresence } from "../../infra/system-pre
 import { ErrorCodes, errorShape } from "../protocol/index.js";
 import { broadcastPresenceSnapshot } from "../server/presence-events.js";
 import type { GatewayRequestHandlers } from "./types.js";
+
+/**
+ * On macOS, `os.freemem()` only returns truly free pages and excludes
+ * inactive/purgeable/speculative pages that the OS can reclaim on demand.
+ * This leads to inflated usage figures (e.g. 99% instead of ~85%).
+ *
+ * This helper parses `vm_stat` to compute available memory as:
+ *   free + inactive + purgeable + speculative
+ * which matches what Activity Monitor considers "available".
+ *
+ * Falls back to `os.freemem()` on non-macOS or on error.
+ */
+export function getAvailableMemory(): number {
+  if (process.platform !== "darwin") {
+    return os.freemem();
+  }
+  try {
+    const output = execSync("vm_stat", { encoding: "utf-8", timeout: 2000 });
+    // First line: "Mach Virtual Memory Statistics: (page size of XXXX bytes)"
+    const pageSizeMatch = output.match(/page size of (\d+) bytes/);
+    const pageSize = pageSizeMatch ? Number(pageSizeMatch[1]) : 16384;
+
+    const getValue = (label: string): number => {
+      const re = new RegExp(`${label}:\\s+(\\d+)`);
+      const m = output.match(re);
+      return m ? Number(m[1]) : 0;
+    };
+
+    const free = getValue("Pages free");
+    const inactive = getValue("Pages inactive");
+    const purgeable = getValue("Pages purgeable");
+    const speculative = getValue("Pages speculative");
+
+    return (free + inactive + purgeable + speculative) * pageSize;
+  } catch {
+    return os.freemem();
+  }
+}
 
 export const systemHandlers: GatewayRequestHandlers = {
   "last-heartbeat": ({ respond }) => {
@@ -144,12 +183,9 @@ export const systemHandlers: GatewayRequestHandlers = {
     }
     const cpuPercent = totalTick > 0 ? Math.round(((totalTick - totalIdle) / totalTick) * 100) : 0;
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const memPercent = totalMem > 0 ? Math.round(((totalMem - freeMem) / totalMem) * 100) : 0;
-    respond(
-      true,
-      { cpuPercent, memPercent, totalMem, freeMem, usedMem: totalMem - freeMem },
-      undefined,
-    );
+    const availableMem = getAvailableMemory();
+    const usedMem = totalMem - availableMem;
+    const memPercent = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
+    respond(true, { cpuPercent, memPercent, totalMem, freeMem: availableMem, usedMem }, undefined);
   },
 };

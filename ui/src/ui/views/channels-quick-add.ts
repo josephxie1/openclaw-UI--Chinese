@@ -108,6 +108,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                     @input=${(e: Event) =>
                       props.onFieldChange("accountId", (e.target as HTMLInputElement).value)}
                   />
+                  <span class="quick-add__hint">${t("channelsQuickAdd.accountIdHint")}</span>
                 </label>
 
                 ${
@@ -123,6 +124,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                           @input=${(e: Event) =>
                             props.onFieldChange("botToken", (e.target as HTMLInputElement).value)}
                         />
+                        <span class="quick-add__hint">${t("channelsQuickAdd.botTokenHint")}</span>
                       </label>
                       <div class="quick-add__tutorial-link" style="grid-column: span 2;">
                         <a href="https://xdclab-ai.feishu.cn/docx/VVvfdRizno06j3x9z3cc5Tc9nkh?from=from_copylink" target="_blank" rel="noopener noreferrer">
@@ -141,6 +143,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                           @input=${(e: Event) =>
                             props.onFieldChange("appId", (e.target as HTMLInputElement).value)}
                         />
+                        <span class="quick-add__hint">${t("channelsQuickAdd.appIdHint")} <a href="https://open.feishu.cn/app?lang=zh-CN" target="_blank" rel="noopener noreferrer">${t("channelsQuickAdd.feishuConsoleLink")}</a></span>
                       </label>
                       <label class="quick-add__field">
                         <span class="quick-add__label">App Secret</span>
@@ -152,6 +155,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                           @input=${(e: Event) =>
                             props.onFieldChange("appSecret", (e.target as HTMLInputElement).value)}
                         />
+                        <span class="quick-add__hint">${t("channelsQuickAdd.appSecretHint")}</span>
                       </label>
                       <label class="quick-add__field">
                         <span class="quick-add__label">${t("channelsQuickAdd.botName")}</span>
@@ -163,6 +167,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                           @input=${(e: Event) =>
                             props.onFieldChange("botName", (e.target as HTMLInputElement).value)}
                         />
+                        <span class="quick-add__hint">${t("channelsQuickAdd.botNameHint")}</span>
                       </label>
                       <div class="quick-add__tutorial-link" style="grid-column: span 2;">
                         <a href="https://xdclab-ai.feishu.cn/docx/TZScdTdmpoO7DPxzpGCcvAH8nRc?from=from_copylink" target="_blank" rel="noopener noreferrer">
@@ -232,6 +237,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                     .value=${form.accountId}
                                     readonly
                                   />
+                                  <span class="quick-add__hint">${t("channelsQuickAdd.agentIdHint")}</span>
                                 </label>
                                 <label class="quick-add__field">
                                   <span class="quick-add__label">${t("channelsQuickAdd.agentName")}</span>
@@ -246,6 +252,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                         (e.target as HTMLInputElement).value,
                                       )}
                                   />
+                                  <span class="quick-add__hint">${t("channelsQuickAdd.agentNameHint")}</span>
                                 </label>
                                 <label class="quick-add__field" style="grid-column: span 2;">
                                   <span class="quick-add__label">${t("channelsQuickAdd.avatar") ?? "头像"}</span>

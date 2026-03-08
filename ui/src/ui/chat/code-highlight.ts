@@ -66,8 +66,9 @@ export async function highlightCodeBlocks(container: HTMLElement): Promise<void>
   let hl: Highlighter;
   try {
     hl = await getHighlighter();
-  } catch {
+  } catch (err) {
     // Shiki failed to load — leave code blocks unhighlighted
+    console.warn("[code-highlight] Shiki failed to load:", err);
     return;
   }
 

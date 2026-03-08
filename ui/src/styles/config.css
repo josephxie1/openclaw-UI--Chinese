@@ -1799,6 +1799,13 @@
   gap: 5px;
 }
 
+.quick-add__hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: -2px;
+  line-height: 1.3;
+}
+
 .quick-add__label {
   font-size: 12px;
   font-weight: 600;

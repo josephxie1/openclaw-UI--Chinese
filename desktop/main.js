@@ -439,14 +439,40 @@ function createWindow() {
     }
     const cpuPercent = Math.round(((totalTick - totalIdle) / totalTick) * 100);
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const memPercent = Math.round(((totalMem - freeMem) / totalMem) * 100);
+
+    // macOS os.freemem() only reports truly free pages, excluding reclaimable
+    // cache/inactive pages, leading to wildly inflated usage (e.g. 99%).
+    // Parse vm_stat for accurate available memory on macOS.
+    let availableMem;
+    if (process.platform === "darwin") {
+      try {
+        const { execSync } = require("child_process");
+        const output = execSync("vm_stat", { encoding: "utf-8", timeout: 2000 });
+        const pageSizeMatch = output.match(/page size of (\d+) bytes/);
+        const pageSize = pageSizeMatch ? Number(pageSizeMatch[1]) : 16384;
+        const getValue = (label) => {
+          const m = output.match(new RegExp(`${label}:\\s+(\\d+)`));
+          return m ? Number(m[1]) : 0;
+        };
+        const free = getValue("Pages free");
+        const inactive = getValue("Pages inactive");
+        const purgeable = getValue("Pages purgeable");
+        const speculative = getValue("Pages speculative");
+        availableMem = (free + inactive + purgeable + speculative) * pageSize;
+      } catch {
+        availableMem = os.freemem();
+      }
+    } else {
+      availableMem = os.freemem();
+    }
+
+    const memPercent = Math.round(((totalMem - availableMem) / totalMem) * 100);
     return {
       cpuPercent,
       memPercent,
       totalMem,
-      freeMem,
-      usedMem: totalMem - freeMem,
+      freeMem: availableMem,
+      usedMem: totalMem - availableMem,
     };
   });
 
@@ -895,6 +921,14 @@ app
               .setup-wizard, .setup-wizard * { -webkit-app-region: no-drag; }
               /* Leave room for traffic lights in nav */
               .nav { padding-top: 40px !important; }
+
+              /* ── Desktop compact wizard ── */
+              .setup-wizard { padding: 0.5rem; }
+              .setup-wizard__container {
+                zoom: 0.85;
+              }
+              /* Hide web update banner — desktop has its own updater */
+              .update-banner { display: none !important; }
             \`;
             document.head.appendChild(style);
 
