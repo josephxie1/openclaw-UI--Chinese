@@ -2047,29 +2047,43 @@ export function renderApp(state: AppViewState) {
                         state.modelsQuickAddBusy = false;
                       }
                     },
-                  })}\n                  ${(() => {
-                    // Build available models + vision models from config (computed once)
-                    const cfgModels = (
+                  })}
+                  ${(() => {
+                    // Build grouped models by provider
+                    const cfgProviders = (
                       (state.configForm as Record<string, unknown>)?.models as Record<
                         string,
                         unknown
                       >
                     )?.providers as Record<string, unknown> | undefined;
-                    const allModels: Array<{ value: string; label: string }> = [];
-                    const visionModels: Array<{ value: string; label: string }> = [];
-                    if (cfgModels) {
-                      for (const [pid, pd] of Object.entries(cfgModels)) {
-                        const ml = ((pd as Record<string, unknown>).models ?? []) as Array<{
-                          id: string;
-                          name?: string;
-                          input?: string[];
-                        }>;
+                    type MEntry = { id: string; name?: string; input?: string[] };
+                    const modelGroups: Array<{
+                      label: string;
+                      items: Array<{ value: string; label: string }>;
+                    }> = [];
+                    const visionModelGroups: Array<{
+                      label: string;
+                      items: Array<{ value: string; label: string }>;
+                    }> = [];
+                    let hasVisionModels = false;
+                    if (cfgProviders) {
+                      for (const [pid, pd] of Object.entries(cfgProviders)) {
+                        const ml = ((pd as Record<string, unknown>).models ?? []) as MEntry[];
+                        const allItems: Array<{ value: string; label: string }> = [];
+                        const visItems: Array<{ value: string; label: string }> = [];
                         for (const m of ml) {
-                          const e = { value: `${pid}/${m.id}`, label: `${pid}/${m.name || m.id}` };
-                          allModels.push(e);
+                          const item = { value: `${pid}/${m.id}`, label: m.name || m.id };
+                          allItems.push(item);
                           if (m.input?.includes("image")) {
-                            visionModels.push(e);
+                            visItems.push(item);
+                            hasVisionModels = true;
                           }
+                        }
+                        if (allItems.length > 0) {
+                          modelGroups.push({ label: pid, items: allItems });
+                        }
+                        if (visItems.length > 0) {
+                          visionModelGroups.push({ label: pid, items: visItems });
                         }
                       }
                     }
@@ -2094,8 +2108,9 @@ export function renderApp(state: AppViewState) {
                     const fm = mM[0];
                     const curImg = fm ? `${fm.provider ?? ""}/${fm.model ?? ""}` : "";
                     return renderDefaultModelConfig({
-                      availableModels: allModels,
-                      visionModels,
+                      modelGroups,
+                      visionModelGroups,
+                      hasVisionModels,
                       currentDefaultModel: curDef,
                       currentImageModel: curImg,
                       saving: state.configSaving,
@@ -2104,10 +2119,30 @@ export function renderApp(state: AppViewState) {
                         state.defaultModelDropdownOpen = !state.defaultModelDropdownOpen;
                         state.imageModelDropdownOpen = false;
                       },
+                      defaultModelExpandedGroups: state.defaultModelExpandedGroups ?? new Set(),
+                      onDefaultModelGroupToggle: (label: string) => {
+                        const s = state.defaultModelExpandedGroups ?? new Set<string>();
+                        if (s.has(label)) {
+                          s.delete(label);
+                        } else {
+                          s.add(label);
+                        }
+                        state.defaultModelExpandedGroups = new Set(s);
+                      },
                       imageModelDropdownOpen: state.imageModelDropdownOpen ?? false,
                       onImageModelDropdownToggle: () => {
                         state.imageModelDropdownOpen = !state.imageModelDropdownOpen;
                         state.defaultModelDropdownOpen = false;
+                      },
+                      imageModelExpandedGroups: state.imageModelExpandedGroups ?? new Set(),
+                      onImageModelGroupToggle: (label: string) => {
+                        const s = state.imageModelExpandedGroups ?? new Set<string>();
+                        if (s.has(label)) {
+                          s.delete(label);
+                        } else {
+                          s.add(label);
+                        }
+                        state.imageModelExpandedGroups = new Set(s);
                       },
                       onDefaultModelChange: (model: string) => {
                         state.defaultModelDropdownOpen = false;

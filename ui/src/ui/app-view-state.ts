@@ -184,7 +184,9 @@ export type AppViewState = {
   chModelDropdownOpen: boolean;
   chModelDropdownExpandedGroups: Set<string>;
   defaultModelDropdownOpen: boolean;
+  defaultModelExpandedGroups: Set<string>;
   imageModelDropdownOpen: boolean;
+  imageModelExpandedGroups: Set<string>;
   agentFilesLoading: boolean;
   agentFilesError: string | null;
   agentFilesList: AgentsFilesListResult | null;
