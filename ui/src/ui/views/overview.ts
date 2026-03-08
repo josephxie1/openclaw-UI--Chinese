@@ -196,11 +196,17 @@ export function renderOverview(props: OverviewProps) {
   const currentLocale = i18n.getLocale();
 
   // --- Donut chart helper ---
-  const renderDonutChart = (percent: number, label: string, valueText: string) => {
+  const renderDonutChart = (
+    percent: number,
+    label: string,
+    valueText: string,
+    colorOverride?: string,
+  ) => {
     const radius = 40;
     const circumference = 2 * Math.PI * radius;
     const dashOffset = circumference * (1 - Math.min(percent, 100) / 100);
-    const strokeColor = percent > 80 ? "#fca5a5" : percent > 50 ? "#fbbf24" : "#86efac";
+    const strokeColor =
+      colorOverride ?? (percent > 80 ? "#fca5a5" : percent > 50 ? "#fbbf24" : "#86efac");
     return html`
       <div class="donut-chart">
         <svg viewBox="0 0 100 100" width="90" height="90">
@@ -352,23 +358,11 @@ export function renderOverview(props: OverviewProps) {
                 <div><div class="card-title">${t("overview.snapshot.title")}</div>
                 <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
               </div>
-              <div class="snapshot-dashboard">
-                <div class="snapshot-status-row">
-                  <div class="stat">
-                    <div class="stat-label">${t("overview.snapshot.status")}</div>
-                    <div class="stat-value ${props.connected ? "ok" : "warn"}">
-                      ${props.connected ? t("common.ok") : t("common.offline")}
-                    </div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-label">${t("overview.snapshot.uptime")}</div>
-                    <div class="stat-value">${uptime}</div>
-                  </div>
-                </div>
-                <div class="snapshot-charts">
-                  ${renderDonutChart(cpuPercent, "CPU", `${cpuPercent}%`)}
-                  ${renderDonutChart(memPercent, "内存", `${memPercent}%`)}
-                </div>
+              <div class="snapshot-charts">
+                ${renderDonutChart(props.connected ? 100 : 0, t("overview.snapshot.status"), props.connected ? t("common.ok") : t("common.offline"))}
+                ${renderDonutChart(100, t("overview.snapshot.uptime"), uptime, "#a7f3d0")}
+                ${renderDonutChart(cpuPercent, "CPU", `${cpuPercent}%`)}
+                ${renderDonutChart(memPercent, "内存", `${memPercent}%`)}
               </div>
               ${
                 props.lastError

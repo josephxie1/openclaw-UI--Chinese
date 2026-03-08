@@ -2699,24 +2699,13 @@
 }
 
 /* Snapshot dashboard layout */
-.snapshot-dashboard {
-  margin-top: 16px;
-}
-
-.snapshot-status-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.snapshot-status-row .stat {
-  flex: 1;
-}
-
 .snapshot-charts {
   display: flex;
-  justify-content: center;
-  gap: 24px;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .donut-chart {
