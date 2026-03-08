@@ -2489,8 +2489,7 @@
   height: 100%;
 }
 
-/* Full-width cards (stats, activity, agents) */
-.overview-swapy>[data-swapy-slot="stats"],
+/* Full-width cards (activity, agents) */
 .overview-swapy>[data-swapy-slot="activity"],
 .overview-swapy>[data-swapy-slot="agents"],
 .overview-swapy>[data-swapy-slot="notes"] {

@@ -5,7 +5,6 @@ import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../external-link.ts"
 import { formatRelativeTimestamp, formatDurationHuman } from "../format.ts";
 import type { GatewayHelloOk } from "../gateway.ts";
 import { avatarFromName } from "../helpers/multiavatar.ts";
-import { formatNextRun } from "../presenter.ts";
 import type { UiSettings } from "../storage.ts";
 import type { GatewayAgentRow, SessionActivityResult } from "../types.ts";
 import { resolveAgentAvatarSrc } from "./agents-utils.ts";
@@ -305,6 +304,36 @@ export function renderOverview(props: OverviewProps) {
   return html`
     <oc-overview-layout>
       <div class="overview-swapy">
+        <div data-swapy-slot="snapshot">
+          <div data-swapy-item="snapshot">
+            <div class="card ov-card--snapshot">
+              <div class="card-header-row">${dragHandleFree}
+                <div><div class="card-title">${t("overview.snapshot.title")}</div>
+                <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
+              </div>
+              <div class="snapshot-charts">
+                ${renderDonutChart(props.connected ? 100 : 0, t("overview.snapshot.status"), props.connected ? t("common.ok") : t("common.offline"), props.connected ? "#34d399" : "#ff6b6b")}
+                ${renderDonutChart(100, t("overview.snapshot.uptime"), uptime, "#a7f3d0")}
+                ${renderDonutChart(cpuPercent, "CPU", `${cpuPercent}%`)}
+                ${renderDonutChart(memPercent, "内存", `${memPercent}%`)}
+                ${renderDonutChart(props.presenceCount * 10, t("overview.stats.instances"), `${props.presenceCount}`, "#818cf8")}
+                ${renderDonutChart(props.sessionsCount != null ? Math.min(props.sessionsCount * 10, 100) : 0, t("overview.stats.sessions"), `${props.sessionsCount ?? 0}`, "#38bdf8")}
+                ${renderDonutChart(props.cronJobsCount != null ? (props.cronJobsCount > 0 ? 100 : 0) : 0, t("overview.stats.cron"), `${props.cronJobsCount ?? 0}`, "#fbbf24")}
+              </div>
+              ${
+                props.lastError
+                  ? html`<div class="callout danger" style="margin-top: 14px;">
+                    <div>${props.lastError}</div>
+                    ${pairingHint ?? ""}
+                    ${authHint ?? ""}
+                    ${insecureContextHint ?? ""}
+                  </div>`
+                  : ""
+              }
+            </div>
+          </div>
+        </div>
+
         <div data-swapy-slot="access">
           <div data-swapy-item="access">
             <div class="card ov-card--access">
@@ -388,62 +417,6 @@ export function renderOverview(props: OverviewProps) {
                     ? t("overview.access.trustedProxy")
                     : t("overview.access.connectHint")
                 }</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div data-swapy-slot="snapshot">
-          <div data-swapy-item="snapshot">
-            <div class="card ov-card--snapshot">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">${t("overview.snapshot.title")}</div>
-                <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
-              </div>
-              <div class="snapshot-charts">
-                ${renderDonutChart(props.connected ? 100 : 0, t("overview.snapshot.status"), props.connected ? t("common.ok") : t("common.offline"), props.connected ? "#34d399" : "#ff6b6b")}
-                ${renderDonutChart(100, t("overview.snapshot.uptime"), uptime, "#a7f3d0")}
-                ${renderDonutChart(cpuPercent, "CPU", `${cpuPercent}%`)}
-                ${renderDonutChart(memPercent, "内存", `${memPercent}%`)}
-              </div>
-              ${
-                props.lastError
-                  ? html`<div class="callout danger" style="margin-top: 14px;">
-                    <div>${props.lastError}</div>
-                    ${pairingHint ?? ""}
-                    ${authHint ?? ""}
-                    ${insecureContextHint ?? ""}
-                  </div>`
-                  : ""
-              }
-            </div>
-          </div>
-        </div>
-
-        <div data-swapy-slot="stats">
-          <div data-swapy-item="stats">
-            <div class="card stat-cards-row ov-card--stats">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">${"统计概览"}</div></div>
-              </div>
-              <div class="stat-grid" style="margin-top: 12px;">
-                <div class="stat">
-                  <div class="stat-label">${t("overview.stats.instances")}</div>
-                  <div class="stat-value">${props.presenceCount}</div>
-                  <div class="muted">${t("overview.stats.instancesHint")}</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">${t("overview.stats.sessions")}</div>
-                  <div class="stat-value">${props.sessionsCount ?? t("common.na")}</div>
-                  <div class="muted">${t("overview.stats.sessionsHint")}</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">${t("overview.stats.cron")}</div>
-                  <div class="stat-value">
-                    ${props.cronJobsCount != null ? props.cronJobsCount : t("common.na")}
-                  </div>
-                  <div class="muted">${props.cronEnabled ? t("common.enabled") : t("common.disabled")} · ${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
-                </div>
               </div>
             </div>
           </div>
