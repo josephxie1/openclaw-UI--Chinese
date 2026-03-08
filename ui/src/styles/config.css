@@ -2567,6 +2567,42 @@
    Cards inherit from base theme variables.
    =========================================== */
 
+/* Agent list in overview */
+.agent-row-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  transition: background var(--duration-fast) ease;
+}
+
+.agent-row-display:hover {
+  background: var(--secondary);
+}
+
+.agent-avatar-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.agent-info-sm {
+  min-width: 0;
+}
+
+.agent-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.agent-id {
+  font-size: 11px;
+}
+
 /* Snapshot dashboard layout */
 .snapshot-charts {
   display: flex;

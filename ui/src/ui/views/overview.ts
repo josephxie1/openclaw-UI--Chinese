@@ -524,6 +524,30 @@ export function renderOverview(props: OverviewProps) {
           </div>
         </div>
 
+        <div data-swapy-slot="agents">
+          <div data-swapy-item="agents">
+            <div class="card">
+              <div class="card-header-row">${dragHandleFree}
+                <div><div class="card-title">Agent</div>
+                <div class="card-sub">${props.agents.length} 个已配置。</div></div>
+              </div>
+              <div class="agent-list" style="margin-top: 12px;">
+                ${props.agents.map((agent) => {
+                  const avatarSrc = resolveAgentAvatarSrc(agent);
+                  return html`
+                    <div class="agent-row-display">
+                      ${avatarSrc ? html`<img class="agent-avatar-sm" src="${avatarSrc}" alt="" />` : nothing}
+                      <div class="agent-info-sm">
+                        <div class="agent-name">${agent.identity?.name ?? agent.name ?? agent.id}</div>
+                        <div class="agent-id mono muted">${agent.id}</div>
+                      </div>
+                    </div>
+                  `;
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </oc-overview-layout>
