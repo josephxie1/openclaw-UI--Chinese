@@ -1,3 +1,4 @@
+import os from "node:os";
 import { resolveMainSessionKeyFromConfig } from "../../config/sessions.js";
 import { getLastHeartbeatEvent } from "../../infra/heartbeat-events.js";
 import { setHeartbeatsEnabled } from "../../infra/heartbeat-runner.js";
@@ -130,5 +131,25 @@ export const systemHandlers: GatewayRequestHandlers = {
       getHealthVersion: context.getHealthVersion,
     });
     respond(true, { ok: true }, undefined);
+  },
+  "system.stats": ({ respond }) => {
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+    for (const cpu of cpus) {
+      for (const type of Object.keys(cpu.times)) {
+        totalTick += cpu.times[type as keyof typeof cpu.times];
+      }
+      totalIdle += cpu.times.idle;
+    }
+    const cpuPercent = totalTick > 0 ? Math.round(((totalTick - totalIdle) / totalTick) * 100) : 0;
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memPercent = totalMem > 0 ? Math.round(((totalMem - freeMem) / totalMem) * 100) : 0;
+    respond(
+      true,
+      { cpuPercent, memPercent, totalMem, freeMem, usedMem: totalMem - freeMem },
+      undefined,
+    );
   },
 };

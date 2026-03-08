@@ -243,19 +243,24 @@ export function renderOverview(props: OverviewProps) {
     `;
   };
 
-  // --- System stats (real data from Electron main process) ---
+  // --- System stats (real data from gateway RPC or Electron IPC) ---
+  type SystemStats = { cpuPercent: number; memPercent: number };
   const desktop = (
-    globalThis as unknown as {
-      desktop?: { getSystemStats?: () => Promise<{ cpuPercent: number; memPercent: number }> };
-    }
+    globalThis as unknown as { desktop?: { getSystemStats?: () => Promise<SystemStats> } }
   ).desktop;
-  if (desktop?.getSystemStats && !_systemStatsPending) {
+  if (!_systemStatsPending) {
     _systemStatsPending = true;
-    desktop
-      .getSystemStats()
+    const statsPromise: Promise<SystemStats | null> = desktop?.getSystemStats
+      ? desktop.getSystemStats()
+      : fetch("/api/system-stats")
+          .then((r) => (r.ok ? (r.json() as Promise<SystemStats>) : null))
+          .catch(() => null);
+    statsPromise
       .then((stats) => {
-        _cachedCpu = stats.cpuPercent;
-        _cachedMem = stats.memPercent;
+        if (stats) {
+          _cachedCpu = stats.cpuPercent;
+          _cachedMem = stats.memPercent;
+        }
         _systemStatsPending = false;
       })
       .catch(() => {

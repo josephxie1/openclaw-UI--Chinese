@@ -5,6 +5,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
+import os from "node:os";
 import type { TlsOptions } from "node:tls";
 import type { WebSocketServer } from "ws";
 import { resolveAgentAvatar } from "../agents/identity-avatar.js";
@@ -529,6 +530,31 @@ export function createGatewayHttpServer(opts: {
         }
       }
       if (handleGatewayProbeRequest(req, res, requestPath)) {
+        return;
+      }
+      // System stats endpoint for overview donut charts
+      if (requestPath === "/api/system-stats" && (req.method ?? "GET").toUpperCase() === "GET") {
+        const cpus = os.cpus();
+        let totalIdle = 0;
+        let totalTick = 0;
+        for (const cpu of cpus) {
+          for (const t of Object.keys(cpu.times)) {
+            totalTick += cpu.times[t as keyof typeof cpu.times];
+          }
+          totalIdle += cpu.times.idle;
+        }
+        const cpuPercent =
+          totalTick > 0 ? Math.round(((totalTick - totalIdle) / totalTick) * 100) : 0;
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const memPercent = totalMem > 0 ? Math.round(((totalMem - freeMem) / totalMem) * 100) : 0;
+        sendJson(res, 200, {
+          cpuPercent,
+          memPercent,
+          totalMem,
+          freeMem,
+          usedMem: totalMem - freeMem,
+        });
         return;
       }
 
