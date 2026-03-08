@@ -3,7 +3,7 @@ import { customElement } from "lit/decorators.js";
 import { createSwapy } from "swapy";
 import type { Swapy } from "swapy";
 
-const STORAGE_KEY = "oc-overview-card-order";
+const STORAGE_KEY = "oc-overview-card-order-v2";
 
 /**
  * Overview layout wrapper that enables drag-to-swap card reordering
