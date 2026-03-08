@@ -602,6 +602,17 @@ export function renderApp(state: AppViewState) {
                         // Set the first selected model as the default agent model
                         const firstModel = `${f.provider.trim()}/${newModels[0].id}`;
                         updateConfigFormValue(state, ["agents", "defaults", "model"], firstModel);
+                        // Auto-set image understanding model if a vision-capable model is selected
+                        const visionModel = newModels.find((m: { id: string; input?: string[] }) =>
+                          m.input?.includes("image"),
+                        );
+                        if (visionModel) {
+                          updateConfigFormValue(
+                            state,
+                            ["tools", "media", "models"],
+                            [{ provider: f.provider.trim(), model: visionModel.id }],
+                          );
+                        }
                       } catch (err) {
                         console.error("Wizard: failed to prepare model config", err);
                       }
