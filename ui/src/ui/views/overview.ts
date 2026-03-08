@@ -531,7 +531,7 @@ export function renderOverview(props: OverviewProps) {
                 <div><div class="card-title">Agent</div>
                 <div class="card-sub">${props.agents.length} 个已配置。</div></div>
               </div>
-              <div class="agent-list" style="margin-top: 12px;">
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
                 ${props.agents.map((agent) => {
                   const avatarSrc = resolveAgentAvatarSrc(agent);
                   return html`

@@ -2572,18 +2572,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-radius: var(--radius);
+  background: var(--secondary);
   transition: background var(--duration-fast) ease;
 }
 
 .agent-row-display:hover {
-  background: var(--secondary);
+  background: var(--border);
 }
 
 .agent-avatar-sm {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
@@ -2591,6 +2592,9 @@
 
 .agent-info-sm {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .agent-name {
