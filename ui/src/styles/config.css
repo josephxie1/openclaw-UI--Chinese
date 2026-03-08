@@ -2565,38 +2565,38 @@
 
 /* Shared: inner elements inherit transparent backgrounds */
 [class*="ov-card--"] .stat {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 [class*="ov-card--"] .stat-grid {
-  background: transparent;
+  background: transparent !important;
 }
 
 [class*="ov-card--"] .callout {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 [class*="ov-card--"] .activity-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 [class*="ov-card--"] .activity-card__key {
-  color: inherit;
+  color: inherit !important;
 }
 
 [class*="ov-card--"] .form-grid {
-  background: transparent;
+  background: transparent !important;
 }
 
 [class*="ov-card--"] .note-grid {
-  background: transparent;
+  background: transparent !important;
 }
 
 [class*="ov-card--"] .mono {
-  color: inherit;
+  color: inherit !important;
 }
 
 /* Access — Blue / Indigo */
@@ -2627,24 +2627,24 @@
 }
 
 .ov-card--access .btn {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 .ov-card--access .btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 .ov-card--access input,
 .ov-card--access select {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
 }
 
 .ov-card--access input::placeholder {
-  color: #a5b4fc;
+  color: #a5b4fc !important;
 }
 
 /* Snapshot — Emerald Green */
@@ -2769,16 +2769,53 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+.ov-card--activity .activity-card__header {
+  color: #ede9fe !important;
+}
+
+.ov-card--activity .activity-dot {
+  box-shadow: none !important;
+}
+
 .ov-card--activity .activity-dot.processing {
-  background: #86efac;
+  background: #86efac !important;
 }
 
 .ov-card--activity .activity-dot.waiting {
-  background: #fbbf24;
+  background: #fbbf24 !important;
+}
+
+.ov-card--activity .activity-dot.idle {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.ov-card--activity .activity-dot.error {
+  background: #fca5a5 !important;
 }
 
 .ov-card--activity .activity-card__badge {
-  color: #ede9fe;
+  color: #ede9fe !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.ov-card--activity .activity-card__badge.idle {
+  color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ov-card--activity .activity-card__badge.processing {
+  color: #86efac !important;
+  background: rgba(134, 239, 172, 0.15) !important;
+}
+
+.ov-card--activity .activity-card__badge.waiting {
+  color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.15) !important;
+}
+
+.ov-card--activity .activity-card__badge.error {
+  color: #fca5a5 !important;
+  background: rgba(252, 165, 165, 0.15) !important;
 }
 
 /* Notes — Warm Yellow */
