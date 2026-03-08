@@ -195,231 +195,277 @@ export function renderOverview(props: OverviewProps) {
 
   const currentLocale = i18n.getLocale();
 
+  const dragHandle = html`
+    <button class="swapy-handle" data-swapy-handle title="${t("overview.drag.hint") ?? "拖拽交换位置"}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
+        <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+      </svg>
+    </button>
+  `;
+
   return html`
-    <section class="grid grid-cols-2">
-      <div class="card">
-        <div class="card-title">${t("overview.access.title")}</div>
-        <div class="card-sub">${t("overview.access.subtitle")}</div>
-        <div class="form-grid" style="margin-top: 16px;">
-          <label class="field">
-            <span>${t("overview.access.wsUrl")}</span>
-            <input
-              .value=${props.settings.gatewayUrl}
-              @input=${(e: Event) => {
-                const v = (e.target as HTMLInputElement).value;
-                props.onSettingsChange({ ...props.settings, gatewayUrl: v });
-              }}
-              placeholder="ws://100.x.y.z:18789"
-            />
-          </label>
-          ${
-            isTrustedProxy
-              ? ""
-              : html`
+    <oc-overview-layout>
+      <div class="overview-swapy">
+        <div data-swapy-slot="access">
+          <div data-swapy-item="access">
+            <div class="card">
+              <div class="card-header-row">${dragHandle}
+                <div><div class="card-title">${t("overview.access.title")}</div>
+                <div class="card-sub">${t("overview.access.subtitle")}</div></div>
+              </div>
+              <div class="form-grid" style="margin-top: 16px;">
                 <label class="field">
-                  <span>${t("overview.access.token")}</span>
+                  <span>${t("overview.access.wsUrl")}</span>
                   <input
-                    .value=${props.settings.token}
+                    .value=${props.settings.gatewayUrl}
                     @input=${(e: Event) => {
                       const v = (e.target as HTMLInputElement).value;
-                      props.onSettingsChange({ ...props.settings, token: v });
+                      props.onSettingsChange({ ...props.settings, gatewayUrl: v });
                     }}
-                    placeholder="OPENCLAW_GATEWAY_TOKEN"
+                    placeholder="ws://100.x.y.z:18789"
+                  />
+                </label>
+                ${
+                  isTrustedProxy
+                    ? ""
+                    : html`
+                      <label class="field">
+                        <span>${t("overview.access.token")}</span>
+                        <input
+                          .value=${props.settings.token}
+                          @input=${(e: Event) => {
+                            const v = (e.target as HTMLInputElement).value;
+                            props.onSettingsChange({ ...props.settings, token: v });
+                          }}
+                          placeholder="OPENCLAW_GATEWAY_TOKEN"
+                        />
+                      </label>
+                      <label class="field">
+                        <span>${t("overview.access.password")}</span>
+                        <input
+                          type="password"
+                          .value=${props.password}
+                          @input=${(e: Event) => {
+                            const v = (e.target as HTMLInputElement).value;
+                            props.onPasswordChange(v);
+                          }}
+                          placeholder="system or shared password"
+                        />
+                      </label>
+                    `
+                }
+                <label class="field">
+                  <span>${t("overview.access.sessionKey")}</span>
+                  <input
+                    .value=${props.settings.sessionKey}
+                    @input=${(e: Event) => {
+                      const v = (e.target as HTMLInputElement).value;
+                      props.onSessionKeyChange(v);
+                    }}
                   />
                 </label>
                 <label class="field">
-                  <span>${t("overview.access.password")}</span>
-                  <input
-                    type="password"
-                    .value=${props.password}
-                    @input=${(e: Event) => {
-                      const v = (e.target as HTMLInputElement).value;
-                      props.onPasswordChange(v);
+                  <span>${t("overview.access.language")}</span>
+                  <select
+                    .value=${currentLocale}
+                    @change=${(e: Event) => {
+                      const v = (e.target as HTMLSelectElement).value as Locale;
+                      void i18n.setLocale(v);
+                      props.onSettingsChange({ ...props.settings, locale: v });
                     }}
-                    placeholder="system or shared password"
-                  />
+                  >
+                    ${SUPPORTED_LOCALES.map((loc) => {
+                      const key = loc.replace(/-([a-zA-Z])/g, (_, c) => c.toUpperCase());
+                      return html`<option value=${loc}>${t(`languages.${key}`)}</option>`;
+                    })}
+                  </select>
                 </label>
-              `
-          }
-          <label class="field">
-            <span>${t("overview.access.sessionKey")}</span>
-            <input
-              .value=${props.settings.sessionKey}
-              @input=${(e: Event) => {
-                const v = (e.target as HTMLInputElement).value;
-                props.onSessionKeyChange(v);
-              }}
-            />
-          </label>
-          <label class="field">
-            <span>${t("overview.access.language")}</span>
-            <select
-              .value=${currentLocale}
-              @change=${(e: Event) => {
-                const v = (e.target as HTMLSelectElement).value as Locale;
-                void i18n.setLocale(v);
-                props.onSettingsChange({ ...props.settings, locale: v });
-              }}
-            >
-              ${SUPPORTED_LOCALES.map((loc) => {
-                const key = loc.replace(/-([a-zA-Z])/g, (_, c) => c.toUpperCase());
-                return html`<option value=${loc}>${t(`languages.${key}`)}</option>`;
-              })}
-            </select>
-          </label>
+              </div>
+              <div class="row" style="margin-top: 14px;">
+                <button class="btn" @click=${() => props.onConnect()}>${t("common.connect")}</button>
+                <button class="btn" @click=${() => props.onRefresh()}>${t("common.refresh")}</button>
+                <span class="muted">${
+                  isTrustedProxy
+                    ? t("overview.access.trustedProxy")
+                    : t("overview.access.connectHint")
+                }</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="row" style="margin-top: 14px;">
-          <button class="btn" @click=${() => props.onConnect()}>${t("common.connect")}</button>
-          <button class="btn" @click=${() => props.onRefresh()}>${t("common.refresh")}</button>
-          <span class="muted">${
-            isTrustedProxy ? t("overview.access.trustedProxy") : t("overview.access.connectHint")
-          }</span>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="card-title">${t("overview.snapshot.title")}</div>
-        <div class="card-sub">${t("overview.snapshot.subtitle")}</div>
-        <div class="stat-grid" style="margin-top: 16px;">
-          <div class="stat">
-            <div class="stat-label">${t("overview.snapshot.status")}</div>
-            <div class="stat-value ${props.connected ? "ok" : "warn"}">
-              ${props.connected ? t("common.ok") : t("common.offline")}
-            </div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">${t("overview.snapshot.uptime")}</div>
-            <div class="stat-value">${uptime}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">${t("overview.snapshot.tickInterval")}</div>
-            <div class="stat-value">${tick}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">${t("overview.snapshot.lastChannelsRefresh")}</div>
-            <div class="stat-value">
-              ${props.lastChannelsRefresh ? formatRelativeTimestamp(props.lastChannelsRefresh) : t("common.na")}
-            </div>
-          </div>
-        </div>
-        ${
-          props.lastError
-            ? html`<div class="callout danger" style="margin-top: 14px;">
-              <div>${props.lastError}</div>
-              ${pairingHint ?? ""}
-              ${authHint ?? ""}
-              ${insecureContextHint ?? ""}
-            </div>`
-            : html`
-                <div class="callout" style="margin-top: 14px">
-                  ${t("overview.snapshot.channelsHint")}
+        <div data-swapy-slot="snapshot">
+          <div data-swapy-item="snapshot">
+            <div class="card">
+              <div class="card-header-row">${dragHandle}
+                <div><div class="card-title">${t("overview.snapshot.title")}</div>
+                <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
+              </div>
+              <div class="stat-grid" style="margin-top: 16px;">
+                <div class="stat">
+                  <div class="stat-label">${t("overview.snapshot.status")}</div>
+                  <div class="stat-value ${props.connected ? "ok" : "warn"}">
+                    ${props.connected ? t("common.ok") : t("common.offline")}
+                  </div>
                 </div>
-              `
-        }
-      </div>
-    </section>
-
-    <section class="grid grid-cols-3" style="margin-top: 18px;">
-      <div class="card stat-card">
-        <div class="stat-label">${t("overview.stats.instances")}</div>
-        <div class="stat-value">${props.presenceCount}</div>
-        <div class="muted">${t("overview.stats.instancesHint")}</div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-label">${t("overview.stats.sessions")}</div>
-        <div class="stat-value">${props.sessionsCount ?? t("common.na")}</div>
-        <div class="muted">${t("overview.stats.sessionsHint")}</div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-label">${t("overview.stats.cron")}</div>
-        <div class="stat-value">
-          ${props.cronEnabled == null ? t("common.na") : props.cronEnabled ? t("common.enabled") : t("common.disabled")}
-        </div>
-        <div class="muted">${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
-      </div>
-    </section>
-
-    <section class="card" style="margin-top: 18px;">
-      <div class="card-title">${t("overview.activity.title")}</div>
-      <div class="card-sub">${t("overview.activity.subtitle")}</div>
-      ${
-        props.sessionActivity
-          ? html`
-          <div class="stat-grid" style="margin-top: 14px;">
-            <div class="stat">
-              <div class="stat-label">${t("overview.activity.processing")}</div>
-              <div class="stat-value ${props.sessionActivity.processing > 0 ? "ok" : ""}">
-                ${props.sessionActivity.processing}
+                <div class="stat">
+                  <div class="stat-label">${t("overview.snapshot.uptime")}</div>
+                  <div class="stat-value">${uptime}</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">${t("overview.snapshot.tickInterval")}</div>
+                  <div class="stat-value">${tick}</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">${t("overview.snapshot.lastChannelsRefresh")}</div>
+                  <div class="stat-value">
+                    ${props.lastChannelsRefresh ? formatRelativeTimestamp(props.lastChannelsRefresh) : t("common.na")}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">${t("overview.activity.waiting")}</div>
-              <div class="stat-value ${props.sessionActivity.waiting > 0 ? "warn" : ""}">
-                ${props.sessionActivity.waiting}
-              </div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">${t("overview.activity.idle")}</div>
-              <div class="stat-value">${props.sessionActivity.idle}</div>
+              ${
+                props.lastError
+                  ? html`<div class="callout danger" style="margin-top: 14px;">
+                    <div>${props.lastError}</div>
+                    ${pairingHint ?? ""}
+                    ${authHint ?? ""}
+                    ${insecureContextHint ?? ""}
+                  </div>`
+                  : html`
+                      <div class="callout" style="margin-top: 14px">
+                        ${t("overview.snapshot.channelsHint")}
+                      </div>
+                    `
+              }
             </div>
           </div>
-          ${
-            props.sessionActivity.sessions.length > 0
-              ? html`
-              <div class="activity-cards" style="margin-top: 14px;">
-                ${props.sessionActivity.sessions.map(
-                  (s) => html`
-                    <div class="activity-card ${s.state}">
-                      <div class="activity-card__header">
-                        <span class="activity-dot ${s.state}"></span>
-                        <span class="activity-card__badge ${s.state}">
-                          ${t(`overview.activity.state.${s.state}`)}
-                        </span>
-                      </div>
-                      <div class="activity-card__key mono">${s.key}</div>
-                      <div class="activity-card__meta muted">
-                        ${
-                          s.lastActivityAgo < 5000
-                            ? t("overview.activity.justNow")
-                            : formatRelativeTimestamp(Date.now() - s.lastActivityAgo)
-                        }
-                        ${
-                          s.queueDepth > 0
-                            ? html` · ${t("overview.activity.queued", { count: String(s.queueDepth) })}`
-                            : nothing
-                        }
+        </div>
+
+        <div data-swapy-slot="stats">
+          <div data-swapy-item="stats">
+            <div class="card stat-cards-row">
+              <div class="card-header-row">${dragHandle}
+                <div><div class="card-title">${t("overview.stats.title") ?? "统计概览"}</div></div>
+              </div>
+              <div class="stat-grid" style="margin-top: 12px;">
+                <div class="stat">
+                  <div class="stat-label">${t("overview.stats.instances")}</div>
+                  <div class="stat-value">${props.presenceCount}</div>
+                  <div class="muted">${t("overview.stats.instancesHint")}</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">${t("overview.stats.sessions")}</div>
+                  <div class="stat-value">${props.sessionsCount ?? t("common.na")}</div>
+                  <div class="muted">${t("overview.stats.sessionsHint")}</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">${t("overview.stats.cron")}</div>
+                  <div class="stat-value">
+                    ${props.cronEnabled == null ? t("common.na") : props.cronEnabled ? t("common.enabled") : t("common.disabled")}
+                  </div>
+                  <div class="muted">${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div data-swapy-slot="activity">
+          <div data-swapy-item="activity">
+            <div class="card">
+              <div class="card-header-row">${dragHandle}
+                <div><div class="card-title">${t("overview.activity.title")}</div>
+                <div class="card-sub">${t("overview.activity.subtitle")}</div></div>
+              </div>
+              ${
+                props.sessionActivity
+                  ? html`
+                  <div class="stat-grid" style="margin-top: 14px;">
+                    <div class="stat">
+                      <div class="stat-label">${t("overview.activity.processing")}</div>
+                      <div class="stat-value ${props.sessionActivity.processing > 0 ? "ok" : ""}">
+                        ${props.sessionActivity.processing}
                       </div>
                     </div>
-                  `,
-                )}
-              </div>
-            `
-              : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.empty")}</div>`
-          }
-        `
-          : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.loading")}</div>`
-      }
-    </section>
-
-    <section class="card" style="margin-top: 18px;">
-      <div class="card-title">${t("overview.notes.title")}</div>
-      <div class="card-sub">${t("overview.notes.subtitle")}</div>
-      <div class="note-grid" style="margin-top: 14px;">
-        <div>
-          <div class="note-title">${t("overview.notes.tailscaleTitle")}</div>
-          <div class="muted">
-            ${t("overview.notes.tailscaleText")}
+                    <div class="stat">
+                      <div class="stat-label">${t("overview.activity.waiting")}</div>
+                      <div class="stat-value ${props.sessionActivity.waiting > 0 ? "warn" : ""}">
+                        ${props.sessionActivity.waiting}
+                      </div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-label">${t("overview.activity.idle")}</div>
+                      <div class="stat-value">${props.sessionActivity.idle}</div>
+                    </div>
+                  </div>
+                  ${
+                    props.sessionActivity.sessions.length > 0
+                      ? html`
+                      <div class="activity-cards" style="margin-top: 14px;">
+                        ${props.sessionActivity.sessions.map(
+                          (s) => html`
+                            <div class="activity-card ${s.state}">
+                              <div class="activity-card__header">
+                                <span class="activity-dot ${s.state}"></span>
+                                <span class="activity-card__badge ${s.state}">
+                                  ${t(`overview.activity.state.${s.state}`)}
+                                </span>
+                              </div>
+                              <div class="activity-card__key mono">${s.key}</div>
+                              <div class="activity-card__meta muted">
+                                ${
+                                  s.lastActivityAgo < 5000
+                                    ? t("overview.activity.justNow")
+                                    : formatRelativeTimestamp(Date.now() - s.lastActivityAgo)
+                                }
+                                ${
+                                  s.queueDepth > 0
+                                    ? html` · ${t("overview.activity.queued", { count: String(s.queueDepth) })}`
+                                    : nothing
+                                }
+                              </div>
+                            </div>
+                          `,
+                        )}
+                      </div>
+                    `
+                      : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.empty")}</div>`
+                  }
+                `
+                  : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.loading")}</div>`
+              }
+            </div>
           </div>
         </div>
-        <div>
-          <div class="note-title">${t("overview.notes.sessionTitle")}</div>
-          <div class="muted">${t("overview.notes.sessionText")}</div>
-        </div>
-        <div>
-          <div class="note-title">${t("overview.notes.cronTitle")}</div>
-          <div class="muted">${t("overview.notes.cronText")}</div>
+
+        <div data-swapy-slot="notes">
+          <div data-swapy-item="notes">
+            <div class="card">
+              <div class="card-header-row">${dragHandle}
+                <div><div class="card-title">${t("overview.notes.title")}</div>
+                <div class="card-sub">${t("overview.notes.subtitle")}</div></div>
+              </div>
+              <div class="note-grid" style="margin-top: 14px;">
+                <div>
+                  <div class="note-title">${t("overview.notes.tailscaleTitle")}</div>
+                  <div class="muted">
+                    ${t("overview.notes.tailscaleText")}
+                  </div>
+                </div>
+                <div>
+                  <div class="note-title">${t("overview.notes.sessionTitle")}</div>
+                  <div class="muted">${t("overview.notes.sessionText")}</div>
+                </div>
+                <div>
+                  <div class="note-title">${t("overview.notes.cronTitle")}</div>
+                  <div class="muted">${t("overview.notes.cronText")}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </oc-overview-layout>
   `;
 }

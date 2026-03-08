@@ -2465,3 +2465,70 @@
 [data-tooltip]:hover::before {
   opacity: 1;
 }
+
+/* ===========================================
+   Overview Swapy (drag-to-swap cards)
+   =========================================== */
+
+.overview-swapy {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.overview-swapy>[data-swapy-slot] {
+  min-height: 0;
+}
+
+/* Full-width cards (stats, activity, notes) */
+.overview-swapy>[data-swapy-slot="stats"],
+.overview-swapy>[data-swapy-slot="activity"],
+.overview-swapy>[data-swapy-slot="notes"] {
+  grid-column: 1 / -1;
+}
+
+/* Card header with drag handle */
+.card-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.swapy-handle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: -2px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.swapy-handle:hover {
+  opacity: 1;
+  background: var(--secondary);
+}
+
+.swapy-handle:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+
+/* Swapy drag feedback */
+[data-swapy-item] {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+[data-swapy-highlighted] {
+  outline: 2px dashed var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-xl);
+}

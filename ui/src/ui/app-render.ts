@@ -87,6 +87,7 @@ import "./views/models-default-config.ts";
 import { renderModelsQuickAdd, PROVIDER_PRESETS } from "./views/models-quick-add.ts";
 import { renderNodes, renderChannelPairings } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
+import "./views/overview-swapy.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSetupWizard } from "./views/setup-wizard.ts";
 import { renderSkills } from "./views/skills.ts";
