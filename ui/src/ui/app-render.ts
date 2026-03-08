@@ -803,6 +803,7 @@ export function renderApp(state: AppViewState) {
                 presenceCount,
                 sessionsCount,
                 cronEnabled: state.cronStatus?.enabled ?? null,
+                cronJobsCount: state.cronStatus?.jobs ?? null,
                 cronNext,
                 lastChannelsRefresh: state.channelsLastSuccess,
                 onSettingsChange: (next) => state.applySettings(next),

@@ -24,6 +24,7 @@ export type OverviewProps = {
   presenceCount: number;
   sessionsCount: number | null;
   cronEnabled: boolean | null;
+  cronJobsCount: number | null;
   cronNext: number | null;
   lastChannelsRefresh: number | null;
   onSettingsChange: (next: UiSettings) => void;
@@ -227,7 +228,7 @@ export function renderOverview(props: OverviewProps) {
               </feMerge>
             </filter>
           </defs>
-          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
+          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="currentColor" stroke-width="7" opacity="0.12"/>
           <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${strokeColor}" stroke-width="7"
             stroke-linecap="round"
             stroke-dasharray="${circumference}"
@@ -236,8 +237,7 @@ export function renderOverview(props: OverviewProps) {
             filter="url(#glow-${label})"
             style="transition: stroke-dashoffset 0.6s ease;"/>
           <text x="50" y="52" text-anchor="middle" dominant-baseline="middle"
-            fill="#fff" font-size="15" font-weight="800"
-            style="text-shadow: 0 0 8px rgba(255,255,255,0.3);">${valueText}</text>
+            fill="currentColor" font-size="15" font-weight="800">${valueText}</text>
         </svg>
       </div>
     `;
@@ -437,9 +437,9 @@ export function renderOverview(props: OverviewProps) {
                 <div class="stat">
                   <div class="stat-label">${t("overview.stats.cron")}</div>
                   <div class="stat-value">
-                    ${props.cronEnabled == null ? t("common.na") : props.cronEnabled ? t("common.enabled") : t("common.disabled")}
+                    ${props.cronJobsCount != null ? props.cronJobsCount : t("common.na")}
                   </div>
-                  <div class="muted">${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
+                  <div class="muted">${props.cronEnabled ? t("common.enabled") : t("common.disabled")} · ${t("overview.stats.cronNext", { time: formatNextRun(props.cronNext) })}</div>
                 </div>
               </div>
             </div>
@@ -514,32 +514,7 @@ export function renderOverview(props: OverviewProps) {
           </div>
         </div>
 
-        <div data-swapy-slot="notes">
-          <div data-swapy-item="notes">
-            <div class="card ov-card--notes">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">${t("overview.notes.title")}</div>
-                <div class="card-sub">${t("overview.notes.subtitle")}</div></div>
-              </div>
-              <div class="note-grid" style="margin-top: 14px;">
-                <div>
-                  <div class="note-title">${t("overview.notes.tailscaleTitle")}</div>
-                  <div class="muted">
-                    ${t("overview.notes.tailscaleText")}
-                  </div>
-                </div>
-                <div>
-                  <div class="note-title">${t("overview.notes.sessionTitle")}</div>
-                  <div class="muted">${t("overview.notes.sessionText")}</div>
-                </div>
-                <div>
-                  <div class="note-title">${t("overview.notes.cronTitle")}</div>
-                  <div class="muted">${t("overview.notes.cronText")}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </oc-overview-layout>
   `;
