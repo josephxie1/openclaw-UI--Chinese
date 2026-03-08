@@ -208,14 +208,18 @@ body {
 }
 
 /* Smooth theme switch for key UI surfaces */
-.sidebar,
+.nav,
+.nav-item,
+.nav-label,
+.nav-group,
+.shell,
 .content,
+.content-header,
+.topbar,
 .card,
 .stat,
 .callout,
 .activity-card,
-.nav-group,
-.topbar,
 input,
 select,
 textarea,
