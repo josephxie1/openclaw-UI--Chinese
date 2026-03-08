@@ -2568,6 +2568,13 @@
    Cards inherit from base theme variables.
    =========================================== */
 
+/* Access card — 2-column form grid */
+.access-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 /* Agent list in overview */
 .agent-row-display {
   display: flex;

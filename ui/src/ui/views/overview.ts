@@ -341,7 +341,7 @@ export function renderOverview(props: OverviewProps) {
                 <div><div class="card-title">${t("overview.access.title")}</div>
                 <div class="card-sub">${t("overview.access.subtitle")}</div></div>
               </div>
-              <div class="fields" style="margin-top: 14px;">
+              <div class="access-grid" style="margin-top: 14px;">
                 <label class="field">
                   <span>WebSocket URL</span>
                   <input
@@ -387,8 +387,9 @@ export function renderOverview(props: OverviewProps) {
                     }}
                   />
                 </label>
-                <label class="field">
-                  <span>${t("overview.access.language")}</span>
+              </div>
+              <div class="row" style="margin-top: 14px; gap: 10px; align-items: center;">
+                <label class="field" style="margin: 0; flex: 0 0 auto;">
                   <select
                     .value=${currentLocale}
                     @change=${(e: Event) => {
@@ -403,8 +404,6 @@ export function renderOverview(props: OverviewProps) {
                     })}
                   </select>
                 </label>
-              </div>
-              <div class="row" style="margin-top: 14px;">
                 <button class="btn" @click=${() => props.onConnect()}>${t("common.connect")}</button>
                 <button class="btn" @click=${() => props.onRefresh()}>${t("common.refresh")}</button>
                 <span class="muted">${
