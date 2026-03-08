@@ -36,7 +36,8 @@ case "$choice" in
     cp -r dist/control-ui desktop/gateway/dist/control-ui
     mkdir -p desktop/gateway/docs/reference
     rsync -a docs/reference/templates/ desktop/gateway/docs/reference/templates/
-    echo "    ✅ 后端 + UI + 模板 已同步"
+    rsync -a --delete skills/ desktop/gateway/skills/
+    echo "    ✅ 后端 + UI + 模板 + Skills 已同步"
 
     echo "==> 4/4 启动 Desktop Dev..."
     cd desktop
