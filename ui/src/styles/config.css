@@ -2647,10 +2647,8 @@
   color: #a5b4fc !important;
 }
 
-/* Snapshot — Emerald Green */
+/* Snapshot — default card style (no colored background) */
 .ov-card--snapshot {
-  background: linear-gradient(135deg, #059669, #10b981) !important;
-  border-color: #10b981 !important;
   color: #d1fae5;
 }
 
