@@ -2529,13 +2529,6 @@
 }
 
 /* Swapy drag feedback */
-[data-swapy-item] {
-  cursor: grab;
-}
-
-[data-swapy-item]:active {
-  cursor: grabbing;
-}
 
 /* Being dragged — elevated, slightly scaled */
 [data-swapy-dragging] {
