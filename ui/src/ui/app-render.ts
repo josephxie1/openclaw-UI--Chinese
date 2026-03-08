@@ -2112,7 +2112,18 @@ export function renderApp(state: AppViewState) {
                       currentDefaultModel,
                       currentImageModel,
                       saving: state.configSaving,
+                      defaultModelDropdownOpen: state.defaultModelDropdownOpen ?? false,
+                      onDefaultModelDropdownToggle: () => {
+                        state.defaultModelDropdownOpen = !state.defaultModelDropdownOpen;
+                        state.imageModelDropdownOpen = false;
+                      },
+                      imageModelDropdownOpen: state.imageModelDropdownOpen ?? false,
+                      onImageModelDropdownToggle: () => {
+                        state.imageModelDropdownOpen = !state.imageModelDropdownOpen;
+                        state.defaultModelDropdownOpen = false;
+                      },
                       onDefaultModelChange: (model: string) => {
+                        state.defaultModelDropdownOpen = false;
                         updateConfigFormValue(
                           state,
                           ["agents", "defaults", "model"],
@@ -2121,6 +2132,7 @@ export function renderApp(state: AppViewState) {
                         void applyConfig(state);
                       },
                       onImageModelChange: (model: string) => {
+                        state.imageModelDropdownOpen = false;
                         if (!model) {
                           updateConfigFormValue(state, ["tools", "media", "models"], []);
                         } else {
