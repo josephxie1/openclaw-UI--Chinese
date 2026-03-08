@@ -7,7 +7,8 @@ import type { GatewayHelloOk } from "../gateway.ts";
 import { avatarFromName } from "../helpers/multiavatar.ts";
 import { formatNextRun } from "../presenter.ts";
 import type { UiSettings } from "../storage.ts";
-import type { SessionActivityResult } from "../types.ts";
+import type { GatewayAgentRow, SessionActivityResult } from "../types.ts";
+import { resolveAgentAvatarSrc } from "./agents-utils.ts";
 import { shouldShowPairingHint } from "./overview-hints.ts";
 
 // Module-level cache for async system stats (Electron IPC)
@@ -34,6 +35,7 @@ export type OverviewProps = {
   onConnect: () => void;
   onRefresh: () => void;
   sessionActivity: SessionActivityResult | null;
+  agents: GatewayAgentRow[];
 };
 
 export function renderOverview(props: OverviewProps) {
@@ -482,10 +484,14 @@ export function renderOverview(props: OverviewProps) {
                         ${props.sessionActivity.sessions.map((s) => {
                           // Extract agent ID: "agent:dev:main" → "dev", "agent:test:web:123" → "test"
                           const agentId = s.key.split(":")[1] ?? s.key;
+                          const agent = props.agents.find((a) => a.id === agentId);
+                          const avatarSrc = agent
+                            ? resolveAgentAvatarSrc(agent)
+                            : avatarFromName(agentId);
                           return html`
                             <div class="activity-card ${s.state}">
                               <div class="activity-card__header">
-                                <img class="activity-card__avatar" src="${avatarFromName(agentId)}" alt="" />
+                                ${avatarSrc ? html`<img class="activity-card__avatar" src="${avatarSrc}" alt="" />` : nothing}
                                 <span class="activity-dot ${s.state}"></span>
                                 <span class="activity-card__badge ${s.state}">
                                   ${t(`overview.activity.state.${s.state}`)}

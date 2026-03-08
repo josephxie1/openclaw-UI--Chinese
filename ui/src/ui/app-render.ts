@@ -822,6 +822,7 @@ export function renderApp(state: AppViewState) {
                 onConnect: () => state.connect(),
                 onRefresh: () => state.loadOverview(),
                 sessionActivity: state.sessionActivity,
+                agents: state.agentsList?.agents ?? [],
               })
             : nothing
         }
