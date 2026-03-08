@@ -2480,6 +2480,12 @@
   min-height: 0;
 }
 
+.overview-swapy>[data-swapy-slot],
+.overview-swapy>[data-swapy-slot]>[data-swapy-item],
+.overview-swapy>[data-swapy-slot]>[data-swapy-item]>.card {
+  height: 100%;
+}
+
 /* Full-width cards (stats, activity, notes) */
 .overview-swapy>[data-swapy-slot="stats"],
 .overview-swapy>[data-swapy-slot="activity"],
