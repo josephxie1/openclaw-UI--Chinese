@@ -2047,10 +2047,9 @@ export function renderApp(state: AppViewState) {
                         state.modelsQuickAddBusy = false;
                       }
                     },
-                  })}
-                  ${(() => {
-                    // Build available models from config
-                    const providersObj = (
+                  })}\n                  ${(() => {
+                    // Build available models + vision models from config (computed once)
+                    const cfgModels = (
                       (state.configForm as Record<string, unknown>)?.models as Record<
                         string,
                         unknown
@@ -2058,59 +2057,47 @@ export function renderApp(state: AppViewState) {
                     )?.providers as Record<string, unknown> | undefined;
                     const allModels: Array<{ value: string; label: string }> = [];
                     const visionModels: Array<{ value: string; label: string }> = [];
-                    if (providersObj) {
-                      for (const [provId, provData] of Object.entries(providersObj)) {
-                        const prov = provData as Record<string, unknown>;
-                        const models = prov.models as
-                          | Array<{ id: string; name?: string; input?: string[] }>
-                          | undefined;
-                        if (models) {
-                          for (const m of models) {
-                            const entry = {
-                              value: `${provId}/${m.id}`,
-                              label: `${provId}/${m.name || m.id}`,
-                            };
-                            allModels.push(entry);
-                            if (m.input?.includes("image")) {
-                              visionModels.push(entry);
-                            }
+                    if (cfgModels) {
+                      for (const [pid, pd] of Object.entries(cfgModels)) {
+                        const ml = ((pd as Record<string, unknown>).models ?? []) as Array<{
+                          id: string;
+                          name?: string;
+                          input?: string[];
+                        }>;
+                        for (const m of ml) {
+                          const e = { value: `${pid}/${m.id}`, label: `${pid}/${m.name || m.id}` };
+                          allModels.push(e);
+                          if (m.input?.includes("image")) {
+                            visionModels.push(e);
                           }
                         }
                       }
                     }
-                    // Read current default model
-                    const agentsConfig = (state.configForm as Record<string, unknown>)?.agents as
+                    const agC = (state.configForm as Record<string, unknown>)?.agents as
                       | Record<string, unknown>
                       | undefined;
-                    const defaultsConfig = (agentsConfig?.defaults ?? {}) as Record<
-                      string,
-                      unknown
-                    >;
-                    const currentDefaultModel =
-                      typeof defaultsConfig.model === "string"
-                        ? defaultsConfig.model
-                        : typeof defaultsConfig.model === "object" && defaultsConfig.model
-                          ? (((defaultsConfig.model as Record<string, unknown>)
-                              .primary as string) ?? "")
+                    const dC = (agC?.defaults ?? {}) as Record<string, unknown>;
+                    const curDef =
+                      typeof dC.model === "string"
+                        ? dC.model
+                        : typeof dC.model === "object" && dC.model
+                          ? (((dC.model as Record<string, unknown>).primary as string) ?? "")
                           : "";
-                    // Read current image understanding model
-                    const toolsConfig = (state.configForm as Record<string, unknown>)?.tools as
+                    const tC = (state.configForm as Record<string, unknown>)?.tools as
                       | Record<string, unknown>
                       | undefined;
-                    const mediaConfig = (toolsConfig?.media ?? {}) as Record<string, unknown>;
-                    const mediaModels = (mediaConfig.models ?? []) as Array<{
+                    const mM = (((tC?.media ?? {}) as Record<string, unknown>).models ??
+                      []) as Array<{
                       provider?: string;
                       model?: string;
                     }>;
-                    const firstMediaModel = mediaModels[0];
-                    const currentImageModel = firstMediaModel
-                      ? `${firstMediaModel.provider ?? ""}/${firstMediaModel.model ?? ""}`
-                      : "";
+                    const fm = mM[0];
+                    const curImg = fm ? `${fm.provider ?? ""}/${fm.model ?? ""}` : "";
                     return renderDefaultModelConfig({
                       availableModels: allModels,
                       visionModels,
-                      currentDefaultModel,
-                      currentImageModel,
+                      currentDefaultModel: curDef,
+                      currentImageModel: curImg,
                       saving: state.configSaving,
                       defaultModelDropdownOpen: state.defaultModelDropdownOpen ?? false,
                       onDefaultModelDropdownToggle: () => {
