@@ -195,14 +195,29 @@ export function renderOverview(props: OverviewProps) {
 
   const currentLocale = i18n.getLocale();
 
-  const dragHandle = html`
-    <button class="swapy-handle" data-swapy-handle title="${t("overview.drag.hint") ?? "拖拽交换位置"}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
-        <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
-      </svg>
-    </button>
+  const handleSvg = html`
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </svg>
   `;
+  /** Cards with inputs — drag only via handle */
+  const dragHandleOnly = html`<button class="swapy-handle" data-swapy-handle title="${t("overview.drag.hint") ?? "拖拽交换位置"}">${handleSvg}</button>`;
+  /** Display-only cards — entire card is draggable, icon is decorative */
+  const dragHandleFree = html`<button class="swapy-handle" title="${t("overview.drag.hint") ?? "拖拽交换位置"}">${handleSvg}</button>`;
 
   return html`
     <oc-overview-layout>
@@ -210,7 +225,7 @@ export function renderOverview(props: OverviewProps) {
         <div data-swapy-slot="access">
           <div data-swapy-item="access">
             <div class="card">
-              <div class="card-header-row">${dragHandle}
+              <div class="card-header-row">${dragHandleOnly}
                 <div><div class="card-title">${t("overview.access.title")}</div>
                 <div class="card-sub">${t("overview.access.subtitle")}</div></div>
               </div>
@@ -298,7 +313,7 @@ export function renderOverview(props: OverviewProps) {
         <div data-swapy-slot="snapshot">
           <div data-swapy-item="snapshot">
             <div class="card">
-              <div class="card-header-row">${dragHandle}
+              <div class="card-header-row">${dragHandleFree}
                 <div><div class="card-title">${t("overview.snapshot.title")}</div>
                 <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
               </div>
@@ -345,7 +360,7 @@ export function renderOverview(props: OverviewProps) {
         <div data-swapy-slot="stats">
           <div data-swapy-item="stats">
             <div class="card stat-cards-row">
-              <div class="card-header-row">${dragHandle}
+              <div class="card-header-row">${dragHandleFree}
                 <div><div class="card-title">${"统计概览"}</div></div>
               </div>
               <div class="stat-grid" style="margin-top: 12px;">
@@ -374,7 +389,7 @@ export function renderOverview(props: OverviewProps) {
         <div data-swapy-slot="activity">
           <div data-swapy-item="activity">
             <div class="card">
-              <div class="card-header-row">${dragHandle}
+              <div class="card-header-row">${dragHandleFree}
                 <div><div class="card-title">${t("overview.activity.title")}</div>
                 <div class="card-sub">${t("overview.activity.subtitle")}</div></div>
               </div>
@@ -442,7 +457,7 @@ export function renderOverview(props: OverviewProps) {
         <div data-swapy-slot="notes">
           <div data-swapy-item="notes">
             <div class="card">
-              <div class="card-header-row">${dragHandle}
+              <div class="card-header-row">${dragHandleFree}
                 <div><div class="card-title">${t("overview.notes.title")}</div>
                 <div class="card-sub">${t("overview.notes.subtitle")}</div></div>
               </div>

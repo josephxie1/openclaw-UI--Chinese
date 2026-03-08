@@ -2530,6 +2530,15 @@
 
 /* Swapy drag feedback */
 
+/* Free-drag items (no handle) show grab cursor */
+[data-swapy-item]:not(:has([data-swapy-handle])) {
+  cursor: grab;
+}
+
+[data-swapy-item]:not(:has([data-swapy-handle])):active {
+  cursor: grabbing;
+}
+
 /* Being dragged — elevated, slightly scaled */
 [data-swapy-dragging] {
   z-index: 100;
