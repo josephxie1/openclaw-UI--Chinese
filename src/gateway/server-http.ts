@@ -533,7 +533,14 @@ export function createGatewayHttpServer(opts: {
         return;
       }
       // System stats endpoint for overview donut charts
-      if (requestPath === "/api/system-stats" && (req.method ?? "GET").toUpperCase() === "GET") {
+      if (requestPath === "/api/system-stats") {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cache-Control", "no-store");
+        if ((req.method ?? "GET").toUpperCase() === "OPTIONS") {
+          res.statusCode = 204;
+          res.end();
+          return;
+        }
         const cpus = os.cpus();
         let totalIdle = 0;
         let totalTick = 0;
