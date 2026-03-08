@@ -53,11 +53,27 @@ async function initOrUpdateUsageChart(
   if (_usageChartInstance) {
     _usageChartInstance.data.labels = labels;
     _usageChartInstance.data.datasets[0].data = data;
-    // Update tick display for mode changes
-    const xAxis = _usageChartInstance.options.scales?.x;
+    // Refresh theme colors
+    const xAxis = _usageChartInstance.options.scales?.x as Record<string, unknown> | undefined;
+    const yAxis = _usageChartInstance.options.scales?.y as Record<string, unknown> | undefined;
     if (xAxis && "ticks" in xAxis) {
+      (xAxis.ticks as Record<string, unknown>).color = textColor;
       (xAxis as Record<string, unknown>).maxTicksLimit = mode === "1d" ? 8 : undefined;
     }
+    if (yAxis && "ticks" in yAxis) {
+      (yAxis.ticks as Record<string, unknown>).color = textColor;
+      (yAxis as Record<string, unknown>).grid = { color: gridColor };
+    }
+    const tt = _usageChartInstance.options.plugins?.tooltip;
+    if (tt) {
+      Object.assign(tt, {
+        backgroundColor: isDark ? "rgba(20,20,40,0.95)" : "rgba(255,255,255,0.95)",
+        titleColor: isDark ? "#fff" : "#333",
+        bodyColor: isDark ? "rgba(255,255,255,0.8)" : "#555",
+        borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+      });
+    }
+    (_usageChartInstance.data.datasets[0] as unknown as Record<string, unknown>).pointBorderColor = isDark ? "#1a1a2e" : "#fff";
     _usageChartInstance.update("none");
     return;
   }
@@ -171,6 +187,20 @@ async function initOrUpdateCtxChart(
     _ctxChartInstance.data.labels = labels;
     _ctxChartInstance.data.datasets[0].data = data;
     _ctxChartInstance.data.datasets[0].backgroundColor = colors;
+    // Refresh theme colors
+    const xAxis = _ctxChartInstance.options.scales?.x as Record<string, unknown> | undefined;
+    const yAxis = _ctxChartInstance.options.scales?.y as Record<string, unknown> | undefined;
+    if (xAxis && "ticks" in xAxis) { (xAxis.ticks as Record<string, unknown>).color = textColor; xAxis.grid = { color: gridColor }; }
+    if (yAxis && "ticks" in yAxis) { (yAxis.ticks as Record<string, unknown>).color = textColor; }
+    const tt = _ctxChartInstance.options.plugins?.tooltip;
+    if (tt) {
+      Object.assign(tt, {
+        backgroundColor: isDark ? "rgba(20,20,40,0.95)" : "rgba(255,255,255,0.95)",
+        titleColor: isDark ? "#fff" : "#333",
+        bodyColor: isDark ? "rgba(255,255,255,0.8)" : "#555",
+        borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+      });
+    }
     _ctxChartInstance.update("none");
     return;
   }
