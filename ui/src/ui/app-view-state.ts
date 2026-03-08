@@ -201,6 +201,7 @@ export type AppViewState = {
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;
   sessionActivity: SessionActivityResult | null;
+  overviewCostDaily: CostUsageSummary | null;
   sessionsFilterActive: string;
   sessionsFilterLimit: string;
   sessionsIncludeGlobal: boolean;

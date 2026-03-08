@@ -6,7 +6,7 @@ import { formatRelativeTimestamp, formatDurationHuman } from "../format.ts";
 import type { GatewayHelloOk } from "../gateway.ts";
 import { avatarFromName } from "../helpers/multiavatar.ts";
 import type { UiSettings } from "../storage.ts";
-import type { GatewayAgentRow, SessionActivityResult } from "../types.ts";
+import type { GatewayAgentRow, SessionActivityResult, CostUsageSummary } from "../types.ts";
 import { resolveAgentAvatarSrc } from "./agents-utils.ts";
 import { shouldShowPairingHint } from "./overview-hints.ts";
 
@@ -35,6 +35,7 @@ export type OverviewProps = {
   onRefresh: () => void;
   sessionActivity: SessionActivityResult | null;
   agents: GatewayAgentRow[];
+  costDaily: CostUsageSummary | null;
 };
 
 export function renderOverview(props: OverviewProps) {
@@ -509,7 +510,7 @@ export function renderOverview(props: OverviewProps) {
                                     <div class="token-bar">
                                       <div class="token-bar__fill" style="width: ${Math.min((s.totalTokens / s.contextTokens) * 100, 100)}%"></div>
                                     </div>
-                                    <div class="token-bar__label muted">${s.totalTokens.toLocaleString()} / ${s.contextTokens.toLocaleString()}</div>
+                                    <div class="token-bar__label muted"><span>tokens</span><span>${s.totalTokens.toLocaleString()} / ${s.contextTokens.toLocaleString()} (${Math.round((s.totalTokens / s.contextTokens) * 100)}%)</span></div>
                                   </div>`
                                   : nothing
                               }
@@ -526,13 +527,94 @@ export function renderOverview(props: OverviewProps) {
             </div>
           </div>
         </div>`,
+    usage: (() => {
+      const daily = props.costDaily?.daily ?? [];
+      if (daily.length === 0) {
+        return html`
+          <div data-swapy-slot="usage"><div data-swapy-item="usage"></div></div>
+        `;
+      }
+
+      const W = 520,
+        H = 160,
+        PL = 50,
+        PR = 10,
+        PT = 10,
+        PB = 30;
+      const cw = W - PL - PR,
+        ch = H - PT - PB;
+      const maxTokens = Math.max(...daily.map((d) => d.totalTokens ?? 0), 1);
+
+      const points = daily.map((d, i) => {
+        const x = PL + (daily.length > 1 ? (i / (daily.length - 1)) * cw : cw / 2);
+        const y = PT + ch - ((d.totalTokens ?? 0) / maxTokens) * ch;
+        return { x, y, tokens: d.totalTokens ?? 0, date: d.date };
+      });
+
+      const polyline = points.map((p) => `${p.x},${p.y}`).join(" ");
+      const area = `${PL},${PT + ch} ${polyline} ${points[points.length - 1].x},${PT + ch}`;
+
+      const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+        const y = PT + ch - f * ch;
+        const val = Math.round(f * maxTokens);
+        const label = val >= 1000 ? `${(val / 1000).toFixed(val >= 10000 ? 0 : 1)}K` : String(val);
+        return { y, label };
+      });
+
+      const dayLabels = points.map((p) => {
+        const d = new Date(p.date + "T00:00:00");
+        return { x: p.x, label: `${d.getMonth() + 1}/${d.getDate()}` };
+      });
+
+      return html`
+        <div data-swapy-slot="usage">
+          <div data-swapy-item="usage">
+            <div class="card ov-card--usage">
+              <div class="card-header-row">${dragHandleFree}
+                <div><div class="card-title">令牌用量趋势</div>
+                <div class="card-sub">最近 ${daily.length} 天</div></div>
+              </div>
+              <div class="usage-line-chart" style="margin-top: 12px;">
+                <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" width="100%" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="ov-usage-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.4" />
+                      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  ${gridLines.map(
+                    (g) => html`
+                    <line x1="${PL}" y1="${g.y}" x2="${W - PR}" y2="${g.y}" stroke="var(--surface-alt, rgba(255,255,255,0.08))" stroke-width="0.5" />
+                    <text x="${PL - 6}" y="${g.y + 3}" text-anchor="end" fill="var(--text-muted, #888)" font-size="10">${g.label}</text>
+                  `,
+                  )}
+                  <polygon points="${area}" fill="url(#ov-usage-grad)" />
+                  <polyline points="${polyline}" fill="none" stroke="#818cf8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+                  ${points.map(
+                    (p) => html`
+                    <circle cx="${p.x}" cy="${p.y}" r="3" fill="#818cf8" stroke="var(--surface, #1a1a2e)" stroke-width="1.5">
+                      <title>${p.date}: ${p.tokens.toLocaleString()} tokens</title>
+                    </circle>
+                  `,
+                  )}
+                  ${dayLabels.map(
+                    (d) => html`
+                    <text x="${d.x}" y="${H - 6}" text-anchor="middle" fill="var(--text-muted, #888)" font-size="10">${d.label}</text>
+                  `,
+                  )}
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    })(),
   };
 
   // Render cards in saved order (from localStorage), falling back to default
-  const defaultOrder = ["snapshot", "access", "agents", "activity"];
+  const defaultOrder = ["snapshot", "usage", "access", "agents", "activity"];
   let cardOrder = defaultOrder;
   try {
-    const saved = localStorage.getItem("oc-overview-card-order-v2");
+    const saved = localStorage.getItem("oc-overview-card-order-v3");
     if (saved) {
       const parsed = JSON.parse(saved) as Array<{ slot: string; item: string }>;
       const order = parsed.map((e) => e.item).filter((s) => s in cards);

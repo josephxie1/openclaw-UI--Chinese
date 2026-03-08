@@ -427,14 +427,36 @@ export function syncUrlWithSessionKey(host: SettingsHost, sessionKey: string, re
 }
 
 export async function loadOverview(host: SettingsHost) {
+  const app = host as unknown as OpenClawApp;
   await Promise.all([
-    loadChannels(host as unknown as OpenClawApp, false),
-    loadPresence(host as unknown as OpenClawApp),
-    loadSessions(host as unknown as OpenClawApp),
-    loadSessionActivity(host as unknown as OpenClawApp),
-    loadCronStatus(host as unknown as OpenClawApp),
-    loadDebug(host as unknown as OpenClawApp),
+    loadChannels(app, false),
+    loadPresence(app),
+    loadSessions(app),
+    loadSessionActivity(app),
+    loadCronStatus(app),
+    loadDebug(app),
+    loadOverviewUsageCost(app),
   ]);
+}
+
+async function loadOverviewUsageCost(app: OpenClawApp) {
+  if (!(app as unknown as { client?: { request: Function } }).client) {
+    return;
+  }
+  try {
+    const now = new Date();
+    const end = now.toISOString().slice(0, 10);
+    const start = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10);
+    const res = await (app as unknown as { client: { request: Function } }).client.request(
+      "usage.cost",
+      { startDate: start, endDate: end },
+    );
+    if (res) {
+      (app as unknown as { overviewCostDaily: unknown }).overviewCostDaily = res;
+    }
+  } catch {
+    // Usage cost is optional for overview
+  }
 }
 
 export async function loadChannelsTab(host: SettingsHost) {

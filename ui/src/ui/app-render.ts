@@ -823,6 +823,7 @@ export function renderApp(state: AppViewState) {
                 onRefresh: () => state.loadOverview(),
                 sessionActivity: state.sessionActivity,
                 agents: state.agentsList?.agents ?? [],
+                costDaily: state.overviewCostDaily,
               })
             : nothing
         }

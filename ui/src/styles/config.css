@@ -2590,6 +2590,24 @@
 .token-bar__label {
   font-size: 11px;
   margin-top: 3px;
+  display: flex;
+  justify-content: space-between;
+}
+
+:root[data-theme="dark"] .token-bar__label span:last-child {
+  background: linear-gradient(90deg, #818cf8, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Usage line chart card — full width */
+.ov-card--usage {
+  grid-column: 1 / -1;
+}
+
+.usage-line-chart svg {
+  display: block;
 }
 
 /* Access card — 2-column form grid */
