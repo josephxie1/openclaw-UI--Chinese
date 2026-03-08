@@ -31,6 +31,22 @@ function isAvatarUrl(value: string): boolean {
   return isAvatarHttpUrl(value) || isAvatarImageDataUrl(value);
 }
 
+/** Like coerceIdentityValue but preserves data URIs and HTTP URLs without truncation. */
+function coerceAvatarCandidate(value: string | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  // Data URIs and HTTP URLs can be very long — don't truncate
+  if (isAvatarUrl(trimmed)) {
+    return trimmed;
+  }
+  return coerceIdentityValue(trimmed, MAX_ASSISTANT_AVATAR);
+}
+
 function normalizeAvatarValue(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
@@ -96,11 +112,11 @@ export function resolveAssistantIdentity(params: {
     DEFAULT_ASSISTANT_IDENTITY.name;
 
   const avatarCandidates = [
-    coerceIdentityValue(configAssistant?.avatar, MAX_ASSISTANT_AVATAR),
-    coerceIdentityValue(agentIdentity?.avatar, MAX_ASSISTANT_AVATAR),
-    coerceIdentityValue(agentIdentity?.emoji, MAX_ASSISTANT_AVATAR),
-    coerceIdentityValue(fileIdentity?.avatar, MAX_ASSISTANT_AVATAR),
-    coerceIdentityValue(fileIdentity?.emoji, MAX_ASSISTANT_AVATAR),
+    coerceAvatarCandidate(configAssistant?.avatar),
+    coerceAvatarCandidate(agentIdentity?.avatar),
+    coerceAvatarCandidate(agentIdentity?.emoji),
+    coerceAvatarCandidate(fileIdentity?.avatar),
+    coerceAvatarCandidate(fileIdentity?.emoji),
   ];
   const avatar =
     avatarCandidates.map((candidate) => normalizeAvatarValue(candidate)).find(Boolean) ??
