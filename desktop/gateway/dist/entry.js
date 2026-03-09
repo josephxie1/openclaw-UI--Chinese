@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { n as isNodeRuntime, t as isBunRuntime } from "./runtime-binary-BAg6rdQs.js";
-import { y as resolveRequiredHomeDir } from "./paths-B9jPXz5d.js";
-import { t as createSubsystemLogger } from "./subsystem-D2eqGDrA.js";
-import "./utils-XeuG5BG2.js";
-import { t as parseBooleanValue } from "./boolean-DtWR5bt3.js";
-import { enableCompileCache } from "node:module";
+import { n as isNodeRuntime, t as isBunRuntime } from "./runtime-binary-CJ1guq1y.js";
+import { y as resolveRequiredHomeDir } from "./paths-DPETYfXn.js";
+import { t as createSubsystemLogger } from "./subsystem-Cg_UWVEG.js";
+import "./utils-CfiuWRBq.js";
+import { t as parseBooleanValue } from "./boolean-YY6K2DFz.js";
+import { createRequire, enableCompileCache } from "node:module";
 import { spawn } from "node:child_process";
 import process$1 from "node:process";
 import { fileURLToPath } from "node:url";
@@ -455,7 +455,70 @@ function attachChildProcessBridge(child, { signals = defaultSignals, onSignal } 
 }
 
 //#endregion
+//#region src/infra/windows-spawn-patch.ts
+/**
+* Global safety-net for Windows: monkey-patch child_process spawn functions
+* to always inject `windowsHide: true`, preventing console window flashes.
+*
+* This patches the CJS module cache so ALL subsequent imports/requires of
+* `child_process` see the patched versions — including third-party code.
+*
+* Call once at application entry, before any other code spawns processes.
+*/
+function applyWindowsSpawnPatch() {
+	if (process.platform !== "win32") return;
+	try {
+		const cp = createRequire(import.meta.url)("node:child_process");
+		const origSpawn = cp.spawn;
+		cp.spawn = function patchedSpawn(command, ...rest) {
+			injectWindowsHide(rest);
+			return origSpawn.call(this, command, ...rest);
+		};
+		const origSpawnSync = cp.spawnSync;
+		cp.spawnSync = function patchedSpawnSync(command, ...rest) {
+			injectWindowsHide(rest);
+			return origSpawnSync.call(this, command, ...rest);
+		};
+		const origExecFile = cp.execFile;
+		cp.execFile = function patchedExecFile(file, ...rest) {
+			injectWindowsHide(rest);
+			return origExecFile.call(this, file, ...rest);
+		};
+		const origExecSync = cp.execSync;
+		cp.execSync = function patchedExecSync(command, ...rest) {
+			injectWindowsHide(rest);
+			return origExecSync.call(this, command, ...rest);
+		};
+	} catch {}
+}
+/**
+* Find the options object among the trailing arguments of a spawn-like call
+* and set `windowsHide: true` if not already present.
+*
+* Handles all common signatures:
+*   spawn(cmd)
+*   spawn(cmd, args)
+*   spawn(cmd, opts)
+*   spawn(cmd, args, opts)
+*   execFile(file, args, opts, callback)
+*   execSync(cmd, opts)
+*/
+function injectWindowsHide(rest) {
+	for (let i = 0; i < rest.length; i++) {
+		const arg = rest[i];
+		if (arg != null && typeof arg === "object" && !Array.isArray(arg)) {
+			const opts = arg;
+			if (opts.windowsHide === void 0) opts.windowsHide = true;
+			return;
+		}
+	}
+	if (typeof (rest.length > 0 ? rest[rest.length - 1] : void 0) === "function") rest.splice(rest.length - 1, 0, { windowsHide: true });
+	else rest.push({ windowsHide: true });
+}
+
+//#endregion
 //#region src/entry.ts
+applyWindowsSpawnPatch();
 const ENTRY_WRAPPER_PAIRS = [{
 	wrapperBasename: "openclaw.mjs",
 	entryBasename: "entry.js"
@@ -502,7 +565,8 @@ if (!isMainModule({
 			...process$1.argv.slice(1)
 		], {
 			stdio: "inherit",
-			env: process$1.env
+			env: process$1.env,
+			windowsHide: true
 		});
 		attachChildProcessBridge(child);
 		child.once("exit", (code, signal) => {
@@ -520,7 +584,7 @@ if (!isMainModule({
 	}
 	function tryHandleRootVersionFastPath(argv) {
 		if (!isRootVersionInvocation(argv)) return false;
-		import("./version-DR9Qjj6f.js").then((n) => n.r).then(({ VERSION }) => {
+		import("./version-8IswKFAz.js").then(({ VERSION }) => {
 			console.log(VERSION);
 		}).catch((error) => {
 			console.error("[openclaw] Failed to resolve version:", error instanceof Error ? error.stack ?? error.message : error);
@@ -530,7 +594,7 @@ if (!isMainModule({
 	}
 	function tryHandleRootHelpFastPath(argv) {
 		if (!isRootHelpInvocation(argv)) return false;
-		import("./program-C-p1pesj.js").then(({ buildProgram }) => {
+		import("./program-C33unEoz.js").then(({ buildProgram }) => {
 			buildProgram().outputHelp();
 		}).catch((error) => {
 			console.error("[openclaw] Failed to display help:", error instanceof Error ? error.stack ?? error.message : error);
@@ -549,7 +613,7 @@ if (!isMainModule({
 			applyCliProfileEnv({ profile: parsed.profile });
 			process$1.argv = parsed.argv;
 		}
-		if (!tryHandleRootVersionFastPath(process$1.argv) && !tryHandleRootHelpFastPath(process$1.argv)) import("./run-main-vrXnELDF.js").then(({ runCli }) => runCli(process$1.argv)).catch((error) => {
+		if (!tryHandleRootVersionFastPath(process$1.argv) && !tryHandleRootHelpFastPath(process$1.argv)) import("./run-main-Md6nWOOg.js").then(({ runCli }) => runCli(process$1.argv)).catch((error) => {
 			console.error("[openclaw] Failed to start CLI:", error instanceof Error ? error.stack ?? error.message : error);
 			process$1.exitCode = 1;
 		});

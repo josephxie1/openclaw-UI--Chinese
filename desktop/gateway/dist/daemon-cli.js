@@ -2635,6 +2635,7 @@ async function runCommandWithTimeout(argv, optionsOrTimeout) {
 		stdio,
 		cwd,
 		env: resolvedEnv,
+		windowsHide: true,
 		windowsVerbatimArguments: useCmdWrapper ? true : windowsVerbatimArguments,
 		...shouldSpawnWithShell({
 			resolvedCommand,
@@ -10532,7 +10533,8 @@ const OpenClawSchema = z.object({
 			config: z.record(z.string(), z.unknown()).optional()
 		}).strict()).optional(),
 		installs: z.record(z.string(), z.object({ ...InstallRecordShape }).strict()).optional()
-	}).strict().optional()
+	}).strict().optional(),
+	clawhub: z.object({ token: z.string().optional().register(sensitive) }).strict().optional()
 }).strict().superRefine((cfg, ctx) => {
 	const agents = cfg.agents?.list ?? [];
 	if (agents.length === 0) return;
@@ -14454,7 +14456,9 @@ const METHOD_SCOPE_GROUPS = {
 		"config.get",
 		"talk.config",
 		"agents.files.list",
-		"agents.files.get"
+		"agents.files.get",
+		"clawhub.search",
+		"clawhub.token.get"
 	],
 	[WRITE_SCOPE]: [
 		"send",
@@ -14496,7 +14500,9 @@ const METHOD_SCOPE_GROUPS = {
 		"web.login.wait",
 		"set-heartbeats",
 		"system-event",
-		"agents.files.set"
+		"agents.files.set",
+		"clawhub.install",
+		"clawhub.token.set"
 	]
 };
 const ADMIN_METHOD_PREFIXES = [
@@ -14816,7 +14822,8 @@ async function execFileUtf8(command, args, options = {}) {
 	return await new Promise((resolve) => {
 		execFile(command, args, {
 			...options,
-			encoding: "utf8"
+			encoding: "utf8",
+			windowsHide: true
 		}, (error, stdout, stderr) => {
 			if (!error) {
 				resolve({
@@ -17262,7 +17269,8 @@ function runTaskkill(args) {
 	try {
 		spawn("taskkill", args, {
 			stdio: "ignore",
-			detached: true
+			detached: true,
+			windowsHide: true
 		});
 	} catch {}
 }

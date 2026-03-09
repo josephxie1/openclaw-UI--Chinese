@@ -4207,4 +4207,7 @@ export declare const OpenClawSchema: z.ZodObject<{
             installedAt: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>>;
     }, z.core.$strict>>;
+    clawhub: z.ZodOptional<z.ZodObject<{
+        token: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
 }, z.core.$strict>;

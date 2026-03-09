@@ -1,6 +1,6 @@
 import "../../paths-B9lBY6-m.js";
 import { ft as isAgentBootstrapEvent, t as createSubsystemLogger } from "../../subsystem-mPRezpll.js";
-import { d as loadExtraBootstrapFilesWithDiagnostics, u as filterBootstrapFilesForSession } from "../../workspace-5k-UUhQ1.js";
+import { d as loadExtraBootstrapFilesWithDiagnostics, u as filterBootstrapFilesForSession } from "../../workspace-xqVw9elw.js";
 import "../../boolean-M-esQJt6.js";
 import "../../frontmatter-eHCuq81z.js";
 import { t as resolveHookConfig } from "../../config-BUBmzm--.js";
