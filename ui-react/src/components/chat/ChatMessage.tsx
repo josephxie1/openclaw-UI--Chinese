@@ -163,11 +163,13 @@ function MessageBubble({
   isStreaming,
   showReasoning,
   onOpenSidebar: _onOpenSidebar,
+  skipToolCards = false,
 }: {
   message: unknown;
   isStreaming: boolean;
   showReasoning: boolean;
   onOpenSidebar?: (content: string) => void;
+  skipToolCards?: boolean;
 }) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
@@ -199,14 +201,23 @@ function MessageBubble({
     .filter(Boolean)
     .join(" ");
 
-  // Tool result messages: render only as collapsible tool cards
-  if (hasToolCards && isToolResult) {
+  // Cuando el padre maneja las tool cards, los mensajes de solo tools se omiten
+  if (skipToolCards && hasToolCards && isToolResult) {
+    return null;
+  }
+
+  // Mensajes de solo tool_use sin texto: omitir si padre las maneja
+  if (skipToolCards && hasToolCards && !markdown && !hasImages) {
+    return null;
+  }
+
+  // Si NO se omiten tools, renderizar como ChainOfThought individual (fallback)
+  if (!skipToolCards && hasToolCards && isToolResult) {
     const paired = pairToolCards(toolCards);
     return <ChainOfThought toolCards={paired} isStreaming={isStreaming} />;
   }
 
-  // Assistant messages with ONLY tool_use blocks (no real text)
-  if (hasToolCards && !markdown && !hasImages) {
+  if (!skipToolCards && hasToolCards && !markdown && !hasImages) {
     return <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />;
   }
 
@@ -227,7 +238,7 @@ function MessageBubble({
           <div dangerouslySetInnerHTML={{ __html: toSanitizedMarkdownHtmlBlocks(markdown) }} />
         </div>
       )}
-      {pairToolCards(toolCards).length > 0 && (
+      {!skipToolCards && pairToolCards(toolCards).length > 0 && (
         <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />
       )}
     </div>
@@ -323,6 +334,11 @@ export function ChatMessageGroup({
   // Detectar si el grupo tiene task segments para renderizar TaskStepList
   const hasTaskSegments = normalizedRole === "assistant" && groupHasTaskProgress(group);
 
+  // Recopilar TODAS las tool cards del grupo para un único ChainOfThought
+  const isAssistant = normalizedRole === "assistant";
+  const allToolCards = isAssistant ? collectGroupToolCards(group) : [];
+  const hasGroupToolCards = allToolCards.length > 0;
+
   return (
     <div className={`chat-group ${roleClass}`}>
       <Avatar
@@ -337,15 +353,22 @@ export function ChatMessageGroup({
         {hasTaskSegments ? (
           <TaskStepList group={group} isStreaming={group.isStreaming} />
         ) : (
-          group.messages.map((item, index) => (
-            <MessageBubble
-              key={index}
-              message={item.message}
-              isStreaming={group.isStreaming && index === group.messages.length - 1}
-              showReasoning={showReasoning}
-              onOpenSidebar={onOpenSidebar}
-            />
-          ))
+          <>
+            {group.messages.map((item, index) => (
+              <MessageBubble
+                key={index}
+                message={item.message}
+                isStreaming={group.isStreaming && index === group.messages.length - 1}
+                showReasoning={showReasoning}
+                onOpenSidebar={onOpenSidebar}
+                skipToolCards={hasGroupToolCards}
+              />
+            ))}
+            {/* Un único ChainOfThought para TODAS las tool cards del grupo */}
+            {hasGroupToolCards && (
+              <ChainOfThought toolCards={allToolCards} isStreaming={group.isStreaming} />
+            )}
+          </>
         )}
       </div>
     </div>
@@ -372,4 +395,14 @@ function groupHasTaskProgress(group: MessageGroup): boolean {
     }
   }
   return false;
+}
+
+// Recopilar y emparejar tool cards de todos los mensajes del grupo
+function collectGroupToolCards(group: MessageGroup) {
+  const allCards = [];
+  for (const item of group.messages) {
+    const cards = extractToolCards(item.message);
+    allCards.push(...cards);
+  }
+  return pairToolCards(allCards);
 }
