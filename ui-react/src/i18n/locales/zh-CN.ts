@@ -230,6 +230,8 @@ export const zh_CN: TranslationMap = {
     toolCallCount: "调用 {count} 次工具",
     toolCallCollapse: "收起",
     taskInProgress: "进行中",
+    chainOfThought: "思考过程",
+    chainOfThoughtActive: "思考中...",
   },
   configView: {
     env: "环境变量",

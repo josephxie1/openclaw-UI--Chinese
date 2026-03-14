@@ -15,9 +15,9 @@ import { toSanitizedMarkdownHtml, toSanitizedMarkdownHtmlBlocks } from "../../li
 import { openExternalUrlSafe } from "../../lib/open-external-url.ts";
 import { detectTextDirection } from "../../lib/text-direction.ts";
 import type { MessageGroup } from "../../lib/types/chat-types.ts";
+import { ChainOfThought } from "./ChainOfThought.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { TaskStepList } from "./TaskStepList.tsx";
-import { ToolCard } from "./ToolCard.tsx";
 
 // ─── Image extraction ────────────────────────────────────────
 
@@ -202,24 +202,12 @@ function MessageBubble({
   // Tool result messages: render only as collapsible tool cards
   if (hasToolCards && isToolResult) {
     const paired = pairToolCards(toolCards);
-    return (
-      <>
-        {paired.map((card, i) => (
-          <ToolCard key={i} card={card} isStreaming={isStreaming} />
-        ))}
-      </>
-    );
+    return <ChainOfThought toolCards={paired} isStreaming={isStreaming} />;
   }
 
   // Assistant messages with ONLY tool_use blocks (no real text)
   if (hasToolCards && !markdown && !hasImages) {
-    return (
-      <>
-        {pairToolCards(toolCards).map((card, i) => (
-          <ToolCard key={i} card={card} isStreaming={isStreaming} />
-        ))}
-      </>
-    );
+    return <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />;
   }
 
   if (!markdown && !hasToolCards && !hasImages) {
@@ -239,9 +227,9 @@ function MessageBubble({
           <div dangerouslySetInnerHTML={{ __html: toSanitizedMarkdownHtmlBlocks(markdown) }} />
         </div>
       )}
-      {pairToolCards(toolCards).map((card, i) => (
-        <ToolCard key={i} card={card} isStreaming={isStreaming} />
-      ))}
+      {pairToolCards(toolCards).length > 0 && (
+        <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />
+      )}
     </div>
   );
 }

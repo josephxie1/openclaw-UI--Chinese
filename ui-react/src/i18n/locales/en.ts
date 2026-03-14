@@ -231,6 +231,8 @@ export const en: TranslationMap = {
     toolCallCount: "Called {count} tools",
     toolCallCollapse: "Collapse",
     taskInProgress: "In progress",
+    chainOfThought: "Chain of Thought",
+    chainOfThoughtActive: "Thinking...",
   },
   configView: {
     env: "Environment",

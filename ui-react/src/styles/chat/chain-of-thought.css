@@ -1,0 +1,249 @@
+/* Chain of Thought — Timeline de herramientas del asistente */
+
+/* ── Container ─────────────────────────────────── */
+
+.cot {
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+  width: 100%;
+}
+
+/* ── Header trigger ──────────────────────────────── */
+
+.cot__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.cot__header:hover {
+  background: rgba(128, 128, 128, 0.06);
+  color: var(--text);
+}
+
+.cot__header-icon {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.cot__header-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.cot__header-label {
+  flex: 1;
+  text-align: left;
+}
+
+.cot__header-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(128, 128, 128, 0.12);
+  border-radius: 10px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.cot__header-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+
+.cot__header-chevron svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.cot__header-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ── Steps container ─────────────────────────────── */
+
+.cot__steps {
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Single step ─────────────────────────────────── */
+
+.cot-step {
+  display: flex;
+  gap: 12px;
+  min-height: 32px;
+  animation: cot-step-appear 200ms ease-out;
+}
+
+@keyframes cot-step-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Timeline (dot + line) ───────────────────────── */
+
+.cot-step__timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 12px;
+}
+
+.cot-step__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cot-step__dot--done {
+  background: var(--color-ok, #22c55e);
+  color: #fff;
+}
+
+.cot-step__dot--loading {
+  width: 12px;
+  height: 12px;
+  margin: 2px;
+  border: 2px solid var(--color-info, #3b82f6);
+  background: transparent;
+  animation: cot-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.cot-step__dot--error {
+  background: var(--danger, #ef4444);
+  color: #fff;
+}
+
+@keyframes cot-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.cot-step__line {
+  flex: 1;
+  width: 1.5px;
+  min-height: 12px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* ── Step content ────────────────────────────────── */
+
+.cot-step__content {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.cot-step__label {
+  display: inline;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.cot-step__label:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.cot-step--error .cot-step__label {
+  color: var(--danger, #ef4444);
+}
+
+.cot-step__text {
+  font-weight: 500;
+}
+
+.cot-step__loading-text {
+  color: var(--muted);
+  animation: cot-ellipsis 1.5s infinite;
+}
+
+@keyframes cot-ellipsis {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+/* ── Search badges ───────────────────────────────── */
+
+.cot-step__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.cot-step__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary, var(--muted));
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid rgba(128, 128, 128, 0.12);
+  border-radius: 6px;
+  padding: 2px 8px;
+  line-height: 1.4;
+}
+
+/* ── Expandable result ───────────────────────────── */
+
+.cot-step__result {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: rgba(128, 128, 128, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+}
