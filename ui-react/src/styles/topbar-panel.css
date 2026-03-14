@@ -1,0 +1,104 @@
+/* ==============================================
+   TOPBAR SLIDE-DOWN PANEL
+   ============================================== */
+
+.topbar-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 800;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+
+.topbar-panel-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.topbar-panel {
+    position: fixed;
+    top: var(--shell-topbar-height, 56px);
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 801;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-100%);
+    opacity: 0;
+    transition:
+        transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.28s ease;
+    overflow: hidden;
+    border-radius: 0 0 12px 12px;
+}
+
+.topbar-panel.open {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.topbar-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.topbar-panel__title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-strong);
+}
+
+.topbar-panel__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.topbar-panel__close:hover {
+    background: var(--bg-hover);
+    color: var(--text-strong);
+}
+
+.topbar-panel__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+    max-height: calc(70vh - 54px);
+}
+
+.topbar-panel__body .page-title,
+.topbar-panel__body .page-sub {
+    display: none;
+}
+
+.topbar-panel__body::-webkit-scrollbar {
+    width: 5px;
+}
+
+.topbar-panel__body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.topbar-panel__body:hover::-webkit-scrollbar-thumb {
+    background: var(--muted);
+}

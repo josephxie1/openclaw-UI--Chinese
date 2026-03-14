@@ -1,0 +1,1606 @@
+/* =============================================
+   AGENT RANCH – Pokémon-style Pixel RPG Map
+   ============================================= */
+
+/* ── Ranch wrapper con toggle ── */
+.ranch-wrapper {
+    position: relative;
+}
+
+.ranch-view-toggle {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 15;
+    display: flex;
+    gap: 2px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 6px;
+    padding: 2px;
+    backdrop-filter: blur(4px);
+}
+
+.ranch-view-toggle__btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.7);
+    background: transparent;
+    transition: all 0.15s ease;
+}
+
+.ranch-view-toggle__btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ranch-view-toggle__btn--active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ── 3D Mode overrides ── */
+.ranch-scene--3d {
+    image-rendering: auto;
+    background: #87ceeb;
+}
+
+.ranch-scene--loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #87ceeb 0%, #8db651 100%);
+}
+
+.ranch-loading-text {
+    font-family: var(--mono, monospace);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 1px 1px 0 #333;
+    animation: ranch-loading-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ranch-loading-pulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+.ranch-scene {
+    position: relative;
+    height: 100%;
+    min-height: 280px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 2px solid var(--border);
+    user-select: none;
+    image-rendering: pixelated;
+    background: var(--ranch-grass, #8db651);
+}
+
+/* ── Ranch Action Buttons ── */
+.ranch-actions {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 20;
+}
+
+.ranch-btn {
+    font-family: var(--mono, monospace);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 8px 24px;
+    border: 3px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    image-rendering: auto;
+    transition: transform 0.1s steps(2), box-shadow 0.1s steps(2);
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.ranch-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.ranch-btn:active {
+    transform: translateY(2px);
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.ranch-btn--feed {
+    background: linear-gradient(180deg, #7a9e4e 0%, #5a7e36 100%);
+    color: #fff;
+    border-color: #4a6e2a;
+}
+
+.ranch-btn--feed:hover {
+    background: linear-gradient(180deg, #8db651 0%, #6a8e40 100%);
+}
+
+.ranch-btn--whip {
+    background: linear-gradient(180deg, #c87848 0%, #a85830 100%);
+    color: #fff;
+    border-color: #884828;
+}
+
+.ranch-btn--whip:hover {
+    background: linear-gradient(180deg, #d88858 0%, #b86838 100%);
+}
+
+/* ── Tile-based grass pattern ── */
+.ranch-tiles {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    /* Pixel grass tile pattern using repeating SVG */
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%238db651'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%237da846' opacity='0.5'/%3E%3Crect x='10' y='12' width='2' height='2' fill='%237da846' opacity='0.5'/%3E%3Crect x='6' y='8' width='1' height='1' fill='%239ec65e' opacity='0.4'/%3E%3Crect x='14' y='2' width='1' height='1' fill='%239ec65e' opacity='0.4'/%3E%3C/svg%3E") repeat;
+    image-rendering: pixelated;
+}
+
+/* Windmill blade rotation */
+.windmill-blades {
+    animation: windmill-spin 8s linear infinite;
+}
+
+@keyframes windmill-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+:root[data-theme="dark"] .ranch-tiles {
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23305828'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%23284820' opacity='0.5'/%3E%3Crect x='10' y='12' width='2' height='2' fill='%23284820' opacity='0.5'/%3E%3Crect x='6' y='8' width='1' height='1' fill='%23386830' opacity='0.4'/%3E%3Crect x='14' y='2' width='1' height='1' fill='%23386830' opacity='0.4'/%3E%3C/svg%3E") repeat;
+}
+
+/* ── Dirt path ── */
+.ranch-path {
+    position: absolute;
+    z-index: 1;
+    image-rendering: pixelated;
+}
+
+.ranch-path--h {
+    height: 32px;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23d4be7a'/%3E%3Crect x='3' y='5' width='2' height='2' fill='%23c4ae6a' opacity='0.4'/%3E%3Crect x='11' y='10' width='2' height='1' fill='%23e0ca8a' opacity='0.3'/%3E%3C/svg%3E") repeat;
+}
+
+.ranch-path--v {
+    width: 32px;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23d4be7a'/%3E%3Crect x='5' y='3' width='2' height='2' fill='%23c4ae6a' opacity='0.4'/%3E%3Crect x='10' y='11' width='1' height='2' fill='%23e0ca8a' opacity='0.3'/%3E%3C/svg%3E") repeat;
+}
+
+:root[data-theme="dark"] .ranch-path--h,
+:root[data-theme="dark"] .ranch-path--v {
+    filter: brightness(0.6) saturate(0.8);
+}
+
+/* ── Pixel trees ── */
+.ranch-tree {
+    position: absolute;
+    z-index: 5;
+    image-rendering: pixelated;
+    pointer-events: none;
+    width: 32px;
+    height: 40px;
+}
+
+.ranch-tree--large {
+    width: 40px;
+    height: 48px;
+}
+
+/* ── Pixel barn/building ── */
+.ranch-barn {
+    position: absolute;
+    z-index: 4;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+
+/* ── Water / pond ── */
+.ranch-water {
+    position: absolute;
+    z-index: 2;
+    border-radius: 4px;
+    overflow: hidden;
+    image-rendering: pixelated;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%234890d0'/%3E%3Crect x='0' y='4' width='16' height='2' fill='%2358a0e0' opacity='0.3'/%3E%3Crect x='0' y='10' width='16' height='2' fill='%233880c0' opacity='0.3'/%3E%3C/svg%3E") repeat;
+    animation: ranch-water-shimmer 3s ease-in-out infinite;
+}
+
+:root[data-theme="dark"] .ranch-water {
+    filter: brightness(0.6) saturate(0.7);
+}
+
+@keyframes ranch-water-shimmer {
+
+    0%,
+    100% {
+        background-position: 0 0;
+    }
+
+    50% {
+        background-position: 4px 2px;
+    }
+}
+
+/* ── Fence (pixel style) ── */
+.ranch-fence-group {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    image-rendering: pixelated;
+}
+
+/* ── Animals container ── */
+.ranch-animals {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+}
+
+/* ── Individual animal ── */
+.ranch-animal {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: filter 0.1s;
+    z-index: 6;
+}
+
+.ranch-animal:hover {
+    filter: brightness(1.25);
+    z-index: 12;
+}
+
+.ranch-animal:active {
+    transform: scale(0.9);
+}
+
+/* ── Animal sprite ── */
+.ranch-animal__sprite {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+
+/* ── Name label ── */
+.ranch-animal__name {
+    font-size: 8px;
+    font-weight: 700;
+    font-family: var(--mono, monospace);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-top: 0px;
+    white-space: nowrap;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    image-rendering: auto;
+}
+
+/* ── Speech bubble (pixel style) ── */
+.ranch-bubble {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #333;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border: 2px solid #333;
+    border-radius: 2px;
+    width: max-content;
+    max-width: 140px;
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.4;
+    z-index: 20;
+    pointer-events: none;
+    image-rendering: auto;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+    animation: ranch-bubble-in 0.2s ease, ranch-bubble-out 0.25s ease 1.75s forwards;
+}
+
+:root[data-theme="dark"] .ranch-bubble {
+    background: #2a2a3e;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.ranch-bubble::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+}
+
+:root[data-theme="dark"] .ranch-bubble::after {
+    border-top-color: #555;
+}
+
+@keyframes ranch-bubble-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes ranch-bubble-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-4px);
+    }
+}
+
+/* ── Zzz indicator ── */
+.ranch-zzz {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    font-size: 11px;
+    z-index: 8;
+    animation: ranch-zzz-float 2.5s ease-in-out infinite;
+    image-rendering: auto;
+}
+
+@keyframes ranch-zzz-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* ── Running animation ── */
+.ranch-animal--running {
+    animation: ranch-run var(--run-duration, 5s) linear infinite alternate;
+}
+
+.ranch-animal--running .ranch-animal__sprite {
+    animation: ranch-step 0.25s steps(2) infinite;
+}
+
+@keyframes ranch-run {
+    0% {
+        left: 5%;
+    }
+
+    100% {
+        left: 80%;
+    }
+}
+
+@keyframes ranch-step {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+/* ── Pacing animation ── */
+.ranch-animal--pacing {
+    animation: ranch-pace var(--pace-duration, 3s) steps(8) infinite alternate;
+}
+
+@keyframes ranch-pace {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(20px);
+    }
+}
+
+.ranch-animal--pacing .ranch-animal__sprite {
+    animation: ranch-step 0.4s steps(2) infinite;
+}
+
+/* ── Sleeping animation ── */
+.ranch-animal--sleeping .ranch-animal__sprite {
+    animation: ranch-breathe 3s ease-in-out infinite;
+    opacity: 0.85;
+}
+
+@keyframes ranch-breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+/* ── Flip ── */
+.ranch-animal--flip .ranch-animal__sprite {
+    transform: scaleX(-1);
+}
+
+.ranch-animal--running.ranch-animal--flip .ranch-animal__sprite {
+    animation: ranch-step-flip 0.25s steps(2) infinite;
+}
+
+@keyframes ranch-step-flip {
+
+    0%,
+    100% {
+        transform: scaleX(-1) translateY(0);
+    }
+
+    50% {
+        transform: scaleX(-1) translateY(-3px);
+    }
+}
+
+/* ── Working-in-place animation ── */
+.ranch-animal--working {
+    animation: ranch-work-bounce var(--work-speed, 0.75s) ease-in-out infinite alternate;
+}
+
+.ranch-animal--working .ranch-animal__sprite {
+    animation: ranch-work-tool 0.6s steps(2) infinite;
+}
+
+@keyframes ranch-work-bounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes ranch-work-tool {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(-8deg) translateY(-2px);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* Hot (ultrafast) working */
+.ranch-animal--working-hot {
+    animation: ranch-work-bounce var(--work-speed, 0.35s) ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 4px rgba(255, 150, 0, 0.7));
+}
+
+/* ── Error state: shake + red glow ── */
+.ranch-animal--error {
+    animation: ranch-error-shake 0.4s ease-in-out infinite;
+    filter: drop-shadow(0 0 6px rgba(255, 50, 50, 0.7)) saturate(0.6);
+}
+
+.ranch-animal--error .ranch-animal__sprite {
+    filter: hue-rotate(-30deg) brightness(0.85);
+}
+
+.ranch-error-icon {
+    position: absolute;
+    top: -10px;
+    right: -6px;
+    font-size: 14px;
+    z-index: 8;
+    animation: ranch-error-pulse 1s ease-in-out infinite;
+    image-rendering: auto;
+}
+
+@keyframes ranch-error-shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-3px);
+    }
+
+    75% {
+        transform: translateX(3px);
+    }
+}
+
+@keyframes ranch-error-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.2);
+    }
+}
+
+/* ── Eating animation (near feed trough) ── */
+.ranch-animal--eating .ranch-animal__sprite {
+    animation: ranch-eat-bob 0.8s ease-in-out infinite;
+}
+
+@keyframes ranch-eat-bob {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(3px) rotate(-5deg);
+    }
+}
+
+/* ── Fence Gate animation ── */
+.ranch-gate-left,
+.ranch-gate-right {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ranch-gate-left--open {
+    transform: rotate(-60deg);
+}
+
+.ranch-gate-right--open {
+    transform: rotate(60deg);
+}
+
+/* ═══════════════════════════════════════════════
+   State-driven visual status animations
+   (inspired by openclaw-office AgentVisualStatus)
+   ═══════════════════════════════════════════════ */
+
+/* ── Indicator base ── */
+.ranch-indicator {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    pointer-events: none;
+    image-rendering: auto;
+}
+
+/* ── Thinking state: bounce + dots ── */
+.ranch-animal--thinking {
+    animation: ranch-think-breathe 2s ease-in-out infinite;
+}
+
+.ranch-animal--thinking .ranch-animal__sprite {
+    animation: ranch-think-head 2s ease-in-out infinite;
+}
+
+@keyframes ranch-think-breathe {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes ranch-think-head {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    30% {
+        transform: rotate(-5deg);
+    }
+
+    60% {
+        transform: rotate(3deg);
+    }
+}
+
+@keyframes ranch-dot-bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+}
+
+/* ── Tool calling state: hoof tapping + gear badge ── */
+.ranch-animal--tool_calling {
+    animation: ranch-tool-bounce 0.5s ease-in-out infinite alternate;
+}
+
+.ranch-animal--tool_calling .ranch-animal__sprite {
+    animation: ranch-hoof-tap 0.4s steps(2) infinite;
+}
+
+@keyframes ranch-tool-bounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes ranch-hoof-tap {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(-6deg) translateY(-1px);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+.ranch-indicator--tool {
+    top: -20px;
+}
+
+.ranch-tool-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    background: #f97316;
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    animation: ranch-badge-pulse 1.5s ease-in-out infinite;
+}
+
+.ranch-tool-badge svg {
+    animation: ranch-gear-spin 2s linear infinite;
+}
+
+@keyframes ranch-badge-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 rgba(249, 115, 22, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+    }
+}
+
+@keyframes ranch-gear-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Speaking state: chat bubble + nod ── */
+.ranch-animal--speaking {
+    animation: ranch-speak-nod 1s ease-in-out infinite;
+}
+
+.ranch-animal--speaking .ranch-animal__sprite {
+    animation: ranch-speak-body 1s ease-in-out infinite;
+}
+
+@keyframes ranch-speak-nod {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes ranch-speak-body {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-3deg);
+    }
+
+    75% {
+        transform: rotate(2deg);
+    }
+}
+
+.ranch-indicator--speaking {
+    top: -18px;
+}
+
+.ranch-indicator--speaking svg {
+    animation: ranch-bubble-bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes ranch-bubble-bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes ranch-speak-dot {
+
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* ── Spawning state: flash + scale-in ── */
+.ranch-animal--spawning {
+    animation: ranch-spawn-in 0.8s ease-out forwards;
+}
+
+.ranch-spawn-flash {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    z-index: 8;
+    animation: ranch-spawn-sparkle 0.8s ease-out forwards;
+    image-rendering: auto;
+    pointer-events: none;
+}
+
+@keyframes ranch-spawn-in {
+    0% {
+        transform: scale(0) rotate(20deg);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.1) rotate(-5deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes ranch-spawn-sparkle {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.5) translateY(-10px);
+    }
+}
+
+/* ── Activity labels per visual status ── */
+.ranch-animal__activity--thinking {
+    background: rgba(59, 130, 246, 0.85);
+}
+
+.ranch-animal__activity--tool_calling {
+    background: rgba(249, 115, 22, 0.85);
+}
+
+.ranch-animal__activity--speaking {
+    background: rgba(168, 85, 247, 0.85);
+}
+
+.ranch-animal__activity--idle {
+    background: rgba(100, 116, 139, 0.7);
+}
+
+.ranch-animal__activity--error {
+    background: rgba(239, 68, 68, 0.85);
+}
+
+.ranch-animal__activity--spawning {
+    background: rgba(34, 197, 94, 0.85);
+}
+
+/* ── Activity label badge ── */
+.ranch-animal__activity {
+    font-size: 8px;
+    font-weight: 700;
+    font-family: var(--mono, monospace);
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-top: 2px;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    image-rendering: auto;
+    line-height: 1.4;
+}
+
+.ranch-animal__activity--processing {
+    background: rgba(50, 200, 80, 0.85);
+    color: #fff;
+}
+
+.ranch-animal__activity--waiting {
+    background: rgba(220, 160, 20, 0.85);
+    color: #fff;
+}
+
+.ranch-animal__activity--idle {
+    background: rgba(80, 80, 100, 0.6);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Title overlay ── */
+.ranch-title {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    z-index: 10;
+    pointer-events: none;
+    image-rendering: auto;
+}
+
+.ranch-title__main {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 0 2px 0 #222;
+    letter-spacing: 0.05em;
+    font-family: var(--mono, monospace);
+}
+
+.ranch-title__sub {
+    font-size: 9px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 1px 1px 0 #333, -1px -1px 0 #333;
+    margin-top: 2px;
+    font-family: var(--mono, monospace);
+}
+
+/* ── Decorative flowers ── */
+.ranch-flower {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    font-size: 10px;
+    animation: ranch-flower-sway 4s ease-in-out infinite;
+}
+
+@keyframes ranch-flower-sway {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(5deg);
+    }
+}
+
+/* ── Lamp post (pixel) ── */
+.ranch-lamp {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+}
+
+/* ==============================================
+   COLLECTIBLE AGENT CARDS — gacha-style layout
+   ============================================== */
+
+/* Agent grid — wider cards, flexible columns */
+.ov-agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 16px;
+    margin-top: 14px;
+    zoom: 1.15;
+}
+
+/* ── Base Card ── */
+.agent-card-pixel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid rgba(255, 200, 80, 0.4);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.3s ease;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    background: linear-gradient(165deg, #1e1e2e 0%, #15152a 60%, #0e0e1e 100%);
+    text-align: center;
+}
+
+.agent-card-pixel:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(255, 200, 80, 0.15);
+    border-color: rgba(255, 200, 80, 0.7);
+    z-index: 2;
+}
+
+.agent-card-pixel:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Dark theme color variants per card index */
+.agent-card-pixel:nth-child(4n+1) {
+    background: linear-gradient(165deg, #2a1528 0%, #1a0e22 60%, #0e0818 100%);
+}
+
+.agent-card-pixel:nth-child(4n+2) {
+    background: linear-gradient(165deg, #15202e 0%, #0e1828 60%, #081020 100%);
+}
+
+.agent-card-pixel:nth-child(4n+3) {
+    background: linear-gradient(165deg, #152218 0%, #0e1a14 60%, #08120e 100%);
+}
+
+.agent-card-pixel:nth-child(4n+4) {
+    background: linear-gradient(165deg, #2a2215 0%, #1a180e 60%, #121008 100%);
+}
+
+/* ── Card Header ── */
+.agent-card-pixel__header {
+    padding: 10px 12px 0;
+    text-align: left;
+}
+
+.agent-card-pixel__name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
+.agent-card-pixel__name {
+    font-family: var(--mono, monospace);
+    font-size: 15px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agent-card-pixel__id {
+    font-family: var(--mono, monospace);
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 1px;
+}
+
+/* ── State Badge ── */
+.agent-card-pixel__badge {
+    padding: 2px 8px;
+    font-family: var(--mono, monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 6px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.agent-card-pixel__badge--idle {
+    background: rgba(100, 116, 139, 0.4);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.agent-card-pixel__badge--waiting {
+    background: rgba(88, 152, 208, 0.4);
+    border: 1px solid rgba(88, 152, 208, 0.3);
+}
+
+.agent-card-pixel__badge--processing {
+    background: rgba(232, 160, 48, 0.4);
+    border: 1px solid rgba(232, 160, 48, 0.3);
+    animation: badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* ── Centered Avatar Portrait ── */
+.agent-card-pixel__portrait {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 6px;
+}
+
+.agent-card-pixel__avatar-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(255, 200, 80, 0.5), rgba(255, 150, 50, 0.25));
+    box-shadow: 0 0 10px rgba(255, 200, 80, 0.15);
+    transition: box-shadow 0.3s ease;
+}
+
+.agent-card-pixel:hover .agent-card-pixel__avatar-ring {
+    box-shadow: 0 0 18px rgba(255, 200, 80, 0.35);
+}
+
+.agent-card-pixel__avatar-ring--idle {
+    background: linear-gradient(135deg, rgba(120, 130, 160, 0.4), rgba(80, 90, 120, 0.2));
+    box-shadow: 0 0 6px rgba(120, 130, 160, 0.1);
+}
+
+.agent-card-pixel__avatar-ring--waiting {
+    background: linear-gradient(135deg, rgba(88, 152, 208, 0.5), rgba(60, 120, 180, 0.25));
+    box-shadow: 0 0 10px rgba(88, 152, 208, 0.2);
+}
+
+.agent-card-pixel__avatar-ring--processing {
+    background: linear-gradient(135deg, rgba(255, 180, 40, 0.6), rgba(255, 130, 20, 0.3));
+    box-shadow: 0 0 14px rgba(255, 180, 40, 0.3);
+    animation: ring-glow 2s ease-in-out infinite;
+}
+
+@keyframes ring-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 14px rgba(255, 180, 40, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 22px rgba(255, 180, 40, 0.5);
+    }
+}
+
+.agent-card-pixel__avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.agent-card-pixel__avatar-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono, monospace);
+    font-size: 24px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Stats Panel (bottom) ── */
+.agent-card-pixel__stats {
+    padding: 0 10px 10px;
+    margin-top: auto;
+}
+
+.agent-card-pixel__stat-title {
+    font-family: var(--mono, monospace);
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.3);
+    margin-bottom: 3px;
+    margin-top: 6px;
+    text-align: left;
+}
+
+.agent-card-pixel__sessions {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.agent-card-pixel__session {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    padding: 3px 6px;
+}
+
+.agent-card-pixel__session-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono, monospace);
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.agent-card-pixel__session-icon {
+    flex-shrink: 0;
+}
+
+.agent-card-pixel__session-time {
+    font-size: 8px;
+    opacity: 0.6;
+    margin-left: auto;
+}
+
+.agent-card-pixel__session-queue {
+    font-size: 7px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff;
+    background: #d05050;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 3px;
+}
+
+/* Token bar — compact HP style */
+.agent-card-pixel__bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.agent-card-pixel__token-bar {
+    flex: 1;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.agent-card-pixel__token-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #50e838, #90ff78);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 4px rgba(80, 232, 56, 0.35);
+}
+
+.agent-card-pixel__token-val {
+    font-family: var(--mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Channel icons */
+.agent-card-pixel__channels {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 0 2px;
+    flex-wrap: wrap;
+}
+
+.agent-card-pixel__channel-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+}
+
+.agent-card-pixel:hover .agent-card-pixel__channel-icon {
+    opacity: 1;
+}
+
+.agent-card-pixel__channel-text {
+    font-family: var(--mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+/* ==============================================
+   STATE MODIFIERS — card border + glow
+   ============================================== */
+
+.agent-card-pixel--processing {
+    border-color: rgba(232, 160, 48, 0.6);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        0 0 12px rgba(232, 160, 48, 0.12);
+    animation: card-processing 2s ease-in-out infinite;
+}
+
+@keyframes card-processing {
+
+    0%,
+    100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px rgba(232, 160, 48, 0.12);
+    }
+
+    50% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(232, 160, 48, 0.22);
+    }
+}
+
+.agent-card-pixel--waiting {
+    border-color: rgba(88, 152, 208, 0.5);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        0 0 10px rgba(88, 152, 208, 0.08);
+    animation: card-waiting 3s ease-in-out infinite;
+}
+
+@keyframes card-waiting {
+
+    0%,
+    100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 10px rgba(88, 152, 208, 0.08);
+    }
+
+    50% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 16px rgba(88, 152, 208, 0.15);
+    }
+}
+
+.agent-card-pixel--idle {
+    border-color: rgba(120, 130, 160, 0.25);
+    opacity: 0.8;
+    filter: saturate(0.8);
+}
+
+.agent-card-pixel--idle:hover {
+    opacity: 1;
+    filter: saturate(1);
+}
+
+/* ==============================================
+   LIGHT THEME — agent card overrides
+   ============================================== */
+
+:root[data-theme="light"] .agent-card-pixel {
+    background: linear-gradient(165deg, #f8f7fc 0%, #f0eef8 60%, #e8e6f2 100%);
+    border-color: rgba(140, 120, 200, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme="light"] .agent-card-pixel:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(140, 120, 200, 0.2);
+    border-color: rgba(140, 120, 200, 0.6);
+}
+
+:root[data-theme="light"] .agent-card-pixel:nth-child(4n+1) {
+    background: linear-gradient(165deg, #fcf5f5 0%, #f5ebf0 60%, #ede0e8 100%);
+}
+
+:root[data-theme="light"] .agent-card-pixel:nth-child(4n+2) {
+    background: linear-gradient(165deg, #f0f5fc 0%, #e6edf8 60%, #dce4f0 100%);
+}
+
+:root[data-theme="light"] .agent-card-pixel:nth-child(4n+3) {
+    background: linear-gradient(165deg, #f0faf5 0%, #e4f2eb 60%, #d8eae0 100%);
+}
+
+:root[data-theme="light"] .agent-card-pixel:nth-child(4n+4) {
+    background: linear-gradient(165deg, #fcf8f0 0%, #f5ede2 60%, #ede4d8 100%);
+}
+
+:root[data-theme="light"] .agent-card-pixel__name {
+    color: #1a1a2e;
+}
+
+:root[data-theme="light"] .agent-card-pixel__id {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="light"] .agent-card-pixel__badge {
+    color: rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="light"] .agent-card-pixel__badge--idle {
+    background: rgba(100, 116, 139, 0.15);
+    border-color: rgba(100, 116, 139, 0.2);
+}
+
+:root[data-theme="light"] .agent-card-pixel__badge--waiting {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+:root[data-theme="light"] .agent-card-pixel__badge--processing {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+:root[data-theme="light"] .agent-card-pixel__avatar-ring {
+    background: linear-gradient(135deg, rgba(140, 120, 200, 0.4), rgba(160, 140, 220, 0.2));
+    box-shadow: 0 0 8px rgba(140, 120, 200, 0.15);
+}
+
+:root[data-theme="light"] .agent-card-pixel__avatar-ring--idle {
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.4), rgba(148, 163, 184, 0.2));
+    box-shadow: 0 0 6px rgba(148, 163, 184, 0.1);
+}
+
+:root[data-theme="light"] .agent-card-pixel__avatar-ring--waiting {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(59, 130, 246, 0.2));
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.15);
+}
+
+:root[data-theme="light"] .agent-card-pixel__avatar-ring--processing {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.5), rgba(245, 158, 11, 0.25));
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+:root[data-theme="light"] .agent-card-pixel__avatar-fallback {
+    background: rgba(0, 0, 0, 0.06);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="light"] .agent-card-pixel__stat-title {
+    color: rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] .agent-card-pixel__session {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="light"] .agent-card-pixel__session-row {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"] .agent-card-pixel__token-bar {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .agent-card-pixel__token-fill {
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+    box-shadow: 0 0 3px rgba(34, 197, 94, 0.3);
+}
+
+:root[data-theme="light"] .agent-card-pixel__token-val {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="light"] .agent-card-pixel__channel-text {
+    color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .agent-card-pixel--processing {
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 10px rgba(245, 158, 11, 0.1);
+}
+
+:root[data-theme="light"] .agent-card-pixel--waiting {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 8px rgba(59, 130, 246, 0.08);
+}
+
+:root[data-theme="light"] .agent-card-pixel--idle {
+    border-color: rgba(148, 163, 184, 0.25);
+    opacity: 0.85;
+}
+
+
+
+
+
+
+
+
+
+/* ==============================================
+   RPG-THEMED SECTION CARDS — 草料消耗趋势 / 牧场大门
+   ============================================== */
+
+/* Shared pixel RPG card overrides */
+.ov-card--usage,
+.ov-card--access {
+    border-left: 4px solid var(--rpg-accent, #4a9858);
+    border-radius: 6px;
+    /* Subtle diagonal stripe background */
+    background-image:
+        repeating-linear-gradient(135deg,
+            transparent,
+            transparent 12px,
+            rgba(0, 0, 0, 0.018) 12px,
+            rgba(0, 0, 0, 0.018) 13px);
+    image-rendering: auto;
+}
+
+/* RPG title styling for card-title inside these cards */
+.ov-card--usage .card-title,
+.ov-card--access .card-title {
+    font-family: var(--mono, monospace);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    font-size: 14px;
+}
+
+.ov-card--usage .card-sub,
+.ov-card--access .card-sub {
+    font-family: var(--mono, monospace);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+}
+
+/* 草料消耗趋势 — amber/orange (burning hay) */
+.ov-card--usage {
+    --rpg-accent: #c88830;
+    border-left-color: #c88830;
+}
+
+.ov-card--usage .card-title {
+    color: #c88830;
+}
+
+:root[data-theme="dark"] .ov-card--usage .card-title {
+    color: #e8a850;
+}
+
+/* 牧场大门 — green (lush gate entrance) */
+.ov-card--access {
+    --rpg-accent: #4a9858;
+    border-left-color: #4a9858;
+}
+
+.ov-card--access .card-title {
+    color: #3a7848;
+}
+
+:root[data-theme="dark"] .ov-card--access .card-title {
+    color: #58c070;
+}
+
+/* Dark mode stripe slightly stronger */
+:root[data-theme="dark"] .ov-card--usage,
+:root[data-theme="dark"] .ov-card--access {
+    background-image:
+        repeating-linear-gradient(135deg,
+            transparent,
+            transparent 12px,
+            rgba(255, 255, 255, 0.022) 12px,
+            rgba(255, 255, 255, 0.022) 13px);
+}
+
+/* Input fields in gateway card get pixel-styled borders */
+.ov-card--access input[type="text"],
+.ov-card--access select {
+    font-family: var(--mono, monospace);
+    font-size: 12px;
+    border-radius: 4px;
+    border: 2px solid #4a9858 !important;
+}
+
+:root[data-theme="dark"] .ov-card--access input[type="text"],
+:root[data-theme="dark"] .ov-card--access select {
+    border-color: #3a6848 !important;
+}

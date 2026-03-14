@@ -1,0 +1,176 @@
+/* ==============================================
+   ORCHESTRATION CARD — SVG Architecture Diagram
+   ============================================== */
+
+.orch-card {
+    padding: 0;
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+.orch-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.orch-card__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-strong);
+}
+
+.orch-card__icon {
+    opacity: 0.7;
+}
+
+/* Stats pills */
+.orch-card__stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.orch-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: var(--mono, monospace);
+}
+
+.orch-stat::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.orch-stat--processing {
+    background: var(--ok-subtle, rgba(48, 209, 88, 0.1));
+    color: var(--ok, #30d158);
+}
+
+.orch-stat--processing::before {
+    background: var(--ok, #30d158);
+    box-shadow: 0 0 6px var(--ok, #30d158);
+}
+
+.orch-stat--waiting {
+    background: var(--warn-subtle, rgba(255, 159, 10, 0.1));
+    color: var(--warn, #ff9f0a);
+}
+
+.orch-stat--waiting::before {
+    background: var(--warn, #ff9f0a);
+}
+
+.orch-stat--idle {
+    background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+    color: var(--muted);
+}
+
+.orch-stat--idle::before {
+    background: var(--muted);
+}
+
+/* Body */
+.orch-card__body {
+    padding: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.orch-card__empty {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* SVG container */
+.orch-svg-container {
+    display: flex;
+    justify-content: center;
+    min-height: 80px;
+}
+
+.orch-svg {
+    display: block;
+}
+
+/* SVG elements */
+.orch-svg__node {
+    transition: stroke 200ms ease;
+}
+
+.orch-svg__node:hover {
+    stroke: var(--accent);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+.orch-svg__text {
+    font-family: var(--font-body, -apple-system, sans-serif);
+    user-select: none;
+}
+
+/* Connection lines */
+.orch-svg__line {
+    transition: stroke 200ms ease;
+}
+
+.orch-svg__line--processing {
+    stroke: var(--ok, #30d158);
+    opacity: 0.5;
+    stroke-dasharray: 6 4;
+    animation: orch-flow 1.5s linear infinite;
+}
+
+.orch-svg__line--waiting {
+    stroke: var(--warn, #ff9f0a);
+    opacity: 0.4;
+}
+
+/* Processing node glow */
+.orch-svg__glow {
+    animation: orch-glow 2s ease-in-out infinite;
+}
+
+/* Processing dot pulse */
+.orch-svg__dot-pulse {
+    animation: orch-dot-pulse 1.8s ease-in-out infinite;
+}
+
+/* Animations */
+@keyframes orch-flow {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -20; }
+}
+
+@keyframes orch-glow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.15; }
+}
+
+@keyframes orch-dot-pulse {
+    0%, 100% { r: 4; opacity: 1; }
+    50% { r: 5; opacity: 0.6; }
+}
+
+/* Scrollbar */
+.orch-card__body::-webkit-scrollbar {
+    height: 4px;
+}
+
+.orch-card__body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
