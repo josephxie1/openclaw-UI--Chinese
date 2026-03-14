@@ -226,6 +226,21 @@
       "emoji": "🩹",
       "title": "Apply Patch",
       "detailKeys": []
+    },
+    "lobster": {
+      "emoji": "🦞",
+      "title": "Lobster",
+      "actions": {
+        "run": { "label": "run", "detailKeys": ["pipeline", "timeoutMs"] },
+        "resume": { "label": "resume", "detailKeys": ["token", "approve"] }
+      }
+    },
+    "llm-task": {
+      "emoji": "🤖",
+      "title": "LLM Task",
+      "actions": {
+        "json": { "label": "json", "detailKeys": ["prompt", "model", "thinking"] }
+      }
     }
   }
 }
