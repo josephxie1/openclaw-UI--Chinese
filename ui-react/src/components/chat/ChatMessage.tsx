@@ -231,6 +231,9 @@ function MessageBubble({
     <div className={bubbleClasses}>
       <MessageImages images={images} />
       {reasoningMarkdown && <ThinkingPanel markdown={reasoningMarkdown} />}
+      {!skipToolCards && pairToolCards(toolCards).length > 0 && (
+        <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />
+      )}
       {markdown && (
         <div
           className={`chat-text${canCopyMarkdown ? " has-copy" : ""}`}
@@ -239,9 +242,6 @@ function MessageBubble({
           {canCopyMarkdown && <CopyButton text={markdown} />}
           <div dangerouslySetInnerHTML={{ __html: toSanitizedMarkdownHtmlBlocks(markdown) }} />
         </div>
-      )}
-      {!skipToolCards && pairToolCards(toolCards).length > 0 && (
-        <ChainOfThought toolCards={pairToolCards(toolCards)} isStreaming={isStreaming} />
       )}
     </div>
   );
