@@ -359,6 +359,14 @@ export function ChatMessageGroup({
           <TaskStepList group={group} isStreaming={group.isStreaming} />
         ) : (
           <>
+            {/* Chain of Thought primero — arriba del texto final */}
+            {hasGroupToolCards && (
+              <ChainOfThought
+                toolCards={allToolCards}
+                isStreaming={group.isStreaming}
+                reasoning={groupReasoning}
+              />
+            )}
             {group.messages.map((item, index) => (
               <MessageBubble
                 key={index}
@@ -370,14 +378,6 @@ export function ChatMessageGroup({
                 skipThinking={hasGroupToolCards}
               />
             ))}
-            {/* Un único ChainOfThought para TODAS las tool cards + reasoning del grupo */}
-            {hasGroupToolCards && (
-              <ChainOfThought
-                toolCards={allToolCards}
-                isStreaming={group.isStreaming}
-                reasoning={groupReasoning}
-              />
-            )}
           </>
         )}
       </div>
