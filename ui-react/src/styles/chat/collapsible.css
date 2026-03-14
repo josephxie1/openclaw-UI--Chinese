@@ -1,0 +1,53 @@
+/* Collapsible Primitive — Estilos para el componente <details>/<summary> */
+
+.collapsible {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.collapsible__trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background 150ms ease;
+}
+
+.collapsible__trigger:hover {
+  background: rgba(128, 128, 128, 0.06);
+}
+
+.collapsible__trigger::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron genérico para cualquier trigger */
+.collapsible__chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+
+.collapsible__chevron svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+}
+
+.collapsible[open] > .collapsible__trigger .collapsible__chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible__content {
+  padding: 4px 14px 12px;
+  border-top: 1px solid var(--border);
+}

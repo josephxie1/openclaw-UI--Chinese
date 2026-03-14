@@ -2,6 +2,7 @@
 @import "./chat/text.css";
 @import "./chat/grouped.css";
 @import "./chat/tool-cards.css";
+@import "./chat/collapsible.css";
 @import "./chat/task-steps.css";
 @import "./chat/sidebar.css";
 @import "./chat/session-nav.css";
