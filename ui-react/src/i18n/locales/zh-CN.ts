@@ -232,6 +232,8 @@ export const zh_CN: TranslationMap = {
     taskInProgress: "进行中",
     chainOfThought: "思考过程",
     chainOfThoughtActive: "思考中...",
+    showReasoning: "推理过程",
+    hideReasoning: "推理过程",
   },
   configView: {
     env: "环境变量",

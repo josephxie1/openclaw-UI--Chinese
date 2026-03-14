@@ -164,12 +164,14 @@ function MessageBubble({
   showReasoning,
   onOpenSidebar: _onOpenSidebar,
   skipToolCards = false,
+  skipThinking = false,
 }: {
   message: unknown;
   isStreaming: boolean;
   showReasoning: boolean;
   onOpenSidebar?: (content: string) => void;
   skipToolCards?: boolean;
+  skipThinking?: boolean;
 }) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
@@ -187,7 +189,7 @@ function MessageBubble({
 
   const extractedText = extractTextCached(message);
   const extractedThinking =
-    showReasoning && role === "assistant" ? extractThinkingCached(message) : null;
+    showReasoning && role === "assistant" && !skipThinking ? extractThinkingCached(message) : null;
   const markdown = extractedText?.trim() ? extractedText : null;
   const reasoningMarkdown = extractedThinking ? formatReasoningMarkdown(extractedThinking) : null;
   const canCopyMarkdown = role === "assistant" && Boolean(markdown?.trim());
@@ -339,6 +341,9 @@ export function ChatMessageGroup({
   const allToolCards = isAssistant ? collectGroupToolCards(group) : [];
   const hasGroupToolCards = allToolCards.length > 0;
 
+  // Recopilar reasoning de todos los mensajes del grupo para ChainOfThought
+  const groupReasoning = isAssistant && hasGroupToolCards ? collectGroupReasoning(group) : null;
+
   return (
     <div className={`chat-group ${roleClass}`}>
       <Avatar
@@ -362,11 +367,16 @@ export function ChatMessageGroup({
                 showReasoning={showReasoning}
                 onOpenSidebar={onOpenSidebar}
                 skipToolCards={hasGroupToolCards}
+                skipThinking={hasGroupToolCards}
               />
             ))}
-            {/* Un único ChainOfThought para TODAS las tool cards del grupo */}
+            {/* Un único ChainOfThought para TODAS las tool cards + reasoning del grupo */}
             {hasGroupToolCards && (
-              <ChainOfThought toolCards={allToolCards} isStreaming={group.isStreaming} />
+              <ChainOfThought
+                toolCards={allToolCards}
+                isStreaming={group.isStreaming}
+                reasoning={groupReasoning}
+              />
             )}
           </>
         )}
@@ -405,4 +415,16 @@ function collectGroupToolCards(group: MessageGroup) {
     allCards.push(...cards);
   }
   return pairToolCards(allCards);
+}
+
+// Recopilar reasoning de todos los mensajes del grupo
+function collectGroupReasoning(group: MessageGroup): string | null {
+  const parts: string[] = [];
+  for (const item of group.messages) {
+    const thinking = extractThinkingCached(item.message);
+    if (thinking) {
+      parts.push(formatReasoningMarkdown(thinking));
+    }
+  }
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }

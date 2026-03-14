@@ -233,6 +233,8 @@ export const en: TranslationMap = {
     taskInProgress: "In progress",
     chainOfThought: "Chain of Thought",
     chainOfThoughtActive: "Thinking...",
+    showReasoning: "Reasoning",
+    hideReasoning: "Reasoning",
   },
   configView: {
     env: "Environment",

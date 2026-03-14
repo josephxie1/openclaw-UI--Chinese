@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { t } from "../../i18n/index.ts";
-import { resolveToolDisplay, formatToolSummary } from "../../lib/tool-display.ts";
+import { toSanitizedMarkdownHtml } from "../../lib/markdown.ts";
+import { resolveToolDisplay, formatToolDetail } from "../../lib/tool-display.ts";
 import type { ToolCard as ToolCardType } from "../../lib/types/chat-types.ts";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -10,6 +11,7 @@ type StepStatus = "done" | "loading" | "error";
 interface ChainOfThoughtProps {
   toolCards: ToolCardType[];
   isStreaming: boolean;
+  reasoning?: string | null;
 }
 
 // ─── Status detection ────────────────────────────────────────
@@ -203,10 +205,11 @@ function StatusDot({ status }: { status: StepStatus }) {
 
 // ─── Component ───────────────────────────────────────────────
 
-export function ChainOfThought({ toolCards, isStreaming }: ChainOfThoughtProps) {
+export function ChainOfThought({ toolCards, isStreaming, reasoning }: ChainOfThoughtProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [showReasoning, setShowReasoning] = useState(false);
 
-  if (toolCards.length === 0) {
+  if (toolCards.length === 0 && !reasoning) {
     return null;
   }
 
@@ -236,9 +239,34 @@ export function ChainOfThought({ toolCards, isStreaming }: ChainOfThoughtProps) 
         </span>
       </button>
 
-      {/* Steps timeline */}
+      {/* Contenido colapsable */}
       {isOpen && (
         <div className="cot__steps">
+          {/* Reasoning integrado dentro del contenedor */}
+          {reasoning && (
+            <div className="cot-reasoning">
+              <button
+                className="cot-reasoning__toggle"
+                type="button"
+                onClick={() => setShowReasoning(!showReasoning)}
+              >
+                <span className="cot-reasoning__icon">
+                  <BrainIcon />
+                </span>
+                <span className="cot-reasoning__label">
+                  {showReasoning ? t("chatView.hideReasoning") : t("chatView.showReasoning")}
+                </span>
+              </button>
+              {showReasoning && (
+                <div
+                  className="cot-reasoning__content"
+                  dangerouslySetInnerHTML={{ __html: toSanitizedMarkdownHtml(reasoning) }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Timeline de herramientas */}
           {toolCards.map((card, index) => (
             <ChainOfThoughtStep
               key={index}
@@ -267,7 +295,9 @@ function ChainOfThoughtStep({
   const [showDetails, setShowDetails] = useState(false);
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const status = detectStatus(card, isStreaming);
-  const summary = formatToolSummary(display);
+  // Formato: "label: detail" sin el prefijo "with"
+  const detail = formatToolDetail(display);
+  const summary = detail ? `${display.label}: ${detail.replace(/^with /, "")}` : display.label;
   const badges = extractSearchBadges(card);
   const resultPreview = formatResultPreview(card.text);
   const isError = status === "error";
