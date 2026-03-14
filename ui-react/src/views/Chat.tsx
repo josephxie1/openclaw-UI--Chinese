@@ -486,14 +486,14 @@ export function ChatView() {
         <div
           className="chat-main"
           style={{ flex: showSidebar ? `0 0 ${splitRatio * 100}%` : "1 1 100%" }}
+          ref={threadRef}
+          onScroll={(e) => handleChatScroll(getReactiveState() as never, e.nativeEvent)}
         >
           {/* Message thread */}
           <div
             className="chat-thread"
             role="log"
             aria-live="polite"
-            ref={threadRef}
-            onScroll={(e) => handleChatScroll(getReactiveState() as never, e.nativeEvent)}
           >
             {loading && <div className="muted">{t("chatView.loadingChat")}</div>}
 

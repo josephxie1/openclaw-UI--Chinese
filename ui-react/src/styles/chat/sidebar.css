@@ -11,7 +11,8 @@
   min-width: 400px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-left: 300px;
   padding-right: 300px;
   /* Smooth transition when sidebar opens/closes */

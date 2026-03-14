@@ -48,16 +48,13 @@
   min-width: 180px;
 }
 
-/* Chat thread - scrollable middle section, transparent */
+/* Chat thread - flows naturally inside scrollable chat-main */
 .chat-thread {
-  flex: 1 1 0;
-  /* Grow, shrink, and use 0 base for proper scrolling */
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 1 0 auto;
+  overflow: visible;
   padding: 12px 4px;
   margin: 0 -4px;
   min-height: 0;
-  /* Allow shrinking for flex scroll behavior */
   border-radius: 12px;
   background: transparent;
 }

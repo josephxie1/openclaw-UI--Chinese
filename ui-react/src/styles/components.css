@@ -1958,10 +1958,8 @@ pre.code-block {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 1 0 auto;
+  overflow: visible;
   padding: 16px 12px;
   min-width: 0;
   border-radius: 0;
