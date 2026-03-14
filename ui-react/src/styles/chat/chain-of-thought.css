@@ -188,6 +188,13 @@
   text-underline-offset: 2px;
 }
 
+.cot-step__tool-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 .cot-step--error .cot-step__label {
   color: var(--danger, #ef4444);
 }
