@@ -30,6 +30,11 @@
       "title": "Bash",
       "detailKeys": ["command"]
     },
+    "task_progress": {
+      "emoji": "📋",
+      "title": "Task",
+      "detailKeys": ["step", "status"]
+    },
     "process": {
       "emoji": "🧰",
       "title": "Process",

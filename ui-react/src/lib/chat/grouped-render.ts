@@ -1,0 +1,398 @@
+import { html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { t } from "../../i18n/index.ts";
+import type { AssistantIdentity } from "../assistant-identity.ts";
+import { avatarFromName } from "../helpers/multiavatar.ts";
+import { icons } from "../icons.ts";
+import { toSanitizedMarkdownHtml, toSanitizedMarkdownHtmlBlocks } from "../markdown.ts";
+import { openExternalUrlSafe } from "../open-external-url.ts";
+import { detectTextDirection } from "../text-direction.ts";
+import type { MessageGroup } from "../types/chat-types.ts";
+import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
+import {
+  extractTextCached,
+  extractThinkingCached,
+  formatReasoningMarkdown,
+} from "./message-extract.ts";
+import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
+import { extractTaskSegments, type TaskSegment } from "./task-segments.ts";
+import { extractToolCards, pairToolCards, renderToolCallGroup } from "./tool-cards.ts";
+
+type ImageBlock = {
+  url: string;
+  alt?: string;
+};
+
+function extractImages(message: unknown): ImageBlock[] {
+  const m = message as Record<string, unknown>;
+  const content = m.content;
+  const images: ImageBlock[] = [];
+
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (typeof block !== "object" || block === null) {
+        continue;
+      }
+      const b = block as Record<string, unknown>;
+
+      if (b.type === "image") {
+        // Handle source object format (from sendChatMessage)
+        const source = b.source as Record<string, unknown> | undefined;
+        if (source?.type === "base64" && typeof source.data === "string") {
+          const data = source.data;
+          const mediaType = (source.media_type as string) || "image/png";
+          // If data is already a data URL, use it directly
+          const url = data.startsWith("data:") ? data : `data:${mediaType};base64,${data}`;
+          images.push({ url });
+        } else if (typeof b.url === "string") {
+          images.push({ url: b.url });
+        }
+      } else if (b.type === "image_url") {
+        // OpenAI format
+        const imageUrl = b.image_url as Record<string, unknown> | undefined;
+        if (typeof imageUrl?.url === "string") {
+          images.push({ url: imageUrl.url });
+        }
+      }
+    }
+  }
+
+  return images;
+}
+
+export function renderReadingIndicatorGroup(assistant?: AssistantIdentity) {
+  return html`
+    <div class="chat-group assistant">
+      ${renderAvatar("assistant", assistant)}
+      <div class="chat-group-messages">
+        <div class="chat-bubble chat-reading-indicator" aria-hidden="true">
+          <span class="chat-reading-indicator__dots">
+            <span></span><span></span><span></span>
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function renderStreamingGroup(
+  text: string,
+  startedAt: number,
+  onOpenSidebar?: (content: string) => void,
+  assistant?: AssistantIdentity,
+) {
+  const timestamp = new Date(startedAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const name = assistant?.name ?? "Assistant";
+
+  return html`
+    <div class="chat-group assistant">
+      ${renderAvatar("assistant", assistant)}
+      <div class="chat-group-messages">
+        <div class="chat-group-header">
+          <span class="chat-sender-name">${name}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </div>
+        ${renderGroupedMessage(
+          {
+            role: "assistant",
+            content: [{ type: "text", text }],
+            timestamp: startedAt,
+          },
+          { isStreaming: true, showReasoning: false },
+          onOpenSidebar,
+        )}
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskStepGroup(segments: TaskSegment[], isStreaming: boolean) {
+  return html`${segments.map((seg) => renderTaskStep(seg, isStreaming))}`;
+}
+
+function renderTaskStep(seg: TaskSegment, isStreaming: boolean) {
+  const time = new Date(seg.timestamp).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const statusClass = `chat-task-step__status--${seg.status}`;
+  const statusIcon =
+    seg.status === "done" ? icons.check : seg.status === "error" ? icons.x : nothing;
+  const label = seg.label || "Task";
+
+  // Si no hay tool cards, no hacer colapsable
+  if (seg.toolCards.length === 0 && !seg.text) {
+    return html`
+      <div class="chat-task-step">
+        <div class="chat-task-step__summary" style="cursor: default">
+          <span class="chat-task-step__status ${statusClass}">${statusIcon}</span>
+          <span class="chat-task-step__label">${label}</span>
+          <span class="chat-task-step__time">${time}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  return html`
+    <details class="chat-task-step" ?open=${seg.status === "loading" || seg.status === "error"}>
+      <summary class="chat-task-step__summary">
+        <span class="chat-task-step__status ${statusClass}">${statusIcon}</span>
+        <span class="chat-task-step__label">${label}</span>
+        ${
+          seg.status === "loading"
+            ? html`<span class="chat-task-step__badge">${t("chatView.taskInProgress")}</span>`
+            : nothing
+        }
+        <span class="chat-task-step__time">${time}</span>
+        <span class="chat-task-step__chevron">${icons.arrowDown}</span>
+      </summary>
+      <div class="chat-task-step__body">
+        ${seg.toolCards.length > 0 ? renderToolCallGroup(seg.toolCards, isStreaming) : nothing}
+      </div>
+    </details>
+  `;
+}
+
+export function renderMessageGroup(
+  group: MessageGroup,
+  opts: {
+    onOpenSidebar?: (content: string) => void;
+    showReasoning: boolean;
+    assistantName?: string;
+    assistantAvatar?: string | null;
+  },
+) {
+  const normalizedRole = normalizeRoleForGrouping(group.role);
+  const assistantName = opts.assistantName ?? "Assistant";
+
+  // Detectar y renderizar task steps para assistant groups
+  if (normalizedRole === "assistant") {
+    const segments = extractTaskSegments(group);
+    if (segments) {
+      const who = assistantName;
+      const timestamp = new Date(group.timestamp).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      return html`
+        <div class="chat-group assistant">
+          ${renderAvatar(group.role, {
+            name: assistantName,
+            avatar: opts.assistantAvatar ?? null,
+          })}
+          <div class="chat-group-messages">
+            <div class="chat-group-header">
+              <span class="chat-sender-name">${who}</span>
+              <span class="chat-group-timestamp">${timestamp}</span>
+            </div>
+            ${renderTaskStepGroup(segments, group.isStreaming)}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  const who =
+    normalizedRole === "user"
+      ? "You"
+      : normalizedRole === "assistant"
+        ? assistantName
+        : normalizedRole;
+  const roleClass =
+    normalizedRole === "user" ? "user" : normalizedRole === "assistant" ? "assistant" : "other";
+  const timestamp = new Date(group.timestamp).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return html`
+    <div class="chat-group ${roleClass}">
+      ${renderAvatar(group.role, {
+        name: assistantName,
+        avatar: opts.assistantAvatar ?? null,
+      })}
+      <div class="chat-group-messages">
+        <div class="chat-group-header">
+          <span class="chat-sender-name">${who}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </div>
+        ${group.messages.map((item, index) =>
+          renderGroupedMessage(
+            item.message,
+            {
+              isStreaming: group.isStreaming && index === group.messages.length - 1,
+              showReasoning: opts.showReasoning,
+            },
+            opts.onOpenSidebar,
+          ),
+        )}
+      </div>
+    </div>
+  `;
+}
+
+function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" | "avatar">) {
+  const normalized = normalizeRoleForGrouping(role);
+  const assistantName = assistant?.name?.trim() || "Assistant";
+  const assistantAvatar = assistant?.avatar?.trim() || "";
+  const initial =
+    normalized === "user"
+      ? "U"
+      : normalized === "assistant"
+        ? assistantName.charAt(0).toUpperCase() || "A"
+        : "?";
+  const className =
+    normalized === "user" ? "user" : normalized === "assistant" ? "assistant" : "other";
+
+  if (assistantAvatar && normalized === "assistant") {
+    if (isAvatarUrl(assistantAvatar)) {
+      return html`<img
+        class="chat-avatar ${className}"
+        src="${assistantAvatar}"
+        alt="${assistantName}"
+      />`;
+    }
+    // Emoji avatar — fall through to multiavatar below
+  }
+
+  // Generate multiavatar from assistant name as default
+  if (normalized === "assistant") {
+    const defaultAvatar = avatarFromName(assistantName);
+    return html`<img
+      class="chat-avatar ${className}"
+      src="${defaultAvatar}"
+      alt="${assistantName}"
+    />`;
+  }
+
+  return html`<div class="chat-avatar ${className}">${initial}</div>`;
+}
+
+function isAvatarUrl(value: string): boolean {
+  return (
+    /^https?:\/\//i.test(value) || /^data:image\//i.test(value) || value.startsWith("/") // Relative paths from avatar endpoint
+  );
+}
+
+function renderMessageImages(images: ImageBlock[]) {
+  if (images.length === 0) {
+    return nothing;
+  }
+
+  const openImage = (url: string) => {
+    openExternalUrlSafe(url, { allowDataImage: true });
+  };
+
+  return html`
+    <div class="chat-message-images">
+      ${images.map(
+        (img) => html`
+          <img
+            src=${img.url}
+            alt=${img.alt ?? "Attached image"}
+            class="chat-message-image"
+            @click=${() => openImage(img.url)}
+          />
+        `,
+      )}
+    </div>
+  `;
+}
+
+function renderGroupedMessage(
+  message: unknown,
+  opts: { isStreaming: boolean; showReasoning: boolean },
+  _onOpenSidebar?: (content: string) => void,
+) {
+  const m = message as Record<string, unknown>;
+  const role = typeof m.role === "string" ? m.role : "unknown";
+  const isToolResult =
+    isToolResultMessage(message) ||
+    role.toLowerCase() === "toolresult" ||
+    role.toLowerCase() === "tool_result" ||
+    typeof m.toolCallId === "string" ||
+    typeof m.tool_call_id === "string";
+
+  const toolCards = extractToolCards(message);
+  const hasToolCards = toolCards.length > 0;
+  const images = extractImages(message);
+  const hasImages = images.length > 0;
+
+  const extractedText = extractTextCached(message);
+  const extractedThinking =
+    opts.showReasoning && role === "assistant" ? extractThinkingCached(message) : null;
+  const markdownBase = extractedText?.trim() ? extractedText : null;
+  const reasoningMarkdown = extractedThinking ? formatReasoningMarkdown(extractedThinking) : null;
+  const markdown = markdownBase;
+  const canCopyMarkdown = role === "assistant" && Boolean(markdown?.trim());
+
+  const bubbleClasses = [
+    "chat-bubble",
+    canCopyMarkdown ? "has-copy" : "",
+    opts.isStreaming ? "streaming" : "",
+    "fade-in",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (hasToolCards && isToolResult) {
+    // Tool result messages: render only as collapsible tool cards.
+    // The text is already captured in the card's result field.
+    const paired = pairToolCards(toolCards);
+    return html`${renderToolCallGroup(paired, opts.isStreaming)}`;
+  }
+
+  // Assistant messages with ONLY tool_use blocks (no real text) — render cards without bubble
+  if (hasToolCards && !markdown && !hasImages) {
+    return html`${renderToolCallGroup(pairToolCards(toolCards), opts.isStreaming)}`;
+  }
+
+  if (!markdown && !hasToolCards && !hasImages) {
+    return nothing;
+  }
+
+  return html`
+    <div class="${bubbleClasses}">
+      ${renderMessageImages(images)}
+      ${
+        reasoningMarkdown
+          ? (() => {
+              // Extract first meaningful line as summary label
+              const firstLine =
+                reasoningMarkdown
+                  .trim()
+                  .split("\n")
+                  .find((l: string) => l.trim().length > 0)
+                  ?.trim() ?? "Thinking";
+              const label = firstLine.length > 60 ? firstLine.slice(0, 57) + "..." : firstLine;
+              return html`
+                <details class="chat-thinking-panel">
+                  <summary class="chat-thinking-panel__trigger">
+                    <span class="chat-thinking-panel__icon">${icons.brain}</span>
+                    <span class="chat-thinking-panel__label">${label}</span>
+                    <span class="chat-thinking-panel__toggle"></span>
+                  </summary>
+                  <div class="chat-thinking-panel__content">
+                    ${unsafeHTML(toSanitizedMarkdownHtml(reasoningMarkdown))}
+                  </div>
+                </details>
+              `;
+            })()
+          : nothing
+      }
+      ${
+        markdown
+          ? html`<div class="chat-text ${canCopyMarkdown ? "has-copy" : ""}" dir="${detectTextDirection(markdown)}">
+              ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown) : nothing}
+              ${unsafeHTML(toSanitizedMarkdownHtmlBlocks(markdown))}
+            </div>`
+          : nothing
+      }
+      ${renderToolCallGroup(pairToolCards(toolCards), opts.isStreaming)}
+    </div>
+  `;
+}

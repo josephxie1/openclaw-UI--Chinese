@@ -265,6 +265,8 @@ export function buildAgentSystemPrompt(params: {
     session_status:
       "Show a /status-equivalent status card (usage + time + Reasoning/Verbose/Elevated); use for model-use questions (📊 session_status); optional per-session model override",
     image: "Analyze an image with the configured image model",
+    task_progress:
+      "Signal task progress to the UI; call before each logical step of a multi-step task with a short step label",
   };
 
   const toolOrder = [
@@ -292,6 +294,7 @@ export function buildAgentSystemPrompt(params: {
     "subagents",
     "session_status",
     "image",
+    "task_progress",
   ];
 
   const rawToolNames = (params.toolNames ?? []).map((tool) => tool.trim());
@@ -459,6 +462,15 @@ export function buildAgentSystemPrompt(params: {
     "Keep narration brief and value-dense; avoid repeating obvious steps.",
     "Use plain human language for narration unless in a technical context.",
     "When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.",
+    availableTools.has("task_progress")
+      ? [
+          "",
+          "### Task Progress",
+          'For multi-step tasks (3+ steps), call `task_progress` with a short step label before starting each logical step (e.g. step="Initialize project", status="in_progress").',
+          "The UI renders these as collapsible task steps so the user can track your progress.",
+          "Do not call task_progress for simple single-step requests.",
+        ].join("\n")
+      : "",
     "",
     ...safetySection,
     "## OpenClaw CLI Quick Reference",

@@ -1,0 +1,174 @@
+/* Task Steps — Collapsible task progress in chat */
+
+/* ── Container ─────────────────────────────────── */
+
+.chat-task-step {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  overflow: hidden;
+  width: 100%;
+}
+
+.chat-task-step:first-child {
+  margin-top: 0;
+}
+
+/* ── Summary row ──────────────────────────────── */
+
+.chat-task-step__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background 150ms ease;
+}
+
+.chat-task-step__summary:hover {
+  background: rgba(128, 128, 128, 0.06);
+}
+
+.chat-task-step__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* ── Status circle icon ───────────────────────── */
+
+.chat-task-step__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* done: green check */
+.chat-task-step__status--done {
+  background: var(--color-ok, #22c55e);
+  color: #fff;
+}
+
+.chat-task-step__status--done svg {
+  width: 11px;
+  height: 11px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5px;
+}
+
+/* loading: blue ring pulse */
+.chat-task-step__status--loading {
+  border: 2px solid var(--color-info, #3b82f6);
+  background: transparent;
+  animation: task-status-pulse 1.5s ease-in-out infinite;
+}
+
+/* error: red circle */
+.chat-task-step__status--error {
+  background: var(--danger, #ef4444);
+  color: #fff;
+}
+
+.chat-task-step__status--error svg {
+  width: 11px;
+  height: 11px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5px;
+}
+
+@keyframes task-status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+/* ── Label + timestamp ────────────────────────── */
+
+.chat-task-step__label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong, var(--text));
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-task-step__time {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.chat-task-step__summary:hover .chat-task-step__time {
+  opacity: 1;
+}
+
+/* ── Chevron toggle ───────────────────────────── */
+
+.chat-task-step__chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+
+.chat-task-step__chevron svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+}
+
+.chat-task-step[open] > .chat-task-step__summary .chat-task-step__chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Body (expanded content) ──────────────────── */
+
+.chat-task-step__body {
+  padding: 4px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Texto del asistente dentro del step */
+.chat-task-step__text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.chat-task-step__text:empty {
+  display: none;
+}
+
+/* Tool cards dentro del step sin shadow extra */
+.chat-task-step__body .chat-tool-group,
+.chat-task-step__body .chat-tool-card {
+  box-shadow: none;
+  margin-top: 4px;
+}
+
+/* ── Badge de status (in-progress text) ───────── */
+
+.chat-task-step__badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-info, #3b82f6);
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.1);
+}
