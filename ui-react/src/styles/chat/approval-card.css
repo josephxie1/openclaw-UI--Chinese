@@ -1,0 +1,163 @@
+/* ─── Approval Card (Lobster workflow approvals) ─────────── */
+
+.approval-card {
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* Variante por estado */
+.approval-card--requested {
+  border-color: var(--accent, #6366f1);
+  background: color-mix(in srgb, var(--accent, #6366f1) 6%, var(--bg-secondary));
+}
+
+.approval-card--approved {
+  border-color: var(--success, #22c55e);
+  background: color-mix(in srgb, var(--success, #22c55e) 6%, var(--bg-secondary));
+}
+
+.approval-card--rejected {
+  border-color: var(--danger, #ef4444);
+  background: color-mix(in srgb, var(--danger, #ef4444) 6%, var(--bg-secondary));
+}
+
+/* Header */
+.approval-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 4px;
+  font-weight: 600;
+}
+
+.approval-card__icon {
+  display: flex;
+  align-items: center;
+}
+
+.approval-card--requested .approval-card__icon {
+  color: var(--accent, #6366f1);
+}
+
+.approval-card--approved .approval-card__icon {
+  color: var(--success, #22c55e);
+}
+
+.approval-card--rejected .approval-card__icon {
+  color: var(--danger, #ef4444);
+}
+
+.approval-card__title {
+  color: var(--text-primary);
+}
+
+/* Prompt */
+.approval-card__prompt {
+  padding: 4px 12px 8px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Items */
+.approval-card__items {
+  list-style: none;
+  padding: 0 12px 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.approval-card__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+}
+
+.approval-card__item::before {
+  content: "•";
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.approval-card__item--more {
+  color: var(--muted);
+  font-style: italic;
+  font-family: var(--font-sans, sans-serif);
+}
+
+.approval-card__item--more::before {
+  content: "";
+}
+
+/* Action buttons */
+.approval-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px 12px;
+}
+
+.approval-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.approval-card__btn--approve {
+  background: var(--success, #22c55e);
+  color: #fff;
+  border-color: var(--success, #22c55e);
+}
+
+.approval-card__btn--approve:hover {
+  background: color-mix(in srgb, var(--success, #22c55e) 85%, #000);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--success, #22c55e) 30%, transparent);
+}
+
+.approval-card__btn--reject {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.approval-card__btn--reject:hover {
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, var(--bg-secondary));
+  color: var(--danger, #ef4444);
+  border-color: var(--danger, #ef4444);
+}
+
+/* Resolved state */
+.approval-card__resolved {
+  padding: 6px 12px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.approval-card__resolved--approved {
+  color: var(--success, #22c55e);
+}
+
+.approval-card__resolved--rejected {
+  color: var(--danger, #ef4444);
+}

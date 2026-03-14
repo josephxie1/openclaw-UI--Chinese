@@ -235,6 +235,15 @@ export const zh_CN: TranslationMap = {
     showReasoning: "推理过程",
     hideReasoning: "推理过程",
   },
+  approval: {
+    title: "需要审批",
+    approve: "批准",
+    reject: "拒绝",
+    approved: "已批准",
+    rejected: "已拒绝",
+    approvedDesc: "工作流已批准并继续执行。",
+    rejectedDesc: "工作流已取消。",
+  },
   configView: {
     env: "环境变量",
     updates: "更新",

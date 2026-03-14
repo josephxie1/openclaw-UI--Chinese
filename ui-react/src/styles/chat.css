@@ -4,6 +4,7 @@
 @import "./chat/tool-cards.css";
 @import "./chat/collapsible.css";
 @import "./chat/chain-of-thought.css";
+@import "./chat/approval-card.css";
 @import "./chat/task-steps.css";
 @import "./chat/sidebar.css";
 @import "./chat/session-nav.css";

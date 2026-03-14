@@ -236,6 +236,15 @@ export const en: TranslationMap = {
     showReasoning: "Reasoning",
     hideReasoning: "Reasoning",
   },
+  approval: {
+    title: "Approval Required",
+    approve: "Approve",
+    reject: "Reject",
+    approved: "Approved",
+    rejected: "Rejected",
+    approvedDesc: "Workflow approved and resumed.",
+    rejectedDesc: "Workflow cancelled.",
+  },
   configView: {
     env: "Environment",
     updates: "Updates",

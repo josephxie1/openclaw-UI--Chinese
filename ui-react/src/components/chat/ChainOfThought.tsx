@@ -4,6 +4,7 @@ import type { IconName } from "../../lib/icons.ts";
 import { toSanitizedMarkdownHtml } from "../../lib/markdown.ts";
 import { resolveToolDisplay, formatToolDetail } from "../../lib/tool-display.ts";
 import type { ToolCard as ToolCardType } from "../../lib/types/chat-types.ts";
+import { ApprovalCard, parseLobsterApproval } from "./ApprovalCard.tsx";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -444,6 +445,28 @@ function ChainOfThoughtStep({
         )}
 
         {showDetails && resultPreview && <pre className="cot-step__result">{resultPreview}</pre>}
+
+        {/* Lobster workflow approval UI */}
+        {(() => {
+          const approval = parseLobsterApproval(card.text);
+          if (!approval) {
+            return null;
+          }
+          return (
+            <ApprovalCard
+              state={approval.state}
+              data={approval.data}
+              onApprove={(token) => {
+                // TODO: conectar con WebSocket para enviar lobster resume
+                console.log("approve", token);
+              }}
+              onReject={(token) => {
+                // TODO: conectar con WebSocket para enviar lobster resume deny
+                console.log("reject", token);
+              }}
+            />
+          );
+        })()}
       </div>
     </div>
   );
