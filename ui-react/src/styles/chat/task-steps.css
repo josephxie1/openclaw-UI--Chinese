@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 16px);
   cursor: pointer;
   user-select: none;
   list-style: none;
@@ -138,7 +138,7 @@
 /* ── Body (expanded content) ──────────────────── */
 
 .chat-task-step__body {
-  padding: 4px 14px 12px;
+  padding: 4px clamp(10px, 1.5vw, 16px) 12px;
   border-top: 1px solid var(--border);
 }
 
@@ -172,3 +172,20 @@
   border-radius: 10px;
   background: rgba(59, 130, 246, 0.1);
 }
+
+/* ── Shimmer en loading state ────────────────── */
+
+.chat-task-step--loading .chat-task-step__label {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--text) 50%,
+    var(--muted) 75%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 2s linear infinite;
+}
+

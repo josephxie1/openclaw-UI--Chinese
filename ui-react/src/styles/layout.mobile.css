@@ -230,6 +230,12 @@
 
   .chat-compose {
     gap: 8px;
+    max-width: 100%;
+    padding: 8px 4px 4px;
+  }
+
+  .chat-compose__row {
+    border-radius: 14px;
   }
 
   .chat-compose__field textarea {
@@ -237,6 +243,25 @@
     padding: 8px 10px;
     border-radius: var(--radius-md);
     font-size: 14px;
+  }
+
+  .chat-compose__actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 6px;
+  }
+
+  .chat-compose__actions .btn {
+    font-size: 12px;
+    padding: 0 10px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+  }
+
+  /* Ocultar topbar-nav en mobile */
+  .topbar-nav {
+    display: none;
   }
 
   /* Log stream */
@@ -345,10 +370,20 @@
     padding: 8px 10px;
   }
 
+  .chat-compose {
+    max-width: 100%;
+    padding: 6px 2px 2px;
+  }
+
   .chat-compose__field textarea {
     min-height: 52px;
     padding: 8px 10px;
     font-size: 13px;
+  }
+
+  .chat-compose__actions .btn {
+    font-size: 11px;
+    padding: 0 8px;
   }
 
   .btn {

@@ -1,0 +1,79 @@
+/* Shimmer — 流式加载闪光动画 */
+
+/* 文本 shimmer：从右向左扫过的渐变高光 */
+.shimmer {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--text) 50%,
+    var(--muted) 75%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 2s linear infinite;
+}
+
+@keyframes shimmer-slide {
+  from { background-position: 100% center; }
+  to { background-position: 0% center; }
+}
+
+/* 行 shimmer：用于骨架屏占位 */
+.shimmer-line {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.08) 25%,
+    rgba(128, 128, 128, 0.16) 50%,
+    rgba(128, 128, 128, 0.08) 75%
+  );
+  background-size: 250% 100%;
+  animation: shimmer-slide 1.5s ease-in-out infinite;
+}
+
+.shimmer-line--short { width: 40%; }
+.shimmer-line--medium { width: 65%; }
+.shimmer-line--long { width: 85%; }
+
+/* CoT header shimmer 条 */
+.cot--streaming .cot__header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-info, #3b82f6) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-bar 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer-bar {
+  0% { background-position: 100% center; }
+  100% { background-position: -100% center; }
+}
+
+/* CoT step loading shimmer */
+.cot-step--loading .cot-step__text {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--text) 50%,
+    var(--muted) 75%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 2s linear infinite;
+}

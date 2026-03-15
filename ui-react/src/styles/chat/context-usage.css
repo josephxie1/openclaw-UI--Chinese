@@ -1,0 +1,116 @@
+/* ContextUsage — Token 使用量展示 */
+
+/* ── Container ─────────────────────────────────── */
+
+.context-usage {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Trigger ──────────────────────────────────── */
+
+.context-usage__trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: default;
+  font-size: 11px;
+  color: var(--muted);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.context-usage:hover .context-usage__trigger {
+  color: var(--text);
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.context-usage__pct {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Hover Card ──────────────────────────────── */
+
+.context-usage__card {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 100;
+  animation: context-card-appear 150ms ease-out;
+}
+
+@keyframes context-card-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header ──────────────────────────────────── */
+
+.context-usage__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.context-usage__header-detail {
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Body ─────────────────────────────────────── */
+
+.context-usage__body {
+  padding: 8px 12px;
+}
+
+.context-usage__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.context-usage__row-label {
+  color: var(--muted);
+}
+
+.context-usage__row-value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Footer ──────────────────────────────────── */
+
+.context-usage__footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(128, 128, 128, 0.04);
+}
+
+.context-usage__model {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono, monospace);
+}

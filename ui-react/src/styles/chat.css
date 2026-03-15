@@ -2,6 +2,15 @@
 @import "./chat/text.css";
 @import "./chat/grouped.css";
 @import "./chat/tool-cards.css";
+@import "./chat/collapsible.css";
+@import "./chat/chain-of-thought.css";
+@import "./chat/approval-card.css";
 @import "./chat/task-steps.css";
 @import "./chat/sidebar.css";
 @import "./chat/session-nav.css";
+@import "./chat/sources.css";
+@import "./chat/shimmer.css";
+@import "./chat/context-usage.css";
+@import "./chat/inline-citation.css";
+@import "./chat/queue-indicator.css";
+@import "./chat/queue.css";

@@ -1,0 +1,278 @@
+/* Queue — 完整队列组件 */
+
+/* ── Container ─────────────────────────────────── */
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Section (collapsible group) ──────────────── */
+
+.queue__section {
+  /* details element, estilo heredado del reset */
+  margin: 0;
+}
+
+.queue__section-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, 0.05);
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.queue__section-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.queue__section-trigger:hover {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--text);
+}
+
+.queue__section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue__section-chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 200ms ease;
+}
+
+.queue__section-chevron svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.queue__section[open] > .queue__section-trigger .queue__section-chevron {
+  transform: rotate(0deg);
+}
+
+.queue__section:not([open]) > .queue__section-trigger .queue__section-chevron {
+  transform: rotate(-90deg);
+}
+
+.queue__section-icon {
+  display: flex;
+  align-items: center;
+}
+
+.queue__section-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.queue__section-content {
+  margin-top: 4px;
+}
+
+/* ── List (scrollable) ────────────────────────── */
+
+.queue__list-wrapper {
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding-right: 4px;
+}
+
+/* Scrollbar estilo delgado */
+.queue__list-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.queue__list-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.queue__list-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+.queue__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Item ─────────────────────────────────────── */
+
+.queue__item {
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 150ms ease;
+}
+
+.queue__item:hover {
+  background: rgba(128, 128, 128, 0.06);
+}
+
+.queue__item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* ── Item indicator (circle dot) ──────────────── */
+
+.queue__item-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(128, 128, 128, 0.5);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.queue__item-indicator--done {
+  border-color: rgba(128, 128, 128, 0.2);
+  background: rgba(128, 128, 128, 0.1);
+}
+
+/* ── Item content (text) ──────────────────────── */
+
+.queue__item-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.queue__item-content--done {
+  color: rgba(128, 128, 128, 0.4);
+  text-decoration: line-through;
+}
+
+/* ── Item description ─────────────────────────── */
+
+.queue__item-desc {
+  margin-left: 24px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.queue__item-desc--done {
+  color: rgba(128, 128, 128, 0.3);
+  text-decoration: line-through;
+}
+
+/* ── Item actions ─────────────────────────────── */
+
+.queue__item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.queue__item:hover .queue__item-actions {
+  opacity: 1;
+}
+
+.queue__item-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.queue__item-actions button:hover {
+  color: var(--text);
+  background: rgba(128, 128, 128, 0.1);
+}
+
+/* ── Item attachments ─────────────────────────── */
+
+.queue__item-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  margin-left: 24px;
+}
+
+/* ── Item file badge ──────────────────────────── */
+
+.queue__item-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.04);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.queue__item-file svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+.queue__item-file-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Item image thumbnail ─────────────────────── */
+
+.queue__item-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+/* ── Completed item styling ───────────────────── */
+
+.queue__item--completed .queue__item-content {
+  color: rgba(128, 128, 128, 0.4);
+  text-decoration: line-through;
+}
+
+.queue__item--completed .queue__item-indicator {
+  border-color: rgba(128, 128, 128, 0.2);
+  background: rgba(128, 128, 128, 0.1);
+}

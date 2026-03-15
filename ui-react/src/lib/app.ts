@@ -274,7 +274,7 @@ export class OpenClawApp extends LitElement {
   @state() toolsCatalogLoading = false;
   @state() toolsCatalogError: string | null = null;
   @state() toolsCatalogResult: ToolsCatalogResult | null = null;
-  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" =
+  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" | "config" =
     "overview";
   @state() modelDropdownOpen = false;
   @state() modelDropdownExpandedGroups: Set<string> = new Set();

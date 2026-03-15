@@ -175,7 +175,7 @@ export type AppViewState = {
   toolsCatalogLoading: boolean;
   toolsCatalogError: string | null;
   toolsCatalogResult: ToolsCatalogResult | null;
-  agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron";
+  agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" | "config";
   modelDropdownOpen: boolean;
   modelDropdownExpandedGroups: Set<string>;
   fallbackDropdownOpen: boolean;

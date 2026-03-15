@@ -14,7 +14,7 @@ import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
 import { loadChannelPairings } from "./controllers/channel-pairing.ts";
 import { loadChannels } from "./controllers/channels.ts";
-import { loadConfig, loadConfigRaw, loadConfigSchema } from "./controllers/config.ts";
+import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
 import {
   loadCronJobs,
   loadCronModelSuggestions,
@@ -59,7 +59,7 @@ type SettingsHost = {
   basePath: string;
   agentsList?: AgentsListResult | null;
   agentsSelectedId?: string | null;
-  agentsPanel?: "overview" | "files" | "tools" | "skills" | "channels" | "cron";
+  agentsPanel?: "overview" | "files" | "tools" | "skills" | "channels" | "cron" | "config";
   themeMedia: MediaQueryList | null;
   themeMediaHandler: ((event: MediaQueryListEvent) => void) | null;
   pendingGatewayUrl?: string | null;

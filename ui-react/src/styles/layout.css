@@ -3,9 +3,9 @@
    =========================================== */
 
 .shell {
-  --shell-pad: 16px;
-  --shell-gap: 16px;
-  --shell-nav-width: 220px;
+  --shell-pad: clamp(12px, 2vw, 20px);
+  --shell-gap: clamp(12px, 2vw, 20px);
+  --shell-nav-width: clamp(180px, 16vw, 240px);
   --shell-topbar-height: 56px;
   --shell-focus-duration: 200ms;
   --shell-focus-ease: var(--ease-out);
@@ -82,8 +82,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  padding: 0 20px;
+  gap: clamp(10px, 1.5vw, 20px);
+  padding: 0 clamp(12px, 2vw, 24px);
   height: var(--shell-topbar-height);
   border-bottom: 1px solid var(--border);
   background: var(--bg);
@@ -260,7 +260,7 @@
   grid-area: nav;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px;
+  padding: clamp(10px, 1.5vw, 18px) clamp(8px, 1.2vw, 14px);
   background: var(--bg);
   scrollbar-width: none;
   /* Firefox */
@@ -349,7 +349,7 @@
 
 /* Nav groups */
 .nav-group {
-  margin-bottom: 20px;
+  margin-bottom: clamp(14px, 2vw, 22px);
   display: grid;
   gap: 2px;
 }
@@ -379,8 +379,8 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
-  font-size: 13px;
+  padding: clamp(4px, 0.6vw, 7px) clamp(8px, 1vw, 12px);
+  font-size: clamp(12px, 1vw, 14px);
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
@@ -434,8 +434,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: clamp(8px, 1vw, 12px);
+  padding: clamp(6px, 0.8vw, 10px) clamp(8px, 1vw, 12px);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
@@ -470,7 +470,7 @@
 }
 
 .nav-item__text {
-  font-size: 13px;
+  font-size: clamp(12px, 1vw, 14px);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -506,7 +506,7 @@
 
 .content {
   grid-area: content;
-  padding: 12px 16px 32px;
+  padding: clamp(8px, 1.5vw, 16px) clamp(12px, 2vw, 20px) clamp(20px, 3vw, 36px);
   display: block;
   min-height: 0;
   overflow-y: auto;
@@ -663,22 +663,69 @@
       "content";
   }
 
+  /* Nav → compact horizontal strip */
   .nav {
     position: static;
+    flex-direction: row;
     max-height: none;
     display: flex;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
     overflow-x: auto;
+    overflow-y: hidden;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
+    padding: 6px 12px;
     background: var(--bg);
+    align-items: center;
   }
 
+  /* Ocultar la lista de sesiones en modo tablet */
+  .nav .session-list {
+    display: none;
+  }
+
+  /* Ocultar los labels de grupo y chevrons */
+  .nav-label {
+    display: none;
+  }
+
+  /* Grupos en fila, sin margen vertical */
   .nav-group {
-    grid-auto-flow: column;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
     margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  /* Mostrar items aunque el grupo esté "collapsed" */
+  .nav-group--collapsed .nav-group__items {
+    display: flex;
+  }
+
+  .nav-group__items {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  /* Items compactos, estilo pill */
+  .nav-item {
+    padding: 6px 10px;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .nav-item--standalone {
+    margin: 0;
+  }
+
+  /* Ocultar grupo de links externos */
+  .nav-group--links {
+    margin-top: 0;
+    padding-top: 0;
   }
 
   .grid-cols-2,
@@ -688,7 +735,7 @@
 
   .topbar {
     position: static;
-    padding: 12px 14px;
+    padding: 10px 14px;
     gap: 10px;
   }
 

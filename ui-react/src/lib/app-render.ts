@@ -15,6 +15,12 @@ import { approveChannelPairing, loadChannelPairings } from "./controllers/channe
 import { loadChannels } from "./controllers/channels.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
 import {
+  installClawhubSkill,
+  loadClawhubToken,
+  saveClawhubToken,
+  searchClawhub,
+} from "./controllers/clawhub.ts";
+import {
   applyConfig,
   loadConfig,
   loadConfigRaw,
@@ -67,32 +73,31 @@ import {
   updateSkillEdit,
   updateSkillEnabled,
 } from "./controllers/skills.ts";
-import { installClawhubSkill, loadClawhubToken, saveClawhubToken, searchClawhub } from "./controllers/clawhub.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "./external-link.ts";
 import { translateError } from "./helpers/translate-error.ts";
 import { icons } from "./icons.ts";
 import { normalizeBasePath, TAB_GROUPS, subtitleForTab, titleForTab } from "./navigation.ts";
 import { resolveConfiguredCronModelSuggestions } from "./views/agents-utils.ts";
-import { renderAgents } from "./views/agents.ts";
+import { renderAgents, type AgentsPanel } from "./views/agents.ts";
 import { renderChannelsQuickAdd } from "./views/channels-quick-add.ts";
 import { renderChannels } from "./views/channels.ts";
 import { renderChat } from "./views/chat.ts";
+import { renderClawhubMarket, type ClawhubSkill } from "./views/clawhub-market.ts";
 import { renderConfig } from "./views/config.ts";
 import { renderCron } from "./views/cron.ts";
 import { renderDebug } from "./views/debug.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderInstances } from "./views/instances.ts";
-import { renderLogs } from "./views/logs.ts";
 import "./views/models-default-config.ts";
+import { renderLogs } from "./views/logs.ts";
 import { renderModelsQuickAdd, PROVIDER_PRESETS } from "./views/models-quick-add.ts";
 import { renderNodes, renderChannelPairings } from "./views/nodes.ts";
-import { renderOverview } from "./views/overview.ts";
 import "./views/overview-swapy.ts";
+import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSetupWizard } from "./views/setup-wizard.ts";
 import { renderSkills } from "./views/skills.ts";
-import { renderClawhubMarket, type ClawhubSkill } from "./views/clawhub-market.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -349,7 +354,7 @@ export function renderApp(state: AppViewState) {
       <aside class="nav ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
         ${TAB_GROUPS.map((group) => {
           const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
-          const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
+          const _hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
             <div class="nav-group ${isGroupCollapsed ? "nav-group--collapsed" : ""}">
               ${
@@ -1508,9 +1513,13 @@ export function renderApp(state: AppViewState) {
                   updateConfigFormValue(state, ["agents", "list", index, "skills"], []);
                 },
                 onAvatarUrlChange: (agentId: string, url: string) => {
-                  if (!configValue) return;
+                  if (!configValue) {
+                    return;
+                  }
                   const list = (configValue as { agents?: { list?: unknown[] } }).agents?.list;
-                  if (!Array.isArray(list)) return;
+                  if (!Array.isArray(list)) {
+                    return;
+                  }
                   const index = list.findIndex(
                     (entry) =>
                       entry &&
@@ -1518,9 +1527,15 @@ export function renderApp(state: AppViewState) {
                       "id" in entry &&
                       (entry as { id?: string }).id === agentId,
                   );
-                  if (index < 0) return;
+                  if (index < 0) {
+                    return;
+                  }
                   // Write URL directly to config — existing Save button handles persistence
-                  updateConfigFormValue(state, ["agents", "list", index, "identity", "avatar"], url || null);
+                  updateConfigFormValue(
+                    state,
+                    ["agents", "list", index, "identity", "avatar"],
+                    url || null,
+                  );
                 },
                 onModelChange: (agentId, modelId) => {
                   state.modelDropdownOpen = false;
@@ -1651,6 +1666,14 @@ export function renderApp(state: AppViewState) {
                     next.add(label);
                   }
                   state.fallbackDropdownExpandedGroups = next;
+                },
+                configSchema: state.configSchema,
+                configSchemaLoading: state.configSchemaLoading,
+                configUiHints: state.configUiHints,
+                onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onGlobalSettings: () => {
+                  state.agentsPanel = "config" as AgentsPanel;
+                  state.agentsSelectedId = null;
                 },
               })
             : nothing

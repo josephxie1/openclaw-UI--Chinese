@@ -85,11 +85,7 @@
     flex-shrink: 0;
 }
 
-.btn--sm {
-    padding: 5px 12px;
-    font-size: 12px;
-    border-radius: 6px;
-}
+/* btn--sm sizing handled by components.css */
 
 .channel-drawer__body {
     flex: 1;

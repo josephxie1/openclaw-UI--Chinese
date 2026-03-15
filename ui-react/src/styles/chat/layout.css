@@ -25,8 +25,8 @@
   gap: 12px;
   flex-wrap: nowrap;
   flex-shrink: 0;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  padding-bottom: clamp(8px, 1.5vw, 16px);
+  margin-bottom: clamp(8px, 1.5vw, 16px);
   background: transparent;
 }
 
@@ -48,16 +48,13 @@
   min-width: 180px;
 }
 
-/* Chat thread - scrollable middle section, transparent */
+/* Chat thread - flows naturally inside scrollable chat-main */
 .chat-thread {
-  flex: 1 1 0;
-  /* Grow, shrink, and use 0 base for proper scrolling */
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px 4px;
+  flex: 1 0 auto;
+  overflow: visible;
+  padding: clamp(8px, 1.5vw, 16px) clamp(4px, 2vw, 24px);
   margin: 0 -4px;
   min-height: 0;
-  /* Allow shrinking for flex scroll behavior */
   border-radius: 12px;
   background: transparent;
 }
@@ -151,8 +148,8 @@
   gap: 12px;
   margin-top: auto;
   /* Push to bottom of flex container */
-  padding: 12px 4px 4px;
-  background: linear-gradient(to bottom, transparent, var(--bg) 20%);
+  padding: clamp(8px, 1.5vw, 16px) clamp(4px, 2vw, 24px) 4px;
+  background: transparent;
   z-index: 10;
 }
 
@@ -288,7 +285,7 @@
 }
 
 :root[data-theme="light"] .chat-compose {
-  background: linear-gradient(to bottom, transparent, var(--bg-content) 20%);
+  background: transparent;
 }
 
 .chat-compose__field {
@@ -309,7 +306,7 @@
   height: 40px;
   min-height: 40px;
   max-height: 150px;
-  padding: 10px 14px;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 18px);
   border-radius: 0;
   border: none;
   background: transparent;
@@ -319,13 +316,13 @@
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.45;
-  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* height animado por motion.js, no por CSS */
 }
 
 .chat-compose .chat-compose__field textarea:focus {
   outline: none;
   box-shadow: none;
-  min-height: 120px;
+  /* min-height controlado por motion.js */
 }
 
 .chat-compose__field textarea:disabled {
@@ -397,6 +394,19 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Desactivar hover/active animation de .btn base para icon buttons */
+.btn--icon:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn--icon:active {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Controls separator */
 .chat-controls__separator {
   color: rgba(255, 255, 255, 0.4);
@@ -409,12 +419,7 @@
   color: rgba(16, 24, 40, 0.3);
 }
 
-.btn--icon:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Light theme icon button overrides */
+/* Light theme icon buttons */
 :root[data-theme="light"] .btn--icon {
   background: #ffffff;
   border-color: var(--border);
@@ -423,30 +428,11 @@
 }
 
 :root[data-theme="light"] .btn--icon:hover {
-  background: #ffffff;
-  border-color: var(--border-strong);
-  color: var(--text);
-}
-
-/* Light theme icon button overrides */
-:root[data-theme="light"] .btn--icon {
-  background: #ffffff;
-  border-color: var(--border);
+  transform: none;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-  color: var(--muted);
-}
-
-:root[data-theme="light"] .btn--icon:hover {
-  background: #ffffff;
+  background: #f9fafb;
   border-color: var(--border-strong);
   color: var(--text);
-}
-
-:root[data-theme="light"] .chat-controls .btn--icon.active {
-  border-color: var(--accent);
-  background: var(--accent-subtle);
-  color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .btn--icon svg {
@@ -485,25 +471,35 @@
   }
 
   .chat-compose {
-    grid-template-columns: 1fr;
+    max-width: 100%;
   }
 
-  /* Mobile: stack compose row vertically */
+  /* Mobile: mantener horizontal pero más compacto */
   .chat-compose__row {
-    flex-direction: column;
-    gap: 8px;
+    border-radius: 14px;
   }
 
-  /* Mobile: stack action buttons vertically */
+  /* Mobile: textarea más pequeño */
+  .chat-compose .chat-compose__field textarea {
+    height: 36px;
+    min-height: 36px;
+    max-height: 100px;
+    padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px);
+    font-size: 14px;
+  }
+
+  /* Mobile: botones compactos en fila */
   .chat-compose__actions {
-    flex-direction: column;
-    width: 100%;
-    gap: 8px;
+    padding: 4px 6px;
+    gap: 4px;
   }
 
-  /* Mobile: full-width buttons */
   .chat-compose .chat-compose__actions .btn {
-    width: 100%;
+    padding: 0 10px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    font-size: 12px;
   }
 
   .chat-controls {
