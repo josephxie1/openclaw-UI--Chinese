@@ -1,0 +1,26 @@
+import "./paths-DPETYfXn.js";
+import "./subsystem-Cg_UWVEG.js";
+import "./utils-CfiuWRBq.js";
+import "./boolean-YY6K2DFz.js";
+import "./auth-profiles-BghqkBM8.js";
+import "./agent-scope-CIzpI5xh.js";
+import "./openclaw-root-3Za7U6qY.js";
+import "./exec-BAZSkTa2.js";
+import "./github-copilot-token-BBzjUbRV.js";
+import "./host-env-security-DWcSD4kP.js";
+import "./version-Bed7ywW_.js";
+import "./env-vars-UJroIeWA.js";
+import "./manifest-registry-CzxIZ7xJ.js";
+import "./zod-schema.sensitive-CDAit1Bm.js";
+import "./dock-BZtcEEWo.js";
+import "./plugins-Bxiq3d8j.js";
+import "./accounts-B-V4Uo9S.js";
+import "./accounts-Da2rrQfS.js";
+import "./logging-Dt6YWeiQ.js";
+import "./accounts-CHqcVGvy.js";
+import "./bindings-DcmrAriy.js";
+import "./thinking-BCY5R30D.js";
+import "./commands-Caw9RrEA.js";
+import { _ as resolveTextCommand, a as isCommandEnabled, c as listChatCommands, d as listNativeCommandSpecsForConfig, f as maybeResolveTextAlias, g as resolveCommandArgMenu, h as resolveCommandArgChoices, i as getCommandDetection, l as listChatCommandsForConfig, m as parseCommandArgs, n as buildCommandTextFromArgs, o as isCommandMessage, p as normalizeCommandBody, r as findCommandByNativeName, s as isNativeCommandSurface, t as buildCommandText, u as listNativeCommandSpecs, v as serializeCommandArgs, y as shouldHandleTextCommands } from "./commands-registry-BD9m-_KG.js";
+
+export { buildCommandText, buildCommandTextFromArgs, findCommandByNativeName, getCommandDetection, isCommandEnabled, isCommandMessage, isNativeCommandSurface, listChatCommands, listChatCommandsForConfig, listNativeCommandSpecs, listNativeCommandSpecsForConfig, maybeResolveTextAlias, normalizeCommandBody, parseCommandArgs, resolveCommandArgChoices, resolveCommandArgMenu, resolveTextCommand, serializeCommandArgs, shouldHandleTextCommands };

@@ -2,7 +2,7 @@
 import "./paths-BafI8hAX.js";
 import { B as theme, P as setVerbose, Q as tryParseLogLevel, T as toWhatsappJid, Y as ALLOWED_LOG_LEVELS, l as escapeRegExp, m as normalizeE164, n as assertWebChannel, z as isRich } from "./utils-C2rp27T1.js";
 import "./thinking-CJzCCbYy.js";
-import { Nt as createDefaultDeps, _t as resolveCommitHash, t as getReplyFromConfig } from "./reply-CrnC5Dlb.js";
+import { Nt as createDefaultDeps, _t as resolveCommitHash, t as getReplyFromConfig } from "./reply-CoPc6XC4.js";
 import "./agent-scope-hUtx0Gmw.js";
 import { d as visibleWidth, p as defaultRuntime, r as enableConsoleCapture } from "./subsystem-DoASNpMz.js";
 import "./openclaw-root-CMyEcfUW.js";
@@ -19,8 +19,8 @@ import "./zod-schema.sensitive-CDAit1Bm.js";
 import "./dock-ePhV6VyM.js";
 import "./message-channel-CmxjO7-N.js";
 import "./send-egoK549g.js";
-import { _ as applyTemplate, u as installUnhandledRejectionHandler } from "./runner-CIqr0S-3.js";
-import "./image-C3oA9o2g.js";
+import { _ as applyTemplate, u as installUnhandledRejectionHandler } from "./runner-DwiQndkF.js";
+import "./image-DR9mKD98.js";
 import "./models-config-DGZ6ZxGo.js";
 import "./pi-model-discovery-Bu2Z71iE.js";
 import "./pi-embedded-helpers-DSW5OBBO.js";
@@ -56,7 +56,7 @@ import "./send-Ci1eEwT7.js";
 import { l as resolveStorePath } from "./paths-BU7I2tq5.js";
 import "./chat-envelope-BBXhi7A0.js";
 import "./tool-images-BURNGLH1.js";
-import "./tool-display-ClrxvwZS.js";
+import "./tool-display-BsDqyAKJ.js";
 import "./fetch-guard-B0hiUXhn.js";
 import "./api-key-rotation-DLpVUZwR.js";
 import "./local-roots-CmBllYW5.js";
@@ -114,18 +114,18 @@ import "./prompt-style-qOhNaOt0.js";
 import "./pairing-labels-zyKdu0Vm.js";
 import "./server-lifecycle-K8twFxWb.js";
 import "./stagger-D_CWLS7Z.js";
-import { r as waitForever, t as monitorWebChannel } from "./channel-web-BeiZx-oj.js";
-import "./outbound-ChVkEYhI.js";
+import { r as waitForever, t as monitorWebChannel } from "./channel-web-MMV59o3q.js";
+import "./outbound-CCvgchU_.js";
 import "./session-BWSnUj-2.js";
-import "./login-DMlbwsP7.js";
+import "./login-CdQEuYHv.js";
 import { t as isMainModule } from "./is-main-D73QG6rD.js";
 import { t as ensureOpenClawCliOnPath } from "./path-env-BIGTm3M4.js";
 import { t as assertSupportedRuntime } from "./runtime-guard-BDLjqquN.js";
 import "./ports-yi5cU1l5.js";
 import { a as hasFlag, i as getVerboseFlag, n as getCommandPath, o as hasHelpOrVersion, s as hasRootVersionAlias } from "./argv-Bt72XfcP.js";
-import { i as getCoreCliCommandsWithSubcommands, n as setProgramContext, o as registerProgramCommands, s as getSubCliCommandsWithSubcommands } from "./program-context-vtpq_ynf.js";
-import "./plugin-registry-CDLDDuPC.js";
-import { n as resolveCliChannelOptions } from "./channel-options-BxJYVsuG.js";
+import { i as getCoreCliCommandsWithSubcommands, n as setProgramContext, o as registerProgramCommands, s as getSubCliCommandsWithSubcommands } from "./program-context-rYiNpL3F.js";
+import "./plugin-registry-C7PZmpjh.js";
+import { n as resolveCliChannelOptions } from "./channel-options-CHXsoWrx.js";
 import process$1 from "node:process";
 import { fileURLToPath } from "node:url";
 import { Command, InvalidArgumentError } from "commander";
@@ -543,7 +543,7 @@ function loadConfigGuardModule() {
 	return configGuardModulePromise;
 }
 function loadPluginRegistryModule() {
-	pluginRegistryModulePromise ??= import("./plugin-registry-CDLDDuPC.js").then((n) => n.n);
+	pluginRegistryModulePromise ??= import("./plugin-registry-C7PZmpjh.js").then((n) => n.n);
 	return pluginRegistryModulePromise;
 }
 function getRootCommand(command) {
