@@ -1,4 +1,5 @@
 import { extractText } from "../chat/message-extract.ts";
+import { cacheSessionPreview } from "../chat/session-preview.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
 import type { ChatAttachment } from "../ui-types.ts";
 import { generateUUID } from "../uuid.ts";
@@ -41,8 +42,12 @@ export async function loadChatHistory(state: ChatState) {
         limit: 200,
       },
     );
-    state.chatMessages = Array.isArray(res.messages) ? res.messages : [];
+    const messages = Array.isArray(res.messages) ? res.messages : [];
+    state.chatMessages = messages;
     state.chatThinkingLevel = res.thinkingLevel ?? null;
+
+    // Cachear la primera pregunta del usuario para la sidebar
+    cacheSessionPreview(state.sessionKey, messages);
   } catch (err) {
     state.lastError = String(err);
   } finally {

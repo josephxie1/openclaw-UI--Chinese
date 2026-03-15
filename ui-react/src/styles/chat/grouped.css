@@ -137,7 +137,7 @@ img.chat-avatar {
   border: none;
   background: transparent;
   border-radius: var(--radius-lg);
-  padding: 10px 14px;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 18px);
   box-shadow: none;
   max-width: 100%;
   word-wrap: break-word;

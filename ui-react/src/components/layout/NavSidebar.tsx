@@ -1,38 +1,52 @@
 import React, { useCallback } from "react";
-import { useAppStore, getReactiveState } from "../../store/appStore.ts";
 import { t } from "../../i18n/index.ts";
-import { TAB_GROUPS, titleForTab, iconForTab, pathForTab, type Tab } from "../../lib/navigation.ts";
-import { icons } from "../../lib/icons.ts";
 import { resolveSessionDisplayName, isCronSessionKey } from "../../lib/app-render.helpers.ts";
 import { setTab as setTabLib, syncUrlWithSessionKey } from "../../lib/app-settings.ts";
+import { getSessionPreview } from "../../lib/chat/session-preview.ts";
 import { loadChatHistory, type ChatState } from "../../lib/controllers/chat.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../../lib/external-link.ts";
+import { icons } from "../../lib/icons.ts";
+import { TAB_GROUPS, titleForTab, iconForTab, pathForTab, type Tab } from "../../lib/navigation.ts";
+import { useAppStore, getReactiveState } from "../../store/appStore.ts";
 
 const MAX_SIDEBAR_SESSIONS = 20;
 
 /** Render a Lit TemplateResult icon to raw HTML string */
 function litIconToHtml(icon: unknown): string {
-  if (!icon || typeof icon !== "object") return "";
+  if (!icon || typeof icon !== "object") {
+    return "";
+  }
   const tmpl = icon as { strings?: readonly string[]; values?: unknown[] };
-  if (!tmpl.strings) return "";
+  if (!tmpl.strings) {
+    return "";
+  }
   let result = "";
   for (let i = 0; i < tmpl.strings.length; i++) {
     result += tmpl.strings[i];
     if (tmpl.values && i < tmpl.values.length) {
-      result += String(tmpl.values[i] ?? "");
+      const val = tmpl.values[i] ?? "";
+      result += typeof val === "string" ? val : JSON.stringify(val);
     }
   }
   return result;
 }
 
 function formatRelativeTime(ts: number | null): string {
-  if (!ts) return "";
+  if (!ts) {
+    return "";
+  }
   const diffMs = Date.now() - ts;
   const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m`;
+  if (mins < 1) {
+    return "just now";
+  }
+  if (mins < 60) {
+    return `${mins}m`;
+  }
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) {
+    return `${hours}h`;
+  }
   const days = Math.floor(hours / 24);
   return `${days}d`;
 }
@@ -42,50 +56,42 @@ export function NavSidebar() {
   const settings = useAppStore((s) => s.settings);
   const sessionsResult = useAppStore((s) => s.sessionsResult);
   const basePath = useAppStore((s) => s.basePath);
-  const connected = useAppStore((s) => s.connected);
   const sessionKey = useAppStore((s) => s.sessionKey);
-  const set = useAppStore((s) => s.set);
   const applySettings = useAppStore((s) => s.applySettings);
 
-  const setTab = useCallback(
-    (next: Tab) => {
-      // Use the lib setTab which triggers refreshActiveTab to load data
-      setTabLib(getReactiveState() as never, next);
-    },
-    [],
-  );
+  const setTab = useCallback((next: Tab) => {
+    // Use the lib setTab which triggers refreshActiveTab to load data
+    setTabLib(getReactiveState() as never, next);
+  }, []);
 
-  const switchSession = useCallback(
-    (newKey: string) => {
-      // All mutations through the reactive proxy (single source of truth)
-      const rs = getReactiveState();
-      rs.sessionKey = newKey;
-      (rs as Record<string, unknown>).chatMessage = "";
-      (rs as Record<string, unknown>).chatMessages = [];
-      (rs as Record<string, unknown>).chatStream = null;
-      (rs as Record<string, unknown>).chatStreamStartedAt = null;
-      (rs as Record<string, unknown>).chatRunId = null;
-      (rs as Record<string, unknown>).chatQueue = [];
-      // Apply settings & sync URL
-      import("../../lib/app-settings.ts").then(({ applySettings: applySettingsLib }) => {
-        applySettingsLib(rs as never, {
-          ...useAppStore.getState().settings,
-          sessionKey: newKey,
-          lastActiveSessionKey: newKey,
-        });
+  const switchSession = useCallback((newKey: string) => {
+    // All mutations through the reactive proxy (single source of truth)
+    const rs = getReactiveState();
+    rs.sessionKey = newKey;
+    (rs as Record<string, unknown>).chatMessage = "";
+    (rs as Record<string, unknown>).chatMessages = [];
+    (rs as Record<string, unknown>).chatStream = null;
+    (rs as Record<string, unknown>).chatStreamStartedAt = null;
+    (rs as Record<string, unknown>).chatRunId = null;
+    (rs as Record<string, unknown>).chatQueue = [];
+    // Apply settings & sync URL
+    void import("../../lib/app-settings.ts").then(({ applySettings: applySettingsLib }) => {
+      applySettingsLib(rs as never, {
+        ...useAppStore.getState().settings,
+        sessionKey: newKey,
+        lastActiveSessionKey: newKey,
       });
-      syncUrlWithSessionKey(rs as never, newKey, true);
-      // Load identity, history, and avatar for the new session
-      import("../../lib/controllers/assistant-identity.ts").then(({ loadAssistantIdentity }) => {
-        void loadAssistantIdentity(rs as never);
-      });
-      void loadChatHistory(rs as unknown as ChatState);
-      import("../../lib/app-chat.ts").then(({ refreshChatAvatar }) => {
-        void refreshChatAvatar(rs as never);
-      });
-    },
-    [],
-  );
+    });
+    syncUrlWithSessionKey(rs as never, newKey, true);
+    // Load identity, history, and avatar for the new session
+    void import("../../lib/controllers/assistant-identity.ts").then(({ loadAssistantIdentity }) => {
+      void loadAssistantIdentity(rs as never);
+    });
+    void loadChatHistory(rs as unknown as ChatState);
+    void import("../../lib/app-chat.ts").then(({ refreshChatAvatar }) => {
+      void refreshChatAvatar(rs as never);
+    });
+  }, []);
 
   // Session list
   const sessions = sessionsResult?.sessions ?? [];
@@ -110,7 +116,9 @@ export function NavSidebar() {
               href={href}
               className={`nav-item nav-item--standalone${tab === "overview" ? " active" : ""}`}
               onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                  return;
+                }
                 e.preventDefault();
                 setTab("overview");
               }}
@@ -129,12 +137,18 @@ export function NavSidebar() {
         // Chat group — uses nav-label, shows session list
         if (group.label === "chat") {
           return (
-            <div key={group.label} className={`nav-group${isGroupCollapsed ? " nav-group--collapsed" : ""}`}>
+            <div
+              key={group.label}
+              className={`nav-group${isGroupCollapsed ? " nav-group--collapsed" : ""}`}
+            >
               <button
                 className={`nav-label${tab === "chat" ? " nav-label--active" : ""}`}
                 onClick={() => {
                   if (tab === "chat") {
-                    const next = { ...settings.navGroupsCollapsed, [group.label]: !isGroupCollapsed };
+                    const next = {
+                      ...settings.navGroupsCollapsed,
+                      [group.label]: !isGroupCollapsed,
+                    };
                     applySettings({ ...settings, navGroupsCollapsed: next });
                   } else {
                     const next = { ...settings.navGroupsCollapsed, [group.label]: false };
@@ -163,14 +177,19 @@ export function NavSidebar() {
                   </button>
                   {filtered.map((session) => {
                     const isActive = session.key === sessionKey;
-                    const name = resolveSessionDisplayName(session.key, session);
+                    const baseName = resolveSessionDisplayName(session.key, session);
+                    // Usar preview cacheado si el nombre es genérico
+                    const preview = getSessionPreview(session.key);
+                    const name = preview || baseName;
                     const time = formatRelativeTime(session.updatedAt);
                     return (
                       <button
                         key={session.key}
                         className={`session-item${isActive ? " session-item--active" : ""}`}
                         onClick={() => {
-                          if (isActive) return;
+                          if (isActive) {
+                            return;
+                          }
                           switchSession(session.key);
                           setTab("chat");
                         }}
@@ -189,7 +208,10 @@ export function NavSidebar() {
 
         // Regular tab groups
         return (
-          <div key={group.label} className={`nav-group${isGroupCollapsed ? " nav-group--collapsed" : ""}`}>
+          <div
+            key={group.label}
+            className={`nav-group${isGroupCollapsed ? " nav-group--collapsed" : ""}`}
+          >
             <button
               className="nav-label"
               onClick={() => {
@@ -210,7 +232,9 @@ export function NavSidebar() {
                     href={href}
                     className={`nav-item${tab === t_ ? " active" : ""}`}
                     onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                        return;
+                      }
                       e.preventDefault();
                       setTab(t_);
                     }}

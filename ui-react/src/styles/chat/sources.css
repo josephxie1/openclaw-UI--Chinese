@@ -1,0 +1,127 @@
+/* Sources — 搜索来源引用卡片 */
+
+/* ── Container ─────────────────────────────────── */
+
+.chat-sources {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* ── Trigger ──────────────────────────────────── */
+
+.chat-sources__trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 500;
+  user-select: none;
+  list-style: none;
+  transition: color 150ms ease;
+}
+
+.chat-sources__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.chat-sources__trigger:hover {
+  color: var(--text);
+}
+
+.chat-sources__trigger svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.chat-sources__label {
+  flex: 1;
+}
+
+.chat-sources__chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 200ms ease;
+}
+
+.chat-sources[open] > .chat-sources__trigger .chat-sources__chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Content ─────────────────────────────────── */
+
+.chat-sources__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 4px;
+  animation: sources-reveal 200ms ease-out;
+}
+
+@keyframes sources-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Single Source Card ───────────────────────── */
+
+.chat-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  line-height: 1.4;
+  transition: border-color 150ms ease, background 150ms ease;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.chat-source:hover {
+  border-color: var(--color-info, #3b82f6);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.chat-source__favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.chat-source__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-source__icon {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.chat-source__icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+}

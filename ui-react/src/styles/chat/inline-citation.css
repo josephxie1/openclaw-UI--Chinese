@@ -1,0 +1,157 @@
+/* InlineCitation — 行内引用 hover card */
+
+/* ── Container ─────────────────────────────────── */
+
+.inline-citation {
+  position: relative;
+  display: inline;
+}
+
+/* ── Texto citado ─────────────────────────────── */
+
+.inline-citation__text {
+  transition: background 150ms ease;
+  border-radius: 2px;
+}
+
+.inline-citation:hover .inline-citation__text {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* ── Badge trigger ────────────────────────────── */
+
+.inline-citation__badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-info, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 10px;
+  cursor: default;
+  vertical-align: baseline;
+  transition: background 150ms ease;
+}
+
+.inline-citation__badge:hover {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+/* ── Hover Card ──────────────────────────────── */
+
+.inline-citation__card {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 300px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 200;
+  animation: citation-card-appear 150ms ease-out;
+}
+
+@keyframes citation-card-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Navigation (carousel arrows + index) ─────── */
+
+.inline-citation__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(128, 128, 128, 0.04);
+  border-bottom: 1px solid var(--border);
+}
+
+.inline-citation__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.inline-citation__nav-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.inline-citation__nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.inline-citation__nav-btn svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+.inline-citation__nav-index {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Source content ───────────────────────────── */
+
+.inline-citation__source {
+  padding: 12px;
+}
+
+.inline-citation__source-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-citation__source-url {
+  display: block;
+  font-size: 11px;
+  color: var(--color-info, #3b82f6);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+
+.inline-citation__source-url:hover {
+  text-decoration: underline;
+}
+
+.inline-citation__source-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

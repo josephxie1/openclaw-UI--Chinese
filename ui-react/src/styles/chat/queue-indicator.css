@@ -1,0 +1,90 @@
+/* Queue Indicator —  排队/思考等待状态 */
+
+/* ── 增强 ReadingIndicator ────────────────────── */
+
+.chat-reading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px !important;
+}
+
+/* ── 状态文字标签 ─────────────────────────────── */
+
+.chat-reading-indicator__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  animation: queue-label-fade 2s ease-in-out infinite;
+}
+
+@keyframes queue-label-fade {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── 脉冲圆点（替代三个跳跃点） ──────────────── */
+
+.chat-reading-indicator__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-info, #3b82f6);
+  animation: queue-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes queue-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.85);
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+}
+
+/* ── 队列位置 badge ───────────────────────────── */
+
+.chat-reading-indicator__queue-pos {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.08);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+/* ── 原始三点样式增强 ─────────────────────────── */
+
+.chat-reading-indicator__dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.chat-reading-indicator__dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: queue-dot-bounce 1.4s ease-in-out infinite both;
+}
+
+.chat-reading-indicator__dots span:nth-child(1) { animation-delay: 0s; }
+.chat-reading-indicator__dots span:nth-child(2) { animation-delay: 0.16s; }
+.chat-reading-indicator__dots span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes queue-dot-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

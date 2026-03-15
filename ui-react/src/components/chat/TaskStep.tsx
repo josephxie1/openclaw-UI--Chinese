@@ -83,7 +83,9 @@ export function TaskStep({
   // Sin contenido hijo: renderizar como fila simple sin <details>
   if (!hasContent) {
     return (
-      <div className="chat-task-step chat-task-step--no-content">
+      <div
+        className={`chat-task-step chat-task-step--no-content${status === "loading" ? " chat-task-step--loading" : ""}`}
+      >
         <div className="chat-task-step__summary">
           <StatusCircle status={status} />
           <span className="chat-task-step__label">{label}</span>
@@ -97,7 +99,10 @@ export function TaskStep({
   }
 
   return (
-    <Collapsible className="chat-task-step" defaultOpen={defaultOpen}>
+    <Collapsible
+      className={`chat-task-step${status === "loading" ? " chat-task-step--loading" : ""}`}
+      defaultOpen={defaultOpen}
+    >
       <CollapsibleTrigger className="chat-task-step__summary">
         <StatusCircle status={status} />
         <span className="chat-task-step__label">{label}</span>

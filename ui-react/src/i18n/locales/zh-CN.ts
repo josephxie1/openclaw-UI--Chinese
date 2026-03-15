@@ -234,6 +234,10 @@ export const zh_CN: TranslationMap = {
     chainOfThoughtActive: "思考中...",
     showReasoning: "推理过程",
     hideReasoning: "推理过程",
+    sourcesUsed: "引用了 {count} 个来源",
+    contextUsageLabel: "上下文使用量",
+    queueThinking: "思考中...",
+    queueWaiting: "排队等待中...",
   },
   approval: {
     title: "需要审批",

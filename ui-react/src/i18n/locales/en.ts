@@ -235,6 +235,10 @@ export const en: TranslationMap = {
     chainOfThoughtActive: "Thinking...",
     showReasoning: "Reasoning",
     hideReasoning: "Reasoning",
+    sourcesUsed: "Used {count} sources",
+    contextUsageLabel: "Context usage",
+    queueThinking: "Thinking...",
+    queueWaiting: "Waiting in queue...",
   },
   approval: {
     title: "Approval Required",

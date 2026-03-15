@@ -9,6 +9,7 @@
   background: var(--card);
   overflow: hidden;
   width: 100%;
+  position: relative;
 }
 
 /* ── Header trigger ──────────────────────────────── */
@@ -18,7 +19,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 16px);
   border: none;
   background: none;
   cursor: pointer;

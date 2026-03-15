@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n/index.ts";
 import type { AssistantIdentity } from "../../lib/assistant-identity.ts";
 import {
   extractTextCached,
@@ -249,17 +250,24 @@ function MessageBubble({
 
 // ─── Reading Indicator ───────────────────────────────────────
 
-export function ReadingIndicator({ assistant }: { assistant?: AssistantIdentity }) {
+export function ReadingIndicator({
+  assistant,
+  queuePosition,
+}: {
+  assistant?: AssistantIdentity;
+  queuePosition?: number;
+}) {
+  const isQueued = typeof queuePosition === "number" && queuePosition > 0;
+  const label = isQueued ? t("chatView.queueWaiting") : t("chatView.queueThinking");
+
   return (
     <div className="chat-group assistant">
       <Avatar role="assistant" assistant={assistant} />
       <div className="chat-group-messages">
         <div className="chat-bubble chat-reading-indicator" aria-hidden="true">
-          <span className="chat-reading-indicator__dots">
-            <span />
-            <span />
-            <span />
-          </span>
+          <span className="chat-reading-indicator__pulse" />
+          <span className="chat-reading-indicator__label">{label}</span>
+          {isQueued && <span className="chat-reading-indicator__queue-pos">#{queuePosition}</span>}
         </div>
       </div>
     </div>

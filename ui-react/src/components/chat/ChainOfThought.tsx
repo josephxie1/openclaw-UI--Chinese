@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "../../i18n/index.ts";
 import type { IconName } from "../../lib/icons.ts";
 import { toSanitizedMarkdownHtml } from "../../lib/markdown.ts";
 import { resolveToolDisplay, formatToolDetail } from "../../lib/tool-display.ts";
 import type { ToolCard as ToolCardType } from "../../lib/types/chat-types.ts";
 import { ApprovalCard, parseLobsterApproval } from "./ApprovalCard.tsx";
+import { Sources, extractSearchSources, type SearchSource } from "./Sources.tsx";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -329,6 +330,21 @@ export function ChainOfThought({ toolCards, isStreaming, reasoning }: ChainOfTho
   const [isOpen, setIsOpen] = useState(true);
   const [showReasoning, setShowReasoning] = useState(false);
 
+  // Recopilar fuentes de búsqueda de todas las tool cards
+  const allSources = useMemo(() => {
+    const seen = new Set<string>();
+    const sources: SearchSource[] = [];
+    for (const card of toolCards) {
+      for (const src of extractSearchSources(card)) {
+        if (!seen.has(src.domain)) {
+          seen.add(src.domain);
+          sources.push(src);
+        }
+      }
+    }
+    return sources;
+  }, [toolCards]);
+
   if (toolCards.length === 0 && !reasoning) {
     return null;
   }
@@ -340,7 +356,7 @@ export function ChainOfThought({ toolCards, isStreaming, reasoning }: ChainOfTho
     activeCount > 0 ? t("chatView.chainOfThoughtActive") : t("chatView.chainOfThought");
 
   return (
-    <div className="cot">
+    <div className={`cot${isStreaming ? " cot--streaming" : ""}`}>
       <button
         className="cot__header"
         type="button"
@@ -390,6 +406,9 @@ export function ChainOfThought({ toolCards, isStreaming, reasoning }: ChainOfTho
               isLast={index === toolCards.length - 1}
             />
           ))}
+
+          {/* Fuentes de búsqueda al final del timeline */}
+          {allSources.length > 0 && <Sources sources={allSources} />}
         </div>
       )}
     </div>
@@ -417,7 +436,9 @@ function ChainOfThoughtStep({
   const isError = status === "error";
 
   return (
-    <div className={`cot-step ${isError ? "cot-step--error" : ""}`}>
+    <div
+      className={`cot-step${isError ? " cot-step--error" : ""}${status === "loading" ? " cot-step--loading" : ""}`}
+    >
       <div className="cot-step__timeline">
         <StatusDot status={status} />
         {!isLast && <div className="cot-step__line" />}

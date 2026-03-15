@@ -1,24 +1,42 @@
+import { motion } from "framer-motion";
 import React, { useEffect, useCallback, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useAppStore, getReactiveState } from "../store/appStore.ts";
-import { sendChatMessage, abortChatRun, loadChatHistory, type ChatState } from "../lib/controllers/chat.ts";
-import { loadAssistantIdentity } from "../lib/controllers/assistant-identity.ts";
-import { loadSessions } from "../lib/controllers/sessions.ts";
-import { refreshChatAvatar } from "../lib/app-chat.ts";
-import { resetToolStream } from "../lib/app-tool-stream.ts";
-import { handleChatScroll, scheduleChatScroll } from "../lib/app-scroll.ts";
+// Pure React chat components
+import {
+  ChatMessageGroup,
+  StreamingMessage,
+  ReadingIndicator,
+} from "../components/chat/ChatMessage.tsx";
+import { MarkdownSidebar } from "../components/chat/MarkdownSidebar.tsx";
+import { Queue, QueueSection, QueueList, QueueItem } from "../components/chat/Queue.tsx";
+import { t } from "../i18n/index.ts";
+import { handleSendChat, type ChatHost } from "../lib/app-chat.ts";
 import { resolveAssistantAvatarUrl } from "../lib/app-render.ts";
+import { handleChatScroll, scheduleChatScroll } from "../lib/app-scroll.ts";
 import { highlightCodeBlocks } from "../lib/chat/code-highlight.ts";
 import { normalizeMessage } from "../lib/chat/message-normalizer.ts";
 import { normalizeRoleForGrouping } from "../lib/chat/message-normalizer.ts";
+import { abortChatRun, type ChatState } from "../lib/controllers/chat.ts";
+import { loadSessions } from "../lib/controllers/sessions.ts";
 import { detectTextDirection } from "../lib/text-direction.ts";
-import { t } from "../i18n/index.ts";
 import type { ChatItem, MessageGroup } from "../lib/types/chat-types.ts";
 import type { ChatAttachment } from "../lib/ui-types.ts";
+import { useAppStore, getReactiveState } from "../store/appStore.ts";
 
-// Pure React chat components
-import { ChatMessageGroup, StreamingMessage, ReadingIndicator } from "../components/chat/ChatMessage.tsx";
-import { MarkdownSidebar } from "../components/chat/MarkdownSidebar.tsx";
+const CloseIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -31,14 +49,22 @@ const FALLBACK_TOAST_DURATION_MS = 8000;
 function messageKey(message: unknown, index: number): string {
   const m = message as Record<string, unknown>;
   const toolCallId = typeof m.toolCallId === "string" ? m.toolCallId : "";
-  if (toolCallId) {return `tool:${toolCallId}`;}
+  if (toolCallId) {
+    return `tool:${toolCallId}`;
+  }
   const id = typeof m.id === "string" ? m.id : "";
-  if (id) {return `msg:${id}`;}
+  if (id) {
+    return `msg:${id}`;
+  }
   const messageId = typeof m.messageId === "string" ? m.messageId : "";
-  if (messageId) {return `msg:${messageId}`;}
+  if (messageId) {
+    return `msg:${messageId}`;
+  }
   const timestamp = typeof m.timestamp === "number" ? m.timestamp : null;
   const role = typeof m.role === "string" ? m.role : "unknown";
-  if (timestamp != null) {return `msg:${role}:${timestamp}:${index}`;}
+  if (timestamp != null) {
+    return `msg:${role}:${timestamp}:${index}`;
+  }
   return `msg:${role}:${index}`;
 }
 
@@ -48,7 +74,10 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
 
   for (const item of items) {
     if (item.kind !== "message") {
-      if (currentGroup) { result.push(currentGroup); currentGroup = null; }
+      if (currentGroup) {
+        result.push(currentGroup);
+        currentGroup = null;
+      }
       result.push(item);
       continue;
     }
@@ -57,7 +86,9 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
     const timestamp = normalized.timestamp || Date.now();
 
     if (!currentGroup || currentGroup.role !== role) {
-      if (currentGroup) {result.push(currentGroup);}
+      if (currentGroup) {
+        result.push(currentGroup);
+      }
       currentGroup = {
         kind: "group",
         key: `group:${role}:${item.key}`,
@@ -70,7 +101,9 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
       currentGroup.messages.push({ message: item.message, key: item.key });
     }
   }
-  if (currentGroup) {result.push(currentGroup);}
+  if (currentGroup) {
+    result.push(currentGroup);
+  }
   return result;
 }
 
@@ -112,15 +145,18 @@ function buildChatItems(args: BuildChatItemsArgs): Array<ChatItem | MessageGroup
     if (marker && marker.kind === "compaction") {
       items.push({
         kind: "divider",
-        key: typeof marker.id === "string"
-          ? `divider:compaction:${marker.id}`
-          : `divider:compaction:${normalized.timestamp}:${i}`,
+        key:
+          typeof marker.id === "string"
+            ? `divider:compaction:${marker.id}`
+            : `divider:compaction:${normalized.timestamp}:${i}`,
         label: t("chatView.compaction"),
         timestamp: normalized.timestamp ?? Date.now(),
       });
       continue;
     }
-    if (!args.showThinking && normalized.role.toLowerCase() === "toolresult") { continue; }
+    if (!args.showThinking && normalized.role.toLowerCase() === "toolresult") {
+      continue;
+    }
     items.push({ kind: "message", key: messageKey(msg, i), message: msg });
   }
 
@@ -128,14 +164,23 @@ function buildChatItems(args: BuildChatItemsArgs): Array<ChatItem | MessageGroup
   // porque el agent ejecuta tools primero y luego genera la respuesta final.
   if (args.showThinking) {
     for (let i = 0; i < tools.length; i++) {
-      items.push({ kind: "message", key: messageKey(tools[i], i + history.length), message: tools[i] });
+      items.push({
+        kind: "message",
+        key: messageKey(tools[i], i + history.length),
+        message: tools[i],
+      });
     }
   }
 
   if (args.stream !== null) {
     const key = `stream:${args.sessionKey}:${args.streamStartedAt ?? "live"}`;
     if (args.stream.trim().length > 0) {
-      items.push({ kind: "stream", key, text: args.stream, startedAt: args.streamStartedAt ?? Date.now() });
+      items.push({
+        kind: "stream",
+        key,
+        text: args.stream,
+        startedAt: args.streamStartedAt ?? Date.now(),
+      });
     } else {
       items.push({ kind: "reading-indicator", key });
     }
@@ -170,18 +215,26 @@ function handlePaste(
   onAttachmentsChange?: (atts: ChatAttachment[]) => void,
 ) {
   const items = e.nativeEvent.clipboardData?.items;
-  if (!items || !onAttachmentsChange) {return;}
+  if (!items || !onAttachmentsChange) {
+    return;
+  }
 
   const imageItems: DataTransferItem[] = [];
   for (let i = 0; i < items.length; i++) {
-    if (items[i].type.startsWith("image/")) {imageItems.push(items[i]);}
+    if (items[i].type.startsWith("image/")) {
+      imageItems.push(items[i]);
+    }
   }
-  if (imageItems.length === 0) {return;}
+  if (imageItems.length === 0) {
+    return;
+  }
 
   e.preventDefault();
   for (const item of imageItems) {
     const file = item.getAsFile();
-    if (!file) {continue;}
+    if (!file) {
+      continue;
+    }
     const reader = new FileReader();
     reader.addEventListener("load", () => {
       const dataUrl = reader.result as string;
@@ -198,11 +251,21 @@ function handlePaste(
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function CompactionIndicator({ status }: { status: { active: boolean; completedAt: number | null } | null }) {
-  if (!status) {return null;}
+function CompactionIndicator({
+  status,
+}: {
+  status: { active: boolean; completedAt: number | null } | null;
+}) {
+  if (!status) {
+    return null;
+  }
   if (status.active) {
     return (
-      <div className="compaction-indicator compaction-indicator--active" role="status" aria-live="polite">
+      <div
+        className="compaction-indicator compaction-indicator--active"
+        role="status"
+        aria-live="polite"
+      >
         ⟳ {t("chatView.compacting")}
       </div>
     );
@@ -211,7 +274,11 @@ function CompactionIndicator({ status }: { status: { active: boolean; completedA
     const elapsed = Date.now() - status.completedAt;
     if (elapsed < COMPACTION_TOAST_DURATION_MS) {
       return (
-        <div className="compaction-indicator compaction-indicator--complete" role="status" aria-live="polite">
+        <div
+          className="compaction-indicator compaction-indicator--complete"
+          role="status"
+          aria-live="polite"
+        >
           ✓ {t("chatView.compacted")}
         </div>
       );
@@ -220,28 +287,42 @@ function CompactionIndicator({ status }: { status: { active: boolean; completedA
   return null;
 }
 
-function FallbackIndicator({ status }: { status: {
-  phase?: "active" | "cleared";
-  selected: string;
-  active: string;
-  previous?: string;
-  reason?: string;
-  attempts: string[];
-  occurredAt: number;
-} | null }) {
-  if (!status) {return null;}
+function FallbackIndicator({
+  status,
+}: {
+  status: {
+    phase?: "active" | "cleared";
+    selected: string;
+    active: string;
+    previous?: string;
+    reason?: string;
+    attempts: string[];
+    occurredAt: number;
+  } | null;
+}) {
+  if (!status) {
+    return null;
+  }
   const phase = status.phase ?? "active";
   const elapsed = Date.now() - status.occurredAt;
-  if (elapsed >= FALLBACK_TOAST_DURATION_MS) {return null;}
+  if (elapsed >= FALLBACK_TOAST_DURATION_MS) {
+    return null;
+  }
 
-  const message = phase === "cleared"
-    ? `${t("chatView.fallbackCleared")} ${status.selected}`
-    : `${t("chatView.fallbackActive")} ${status.active}`;
-  const className = phase === "cleared"
-    ? "compaction-indicator compaction-indicator--fallback-cleared"
-    : "compaction-indicator compaction-indicator--fallback";
+  const message =
+    phase === "cleared"
+      ? `${t("chatView.fallbackCleared")} ${status.selected}`
+      : `${t("chatView.fallbackActive")} ${status.active}`;
+  const className =
+    phase === "cleared"
+      ? "compaction-indicator compaction-indicator--fallback-cleared"
+      : "compaction-indicator compaction-indicator--fallback";
 
-  return <div className={className} role="status" aria-live="polite">{message}</div>;
+  return (
+    <div className={className} role="status" aria-live="polite">
+      {message}
+    </div>
+  );
 }
 
 function AttachmentPreview({
@@ -251,12 +332,18 @@ function AttachmentPreview({
   attachments: ChatAttachment[];
   onRemove: (id: string) => void;
 }) {
-  if (attachments.length === 0) {return null;}
+  if (attachments.length === 0) {
+    return null;
+  }
   return (
     <div className="chat-attachments">
       {attachments.map((att) => (
         <div key={att.id} className="chat-attachment">
-          <img src={att.dataUrl} alt={t("chatView.attachmentAlt")} className="chat-attachment__img" />
+          <img
+            src={att.dataUrl}
+            alt={t("chatView.attachmentAlt")}
+            className="chat-attachment__img"
+          />
           <button
             className="chat-attachment__remove"
             type="button"
@@ -290,7 +377,6 @@ export function ChatView() {
   const compactionStatus = s((st) => st.compactionStatus);
   const fallbackStatus = s((st) => st.fallbackStatus);
   const chatAvatarUrl = s((st) => st.chatAvatarUrl);
-  const chatThinkingLevel = s((st) => st.chatThinkingLevel);
   const chatQueue = s((st) => st.chatQueue);
   const chatAttachments = s((st) => st.chatAttachments);
   const chatNewMessagesBelow = s((st) => st.chatNewMessagesBelow);
@@ -333,7 +419,9 @@ export function ChatView() {
 
   // --- Tool messages ---
   const toolMessages = React.useMemo(() => {
-    if (!toolStreamOrder || toolStreamOrder.length === 0) {return [];}
+    if (!toolStreamOrder || toolStreamOrder.length === 0) {
+      return [];
+    }
     return toolStreamOrder
       .map((id: string) => (toolStreamById as unknown as Record<string, unknown>)?.[id])
       .filter(Boolean);
@@ -367,11 +455,12 @@ export function ChatView() {
   }, [chatMessages, chatStream]);
 
   // --- Highlight code blocks ---
+  const themeResolved = s((st) => st.themeResolved);
   useEffect(() => {
     if (threadRef.current) {
       requestAnimationFrame(() => highlightCodeBlocks(threadRef.current));
     }
-  }, [chatItems]);
+  }, [chatItems, themeResolved]);
 
   // --- Assistant identity ---
   const assistantIdentity = React.useMemo(
@@ -384,8 +473,7 @@ export function ChatView() {
 
   // --- Handlers ---
   const handleSend = useCallback(() => {
-    const st = s.getState();
-    void sendChatMessage(getReactiveState() as unknown as ChatState, st.chatMessage, st.chatAttachments);
+    void handleSendChat(getReactiveState() as unknown as ChatHost);
   }, []);
 
   const handleAbort = useCallback(() => {
@@ -401,12 +489,22 @@ export function ChatView() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key !== "Enter") {return;}
-      if (e.nativeEvent.isComposing || e.keyCode === 229) {return;}
-      if (e.shiftKey) {return;}
-      if (!connected) {return;}
+      if (e.key !== "Enter") {
+        return;
+      }
+      if (e.nativeEvent.isComposing || e.keyCode === 229) {
+        return;
+      }
+      if (e.shiftKey) {
+        return;
+      }
+      if (!connected) {
+        return;
+      }
       e.preventDefault();
-      if (canCompose) {handleSend();}
+      if (canCompose) {
+        handleSend();
+      }
     },
     [connected, canCompose, handleSend],
   );
@@ -490,17 +588,18 @@ export function ChatView() {
           onScroll={(e) => handleChatScroll(getReactiveState() as never, e.nativeEvent)}
         >
           {/* Message thread */}
-          <div
-            className="chat-thread"
-            role="log"
-            aria-live="polite"
-          >
+          <div className="chat-thread" role="log" aria-live="polite">
             {loading && <div className="muted">{t("chatView.loadingChat")}</div>}
 
             {chatItems.map((item) => {
               if (item.kind === "divider") {
                 return (
-                  <div key={item.key} className="chat-divider" role="separator" data-ts={String(item.timestamp)}>
+                  <div
+                    key={item.key}
+                    className="chat-divider"
+                    role="separator"
+                    data-ts={String(item.timestamp)}
+                  >
                     <span className="chat-divider__line" />
                     <span className="chat-divider__label">{item.label}</span>
                     <span className="chat-divider__line" />
@@ -550,36 +649,14 @@ export function ChatView() {
               error={sidebarError ?? null}
               onClose={handleCloseSidebar}
               onViewRawText={() => {
-                if (sidebarContent) {handleOpenSidebar(`\`\`\`\n${sidebarContent}\n\`\`\``);}
+                if (sidebarContent) {
+                  handleOpenSidebar(`\`\`\`\n${sidebarContent}\n\`\`\``);
+                }
               }}
             />
           </div>
         )}
       </div>
-
-      {/* Queue */}
-      {chatQueue.length > 0 && (
-        <div className="chat-queue" role="status" aria-live="polite">
-          <div className="chat-queue__title">{t("shared.queued")} ({chatQueue.length})</div>
-          <div className="chat-queue__list">
-            {chatQueue.map((item) => (
-              <div key={item.id} className="chat-queue__item">
-                <div className="chat-queue__text">
-                  {item.text || (item.attachments?.length ? `${t("shared.image")} (${item.attachments.length})` : "")}
-                </div>
-                <button
-                  className="btn chat-queue__remove"
-                  type="button"
-                  aria-label={t("chatView.removeQueued")}
-                  onClick={() => handleQueueRemove(item.id)}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Indicators */}
       <FallbackIndicator status={fallbackStatus as never} />
@@ -594,6 +671,34 @@ export function ChatView() {
 
       {/* Compose area */}
       <div className="chat-compose">
+        {/* Queue (dentro de compose para alinear ancho) */}
+        {chatQueue.length > 0 && (
+          <Queue>
+            <QueueSection label={t("shared.queued")} count={chatQueue.length}>
+              <QueueList>
+                {chatQueue.map((item) => (
+                  <QueueItem
+                    key={item.id}
+                    actions={
+                      <button
+                        type="button"
+                        aria-label={t("chatView.removeQueued")}
+                        onClick={() => handleQueueRemove(item.id)}
+                      >
+                        <CloseIcon />
+                      </button>
+                    }
+                  >
+                    {item.text ||
+                      (item.attachments?.length
+                        ? `${t("shared.image")} (${item.attachments.length})`
+                        : "")}
+                  </QueueItem>
+                ))}
+              </QueueList>
+            </QueueSection>
+          </Queue>
+        )}
         <AttachmentPreview
           attachments={chatAttachments ?? []}
           onRemove={(id) => {
@@ -623,10 +728,12 @@ export function ChatView() {
                   setTextareaHeight(measureTextareaHeight(textareaRef.current, false));
                 }
               }}
-              onPaste={(e) => handlePaste(e, chatAttachments ?? [], (next) => set({ chatAttachments: next }))}
+              onPaste={(e) =>
+                handlePaste(e, chatAttachments ?? [], (next) => set({ chatAttachments: next }))
+              }
               placeholder={composePlaceholder}
               animate={{ height: textareaHeight }}
-              transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.8 }}
+              transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
               style={{ overflow: textareaHeight >= TEXTAREA_MAX_HEIGHT ? "auto" : "hidden" }}
             />
           </label>
@@ -639,7 +746,8 @@ export function ChatView() {
               {canAbort ? t("chatView.stop") : t("chatView.newSession")}
             </button>
             <button className="btn primary" disabled={!connected} onClick={handleSend}>
-              {isBusy ? t("chatView.queue") : t("chatView.send")}<kbd className="btn-kbd">↵</kbd>
+              {isBusy ? t("chatView.queue") : t("chatView.send")}
+              <kbd className="btn-kbd">↵</kbd>
             </button>
           </div>
         </div>
