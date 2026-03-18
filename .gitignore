@@ -124,3 +124,16 @@ dist/protocol.schema.json
 # Agent/AI config
 .agent/
 .agents/
+
+# Upstream projects not needed
+Swabble/
+.pi/
+apps/
+openclaw-office/
+
+# IDE
+.vscode/
+
+# Build artifacts
+*.tgz
+.env.example
