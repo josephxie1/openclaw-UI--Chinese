@@ -143,6 +143,20 @@
 | ---------------------------------------- | ---------------------------------------- |
 | ![Dark Theme](docs/暗色主题支持.png)      | ![Tray](docs/任务栏支持.png)              |
 
+### 🆕 v2026.3.15 New Feature Screenshots
+
+| Overview + 2D Ranch Scene            | Chat (Thinking + Tool Calls)          |
+| ------------------------------------ | ------------------------------------- |
+| ![Overview Ranch](assets/01.png)     | ![Chat Interface](assets/02.png)      |
+
+| Config Page (Chinese Schema)         | Agent Settings + Sidebar              |
+| ------------------------------------ | ------------------------------------- |
+| ![Config Page](assets/03.png)        | ![Agent Settings](assets/04.png)      |
+
+| Channel Management + Quick Add       | Overview Bottom (Charts + Agent Cards)|
+| ------------------------------------ | ------------------------------------- |
+| ![Channel Mgmt](assets/05.png)       | ![Agent Cards](assets/06.png)         |
+
 ## 🖥 Desktop App (Recommended)
 
 Standalone Electron desktop app with a built-in Gateway backend. **No Node.js required — works out of the box.**
