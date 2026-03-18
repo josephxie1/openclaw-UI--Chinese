@@ -103,6 +103,20 @@
 
 ## 📸 Screenshots
 
+### 🆕 v2026.3.15 New Features
+
+| Overview + 2D Ranch Scene                  | Chat (Thinking + Tool Calls)               |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Overview Ranch](assets/overview-ranch.png)| ![Chat Interface](assets/chat-tools.png)   |
+
+| Config Page (Chinese Schema)               | Agent Settings + Sidebar                   |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Config Page](assets/config-schema.png)   | ![Agent Settings](assets/agent-settings.png)|
+
+| Channel Management + Quick Add             | Overview Bottom (Charts + Agent Cards)     |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Channel Mgmt](assets/channel-quickadd.png)| ![Agent Cards](assets/overview-cards.png) |
+
 ### 🚀 Startup & Setup Wizard
 
 | Splash Screen              | Welcome Wizard             |
@@ -142,20 +156,6 @@
 | Dark Theme                               | System Tray                              |
 | ---------------------------------------- | ---------------------------------------- |
 | ![Dark Theme](docs/暗色主题支持.png)      | ![Tray](docs/任务栏支持.png)              |
-
-### 🆕 v2026.3.15 New Feature Screenshots
-
-| Overview + 2D Ranch Scene                  | Chat (Thinking + Tool Calls)               |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Overview Ranch](assets/overview-ranch.png)| ![Chat Interface](assets/chat-tools.png)   |
-
-| Config Page (Chinese Schema)               | Agent Settings + Sidebar                   |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Config Page](assets/config-schema.png)   | ![Agent Settings](assets/agent-settings.png)|
-
-| Channel Management + Quick Add             | Overview Bottom (Charts + Agent Cards)     |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Channel Mgmt](assets/channel-quickadd.png)| ![Agent Cards](assets/overview-cards.png) |
 
 ## 🖥 Desktop App (Recommended)
 
