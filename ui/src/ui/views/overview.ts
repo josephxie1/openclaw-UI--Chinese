@@ -14,6 +14,7 @@ import type {
 } from "../types.ts";
 import { resolveAgentAvatarSrc } from "./agents-utils.ts";
 import { shouldShowPairingHint } from "./overview-hints.ts";
+import { renderRanch } from "./overview-ranch.ts";
 
 // Module-level cache for async system stats (Electron IPC)
 let _cachedCpu = 0;
@@ -25,6 +26,7 @@ let _usageChartMode: "1d" | "7d" | "ctx" = "7d";
 let _ctxTimeRange: "1d" | "7d" = "1d";
 let _usageAgentFilter = ""; // "" = all agents
 let _usageChartInstance: import("chart.js").Chart | null = null;
+let _usageChartCanvas: HTMLCanvasElement | null = null;
 
 async function initOrUpdateUsageChart(
   canvas: HTMLCanvasElement,
@@ -49,6 +51,13 @@ async function initOrUpdateUsageChart(
     }
     return String(n);
   };
+
+  // If canvas changed (e.g. user navigated away and back), destroy the old chart
+  if (_usageChartInstance && _usageChartCanvas !== canvas) {
+    _usageChartInstance.destroy();
+    _usageChartInstance = null;
+    _usageChartCanvas = null;
+  }
 
   if (_usageChartInstance) {
     _usageChartInstance.data.labels = labels;
@@ -152,9 +161,11 @@ async function initOrUpdateUsageChart(
       },
     },
   });
+  _usageChartCanvas = canvas;
 }
 
 let _ctxChartInstance: import("chart.js").Chart | null = null;
+let _ctxChartCanvas: HTMLCanvasElement | null = null;
 
 async function initOrUpdateCtxChart(
   canvas: HTMLCanvasElement,
@@ -182,6 +193,13 @@ async function initOrUpdateCtxChart(
   const labels = rows.map((r) => r.label);
   const data = rows.map((r) => r.tokens);
   const colors = rows.map((r) => r.color);
+
+  // Destroy stale chart if canvas changed after tab navigation
+  if (_ctxChartInstance && _ctxChartCanvas !== canvas) {
+    _ctxChartInstance.destroy();
+    _ctxChartInstance = null;
+    _ctxChartCanvas = null;
+  }
 
   if (_ctxChartInstance) {
     _ctxChartInstance.data.labels = labels;
@@ -267,6 +285,7 @@ async function initOrUpdateCtxChart(
       },
     },
   });
+  _ctxChartCanvas = canvas;
 }
 
 function buildHourlyFromSessions(
@@ -494,14 +513,26 @@ export function renderOverview(props: OverviewProps) {
 
   const currentLocale = i18n.getLocale();
 
-  // --- Donut chart helper ---
+  // --- Inline SVG icons (replaces emoji in UI) ---
+  const icon = {
+    wheat: (s = 16) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M12 22V12M12 12C12 12 7 9 7 5a5 5 0 0 1 10 0c0 4-5 7-5 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12c0 0-2-3-2-6M12 12c0 0 2-3 2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    fire: (s = 16) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M12 2c0 0 3 4 3 8 0 2-1.5 3.5-3 4 0-2-2-3-2-5 0-2 2-7 2-7Z" fill="currentColor" opacity="0.7"/><path d="M12 22a7 7 0 0 0 7-7c0-3-2-5-3-7-1 2-1 3-3 4-2-1-3-3-3-5-2 2-3 5-1 8-1 0-2-1-2-2a7 7 0 0 0 5 9Z" fill="currentColor"/></svg>`,
+    running: (s = 14) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="4" r="2" fill="currentColor"/><path d="M6 20l3-6 2 3 3-4 4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 8l2 4-4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 12l3-1 2 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    hourglass: (s = 14) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M5 3h14M5 21h14M6 3l6 8-6 10M18 3l-6 8 6 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    moon: (s = 14) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/></svg>`,
+    cow: (s = 18) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="13" rx="7" ry="6" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="2"/><path d="M8 13v3M16 13v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="12" r="1" fill="currentColor"/><circle cx="14" cy="12" r="1" fill="currentColor"/><path d="M7 7c-1-2-3-3-3-3s1 3 2 4M17 7c1-2 3-3 3-3s-1 3-2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 15.5c.6.3 1.4.3 2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    snowflake: (s = 18) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`,
+    gate: (s = 18) => html`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="18" rx="1" stroke="currentColor" stroke-width="2"/><path d="M2 9h20M9 9v12M15 9v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  };
+
+  // --- Donut chart helper (pixel RPG gauge) ---
   const renderDonutChart = (
     percent: number,
     label: string,
     valueText: string,
     colorOverride?: string,
   ) => {
-    const radius = 40;
+    const radius = 38;
     const circumference = 2 * Math.PI * radius;
     const dashOffset = circumference * (1 - Math.min(percent, 100) / 100);
     const strokeColor =
@@ -509,28 +540,19 @@ export function renderOverview(props: OverviewProps) {
     return html`
       <div class="donut-chart">
         <div class="donut-chart__label">${label}</div>
-        <svg viewBox="0 0 100 100" width="110" height="110">
-          <defs>
-            <filter id="glow-${label}" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="blur"/>
-              <feFlood flood-color="${strokeColor}" flood-opacity="0.6" result="color"/>
-              <feComposite in="color" in2="blur" operator="in" result="shadow"/>
-              <feMerge>
-                <feMergeNode in="shadow"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="currentColor" stroke-width="7" opacity="0.12"/>
-          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${strokeColor}" stroke-width="7"
-            stroke-linecap="round"
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <circle cx="50" cy="50" r="46" fill="var(--donut-bg-outer, rgba(0,0,0,0.1))"/>
+          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="currentColor" stroke-width="10" opacity="0.1"/>
+          <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${strokeColor}" stroke-width="10"
+            stroke-linecap="butt"
             stroke-dasharray="${circumference}"
             stroke-dashoffset="${dashOffset}"
             transform="rotate(-90 50 50)"
-            filter="url(#glow-${label})"
             style="transition: stroke-dashoffset 0.6s ease;"/>
+          <circle cx="50" cy="50" r="30" fill="var(--donut-bg-inner, rgba(0,0,0,0.25))"/>
           <text x="50" y="52" text-anchor="middle" dominant-baseline="middle"
-            fill="currentColor" font-size="15" font-weight="800">${valueText}</text>
+            fill="${strokeColor}" font-size="16" font-weight="900"
+            font-family="var(--mono, monospace)">${valueText}</text>
         </svg>
       </div>
     `;
@@ -595,21 +617,19 @@ export function renderOverview(props: OverviewProps) {
   // --- Build each card as a keyed template ---
   const cards: Record<string, ReturnType<typeof html>> = {
     snapshot: html`
-        <div data-swapy-slot="snapshot">
-          <div data-swapy-item="snapshot">
-            <div class="card ov-card--snapshot">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">${t("overview.snapshot.title")}</div>
-                <div class="card-sub">${t("overview.snapshot.subtitle")}</div></div>
+            <div class="card ov-card--snapshot" style="height: 100%;">
+              <div class="card-header-row">
+                <div><div class="card-title" style="display:flex;align-items:center;gap:6px">${icon.snowflake()} 牧场实况（Snapshot）</div>
+                <div class="card-sub">最新的牛马握手信息。</div></div>
               </div>
               <div class="snapshot-charts">
-                ${renderDonutChart(props.connected ? 100 : 0, t("overview.snapshot.status"), props.connected ? t("common.ok") : t("common.offline"), props.connected ? "#34d399" : "#ff6b6b")}
-                ${renderDonutChart(100, t("overview.snapshot.uptime"), uptime, "#a7f3d0")}
-                ${renderDonutChart(cpuPercent, "CPU", `${cpuPercent}%`)}
-                ${renderDonutChart(memPercent, "内存", `${memPercent}%`)}
-                ${renderDonutChart(props.presenceCount * 10, t("overview.stats.instances"), `${props.presenceCount}`, "#818cf8")}
-                ${renderDonutChart(props.sessionsCount != null ? Math.min(props.sessionsCount * 10, 100) : 0, t("overview.stats.sessions"), `${props.sessionsCount ?? 0}`, "#38bdf8")}
-                ${renderDonutChart(props.cronJobsCount != null ? (props.cronJobsCount > 0 ? 100 : 0) : 0, t("overview.stats.cron"), `${props.cronJobsCount ?? 0}`, "#fbbf24")}
+                ${renderDonutChart(props.connected ? 100 : 0, "精神状态", props.connected ? "亢奋" : "摆烂", props.connected ? "#34d399" : "#ff6b6b")}
+                ${renderDonutChart(100, "连续打工", uptime, "#38bdf8")}
+                ${renderDonutChart(cpuPercent, "脑力负载", `${cpuPercent}%`)}
+                ${renderDonutChart(memPercent, "体力消耗", `${memPercent}%`)}
+                ${renderDonutChart(props.presenceCount * 10, "在线牛马", `${props.presenceCount}`, "#818cf8")}
+                ${renderDonutChart(props.sessionsCount != null ? Math.min(props.sessionsCount * 10, 100) : 0, "正在接客", `${props.sessionsCount ?? 0}`, "#38bdf8")}
+                ${renderDonutChart(props.cronJobsCount != null ? (props.cronJobsCount > 0 ? 100 : 0) : 0, "待办鞭策", `${props.cronJobsCount ?? 0}`, "#fbbf24")}
               </div>
               ${
                 props.lastError
@@ -621,15 +641,13 @@ export function renderOverview(props: OverviewProps) {
                   </div>`
                   : ""
               }
-            </div>
-          </div>
-        </div>`,
+            </div>`,
     access: html`
         <div data-swapy-slot="access">
           <div data-swapy-item="access">
             <div class="card ov-card--access">
               <div class="card-header-row">${dragHandleOnly}
-                <div><div class="card-title">${t("overview.access.title")}</div>
+                <div><div class="card-title">牧场大门</div>
                 <div class="card-sub">${t("overview.access.subtitle")}</div></div>
               </div>
               <div class="access-grid" style="margin-top: 14px;">
@@ -711,109 +729,74 @@ export function renderOverview(props: OverviewProps) {
           <div data-swapy-item="agents">
             <div class="card">
               <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">Agent</div>
-                <div class="card-sub">${props.agents.length} 个已配置。</div></div>
+                <div><div class="card-title" style="display:flex;align-items:center;gap:6px">${icon.cow()} 牛马档案</div>
+                <div class="card-sub" style="display:flex;align-items:center;gap:4px">${props.agents.length} 头牛马已就位${props.sessionActivity ? html` · ${icon.running()} ${props.sessionActivity.processing} ${icon.hourglass()} ${props.sessionActivity.waiting} ${icon.moon()} ${props.sessionActivity.idle}` : ""}</div></div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
+              <div class="ov-agent-grid">
                 ${props.agents.map((agent) => {
                   const avatarSrc = resolveAgentAvatarSrc(agent);
+                  const displayName = agent.identity?.name ?? agent.name ?? agent.id;
+                  // Find this agent's sessions
+                  const agentSessions = props.sessionActivity?.sessions.filter(
+                    (s) => (s.key.split(":")[1] ?? s.key) === agent.id
+                  ) ?? [];
+                  // Determine overall state for this agent
+                  const agentState = agentSessions.find((s) => s.state === "processing")
+                    ? "processing"
+                    : agentSessions.find((s) => s.state === "waiting")
+                      ? "waiting"
+                      : "idle";
+                  const stateLabelHtml = agentState === "processing" ? html`${icon.running(12)} 奔跑中`
+                    : agentState === "waiting" ? html`${icon.hourglass(12)} 等活中`
+                    : html`${icon.moon(12)} 摸鱼中`;
+                  const stateClass = agentState;
+                  // Get the primary session for token display
+                  const primarySession = agentSessions[0];
                   return html`
-                    <div class="agent-row-display">
-                      ${avatarSrc ? html`<img class="agent-avatar-sm" src="${avatarSrc}" alt="" />` : nothing}
-                      <div class="agent-info-sm">
-                        <div class="agent-name">${agent.identity?.name ?? agent.name ?? agent.id}</div>
-                        <div class="agent-id mono muted">${agent.id}</div>
+                    <div class="agent-card-pixel agent-card-pixel--${stateClass}">
+                      <!-- Avatar is now the full background -->
+                      ${avatarSrc ? html`<img class="agent-card-pixel__bg" src="${avatarSrc}" alt="" />` : html`<div class="agent-card-pixel__bg"></div>`}
+                      
+                      <!-- Top Info Area (Gradient overlay) -->
+                      <div class="agent-card-pixel__header">
+                        <div class="agent-card-pixel__name-row">
+                          <span class="agent-card-pixel__name">${displayName}</span>
+                          <span class="agent-card-pixel__label" style="display:flex;align-items:center;gap:3px">${stateLabelHtml}</span>
+                        </div>
+                        <div class="agent-card-pixel__id">${agent.id}</div>
                       </div>
-                    </div>
+
+                      <!-- Bottom Sessions Area (Gradient overlay) -->
+                      <div class="agent-card-pixel__footer">
+                      ${agentSessions.length > 0 ? html`
+                        <div class="agent-card-pixel__sessions">
+                          ${agentSessions.map((s) => {
+                            const sLabel = s.state === "processing" ? icon.running(11) : s.state === "waiting" ? icon.hourglass(11) : icon.moon(11);
+                            return html`
+                              <div class="agent-card-pixel__session">
+                                <div class="agent-card-pixel__session-header">
+                                  <span>${sLabel}</span>
+                                  <span class="agent-card-pixel__session-time">${
+                                    s.lastActivityAgo < 5000 ? "刚刚" : formatRelativeTimestamp(Date.now() - s.lastActivityAgo)
+                                  }</span>
+                                  ${s.queueDepth > 0 ? html`<span class="agent-card-pixel__session-queue">队列${s.queueDepth}</span>` : nothing}
+                                </div>
+                                ${s.totalTokens != null && s.contextTokens ? html`
+                                  <div class="agent-card-pixel__token-bar">
+                                    <div class="agent-card-pixel__token-fill" style="width:${Math.min((s.totalTokens / s.contextTokens) * 100, 100)}%"></div>
+                                  </div>
+                                  <div class="agent-card-pixel__token-label" style="display:flex;align-items:center;gap:3px">${icon.wheat(11)} ${s.totalTokens.toLocaleString()} 养料</div>
+                                ` : nothing}
+                              </div>
+                            `;
+                          })}
+                        </div>
+                      ` : nothing}
+                      </div> <!-- close footer -->
+                    </div> <!-- close card -->
                   `;
                 })}
               </div>
-            </div>
-          </div>
-        </div>`,
-    activity: html`
-        <div data-swapy-slot="activity">
-          <div data-swapy-item="activity">
-            <div class="card ov-card--activity">
-              <div class="card-header-row">${dragHandleFree}
-                <div><div class="card-title">${t("overview.activity.title")}</div>
-                <div class="card-sub">${t("overview.activity.subtitle")}</div></div>
-              </div>
-              ${
-                props.sessionActivity
-                  ? html`
-                  <div class="stat-grid" style="margin-top: 14px;">
-                    <div class="stat">
-                      <div class="stat-label">${t("overview.activity.processing")}</div>
-                      <div class="stat-value ${props.sessionActivity.processing > 0 ? "ok" : ""}">
-                        ${props.sessionActivity.processing}
-                      </div>
-                    </div>
-                    <div class="stat">
-                      <div class="stat-label">${t("overview.activity.waiting")}</div>
-                      <div class="stat-value ${props.sessionActivity.waiting > 0 ? "warn" : ""}">
-                        ${props.sessionActivity.waiting}
-                      </div>
-                    </div>
-                    <div class="stat">
-                      <div class="stat-label">${t("overview.activity.idle")}</div>
-                      <div class="stat-value">${props.sessionActivity.idle}</div>
-                    </div>
-                  </div>
-                  ${
-                    props.sessionActivity.sessions.length > 0
-                      ? html`
-                      <div class="activity-cards" style="margin-top: 14px;">
-                        ${props.sessionActivity.sessions.map((s) => {
-                          // Extract agent ID: "agent:dev:main" → "dev", "agent:test:web:123" → "test"
-                          const agentId = s.key.split(":")[1] ?? s.key;
-                          const agent = props.agents.find((a) => a.id === agentId);
-                          const avatarSrc = agent
-                            ? resolveAgentAvatarSrc(agent)
-                            : avatarFromName(agentId);
-                          return html`
-                            <div class="activity-card ${s.state}">
-                              <div class="activity-card__header">
-                                ${avatarSrc ? html`<img class="activity-card__avatar" src="${avatarSrc}" alt="" />` : nothing}
-                                <span class="activity-dot ${s.state}"></span>
-                                <span class="activity-card__badge ${s.state}">
-                                  ${t(`overview.activity.state.${s.state}`)}
-                                </span>
-                              </div>
-                              <div class="activity-card__key mono">${s.key}</div>
-                              <div class="activity-card__meta muted">
-                                ${
-                                  s.lastActivityAgo < 5000
-                                    ? t("overview.activity.justNow")
-                                    : formatRelativeTimestamp(Date.now() - s.lastActivityAgo)
-                                }
-                                ${
-                                  s.queueDepth > 0
-                                    ? html` · ${t("overview.activity.queued", { count: String(s.queueDepth) })}`
-                                    : nothing
-                                }
-                              </div>
-                              ${
-                                s.totalTokens != null && s.contextTokens
-                                  ? html`
-                                  <div class="activity-card__tokens">
-                                    <div class="token-bar">
-                                      <div class="token-bar__fill" style="width: ${Math.min((s.totalTokens / s.contextTokens) * 100, 100)}%"></div>
-                                    </div>
-                                    <div class="token-bar__label muted"><span>tokens</span><span>${s.totalTokens.toLocaleString()} / ${s.contextTokens.toLocaleString()} (${Math.round((s.totalTokens / s.contextTokens) * 100)}%)</span></div>
-                                  </div>`
-                                  : nothing
-                              }
-                            </div>
-                          `;
-                        })}
-                      </div>
-                    `
-                      : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.empty")}</div>`
-                  }
-                `
-                  : html`<div class="muted" style="margin-top: 14px;">${t("overview.activity.loading")}</div>`
-              }
             </div>
           </div>
         </div>`,
@@ -1030,7 +1013,7 @@ export function renderOverview(props: OverviewProps) {
           <div data-swapy-item="usage">
             <div class="card ov-card--usage">
               <div class="card-header-row">${dragHandleOnly}
-                <div style="flex:1"><div class="card-title">${mode === "ctx" ? "上下文构成" : "令牌用量趋势"}</div>
+                <div style="flex:1"><div class="card-title">草料消耗趋势</div>
                 <div class="card-sub">${subtitle}</div></div>
                 ${
                   agentList.length > 1
@@ -1109,7 +1092,7 @@ export function renderOverview(props: OverviewProps) {
   };
 
   // Render cards in saved order (from localStorage), falling back to default
-  const defaultOrder = ["snapshot", "usage", "access", "agents", "activity"];
+  const defaultOrder = ["usage", "access", "agents"];
   let cardOrder = defaultOrder;
   try {
     const saved = localStorage.getItem("oc-overview-card-order-v3");
@@ -1124,8 +1107,41 @@ export function renderOverview(props: OverviewProps) {
     /* use default */
   }
 
+  // Token stats row (computed from usage data, displayed above cards)
+  const fmtTokens = (n: number) =>
+    n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
+  const todayTokens = (props.usageResult?.sessions ?? [])
+    .reduce((sum, s) => sum + (s.usage?.totalTokens ?? 0), 0);
+  const allTokens = props.costDaily?.totals?.totalTokens ?? 0;
+  const tokenStatsRow = (todayTokens > 0 || allTokens > 0) ? html`
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="card" style="padding: 16px 20px;">
+        <div class="muted" style="font-size: 12px; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:5px">${icon.wheat(13)} 今日消耗草料（Tokens）</div>
+        <div style="font-family: var(--mono, monospace); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; color: var(--text-strong); line-height: 1.1;">${fmtTokens(todayTokens)}</div>
+        <div class="muted" style="font-size: 11px; margin-top: 4px;">${todayTokens.toLocaleString()} 棵草</div>
+      </div>
+      <div class="card" style="padding: 16px 20px;">
+        <div class="muted" style="font-size: 12px; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:5px">${icon.fire(13)} 累计消耗草料（Tokens）</div>
+        <div style="font-family: var(--mono, monospace); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; color: var(--text-strong); line-height: 1.1;">${fmtTokens(allTokens)}</div>
+        <div class="muted" style="font-size: 11px; margin-top: 4px;">${allTokens.toLocaleString()} 棵草</div>
+      </div>
+    </div>
+  ` : nothing;
+
+  const ranchScene = renderRanch({
+    agents: props.agents,
+    sessionActivity: props.sessionActivity,
+  });
+
   return html`
     <oc-overview-layout>
+      <div class="ov-ranch-snapshot-row">
+        <div class="ov-ranch-col">${ranchScene}</div>
+        <div class="ov-snapshot-col">
+          ${cards.snapshot}
+          ${tokenStatsRow}
+        </div>
+      </div>
       <div class="overview-swapy">
         ${cardOrder.map((slot) => cards[slot])}
       </div>

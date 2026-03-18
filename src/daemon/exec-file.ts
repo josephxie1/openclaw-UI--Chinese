@@ -8,7 +8,7 @@ export async function execFileUtf8(
   options: Omit<ExecFileOptionsWithStringEncoding, "encoding"> = {},
 ): Promise<ExecResult> {
   return await new Promise<ExecResult>((resolve) => {
-    execFile(command, args, { ...options, encoding: "utf8" }, (error, stdout, stderr) => {
+    execFile(command, args, { ...options, encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
       if (!error) {
         resolve({
           stdout: String(stdout ?? ""),

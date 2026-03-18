@@ -67,6 +67,7 @@ import {
   updateSkillEdit,
   updateSkillEnabled,
 } from "./controllers/skills.ts";
+import { installClawhubSkill, loadClawhubToken, saveClawhubToken, searchClawhub } from "./controllers/clawhub.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "./external-link.ts";
 import { translateError } from "./helpers/translate-error.ts";
 import { icons } from "./icons.ts";
@@ -91,6 +92,7 @@ import "./views/overview-swapy.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSetupWizard } from "./views/setup-wizard.ts";
 import { renderSkills } from "./views/skills.ts";
+import { renderClawhubMarket, type ClawhubSkill } from "./views/clawhub-market.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -232,12 +234,7 @@ export function renderApp(state: AppViewState) {
     (typeof state.hello?.server?.version === "string" && state.hello.server.version.trim()) ||
     state.updateAvailable?.currentVersion ||
     t("common.na");
-  const availableUpdate =
-    state.updateAvailable &&
-    state.updateAvailable.latestVersion !== state.updateAvailable.currentVersion
-      ? state.updateAvailable
-      : null;
-  const versionStatusClass = availableUpdate ? "warn" : "ok";
+  const versionStatusClass = "ok";
   const presenceCount = state.presenceEntries.length;
   const sessionsCount = state.sessionsResult?.count ?? null;
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
@@ -354,7 +351,7 @@ export function renderApp(state: AppViewState) {
           const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
-            <div class="nav-group ${isGroupCollapsed && !hasActiveTab ? "nav-group--collapsed" : ""}">
+            <div class="nav-group ${isGroupCollapsed ? "nav-group--collapsed" : ""}">
               ${
                 group.label === "chat"
                   ? html`
@@ -430,19 +427,7 @@ export function renderApp(state: AppViewState) {
         </div>
       </aside>
       <main class="content ${isChat ? "content--chat" : ""}">
-        ${
-          availableUpdate
-            ? html`<div class="update-banner callout danger" role="alert">
-              <strong>${t("global.updateAvailable")}</strong> v${availableUpdate.latestVersion}
-              (${t("global.running")} v${availableUpdate.currentVersion}).
-              <button
-                class="btn btn--sm update-banner__btn"
-                ?disabled=${state.updateRunning || !state.connected}
-                @click=${() => runUpdate(state)}
-              >${state.updateRunning ? t("global.updating") : t("global.updateNow")}</button>
-            </div>`
-            : nothing
-        }
+
         ${
           state.onboarding
             ? renderSetupWizard({
@@ -767,8 +752,8 @@ export function renderApp(state: AppViewState) {
           !state.onboarding
             ? html`<section class="content-header">
           <div>
-            ${state.tab === "usage" ? nothing : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
-            ${state.tab === "usage" ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
+            ${state.tab === "usage" || state.tab === "overview" ? nothing : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
+            ${state.tab === "usage" || state.tab === "overview" ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
           </div>
           <div class="page-meta">
             ${state.lastError ? html`<div class="pill danger">${translateError(state.lastError)}</div>` : nothing}
@@ -995,6 +980,22 @@ export function renderApp(state: AppViewState) {
                               avatar: avatarValue,
                             },
                           };
+                          // Write explicit workspace path matching backend convention: workspace-{agentId}
+                          const agentDefaults = (
+                            (state.configForm as Record<string, unknown>)?.agents as Record<
+                              string,
+                              unknown
+                            >
+                          )?.defaults as Record<string, unknown> | undefined;
+                          const defaultWs =
+                            typeof agentDefaults?.workspace === "string"
+                              ? agentDefaults.workspace.replace(/[\\/]+$/, "")
+                              : null;
+                          if (defaultWs) {
+                            const sep = defaultWs.includes("\\") ? "\\" : "/";
+                            const stateDir = defaultWs.substring(0, defaultWs.lastIndexOf(sep));
+                            newAgent.workspace = `${stateDir}${sep}workspace-${accountId}`;
+                          }
                           if (f.agentModel) {
                             newAgent.model = { primary: f.agentModel };
                           }
@@ -1506,6 +1507,21 @@ export function renderApp(state: AppViewState) {
                   }
                   updateConfigFormValue(state, ["agents", "list", index, "skills"], []);
                 },
+                onAvatarUrlChange: (agentId: string, url: string) => {
+                  if (!configValue) return;
+                  const list = (configValue as { agents?: { list?: unknown[] } }).agents?.list;
+                  if (!Array.isArray(list)) return;
+                  const index = list.findIndex(
+                    (entry) =>
+                      entry &&
+                      typeof entry === "object" &&
+                      "id" in entry &&
+                      (entry as { id?: string }).id === agentId,
+                  );
+                  if (index < 0) return;
+                  // Write URL directly to config — existing Save button handles persistence
+                  updateConfigFormValue(state, ["agents", "list", index, "identity", "avatar"], url || null);
+                },
                 onModelChange: (agentId, modelId) => {
                   state.modelDropdownOpen = false;
                   if (!configValue) {
@@ -1658,6 +1674,32 @@ export function renderApp(state: AppViewState) {
                 onInstall: (skillKey, name, installId) =>
                   installSkill(state, skillKey, name, installId),
               })
+            : nothing
+        }
+
+        ${
+          state.tab === "clawhub"
+            ? (() => {
+                if (state.clawhubTokenMasked === null && !state.clawhubLoading) {
+                  void loadClawhubToken(state);
+                }
+                return renderClawhubMarket({
+                  query: state.clawhubQuery,
+                  results: state.clawhubResults as ClawhubSkill[],
+                  loading: state.clawhubLoading,
+                  installing: state.clawhubInstalling,
+                  error: state.clawhubError,
+                  message: state.clawhubMessage,
+                  tokenMasked: state.clawhubTokenMasked,
+                  tokenDraft: state.clawhubTokenDraft,
+                  tokenSaving: state.clawhubTokenSaving,
+                  onQueryChange: (q) => (state.clawhubQuery = q),
+                  onSearch: (q) => searchClawhub(state, q),
+                  onInstall: (slug) => installClawhubSkill(state, slug),
+                  onTokenDraftChange: (v) => (state.clawhubTokenDraft = v),
+                  onTokenSave: () => saveClawhubToken(state),
+                });
+              })()
             : nothing
         }
 

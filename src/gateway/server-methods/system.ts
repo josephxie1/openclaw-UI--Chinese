@@ -25,7 +25,7 @@ export function getAvailableMemory(): number {
     return os.freemem();
   }
   try {
-    const output = execSync("vm_stat", { encoding: "utf-8", timeout: 2000 });
+    const output = execSync("vm_stat", { encoding: "utf-8", timeout: 2000, windowsHide: true });
     // First line: "Mach Virtual Memory Statistics: (page size of XXXX bytes)"
     const pageSizeMatch = output.match(/page size of (\d+) bytes/);
     const pageSize = pageSizeMatch ? Number(pageSizeMatch[1]) : 16384;

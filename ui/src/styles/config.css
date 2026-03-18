@@ -2278,6 +2278,19 @@
   border-style: solid;
 }
 
+.channel-quick-add__avatar-upload {
+  border-style: dashed;
+  border-color: var(--primary, #6366f1);
+  color: var(--primary, #6366f1);
+  opacity: 0.75;
+}
+
+.channel-quick-add__avatar-upload:hover {
+  background: color-mix(in srgb, var(--primary, #6366f1) 10%, transparent);
+  border-style: solid;
+  opacity: 1;
+}
+
 .channel-quick-add__emoji-picker {
   display: flex;
   flex-wrap: wrap;
@@ -2850,32 +2863,69 @@
   margin-top: 2px;
 }
 
+/* Ranch + Snapshot side-by-side row */
+.ov-ranch-snapshot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ov-ranch-col {
+  min-height: 0;
+}
+
+.ov-snapshot-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .ov-ranch-snapshot-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Snapshot dashboard layout */
 .snapshot-charts {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  justify-items: center;
+  margin-top: 16px;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .donut-chart {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.3s ease;
+  transition: transform 0.1s steps(2);
+  image-rendering: auto;
 }
 
 .donut-chart:hover {
-  transform: scale(1.08);
+  transform: scale(1.06) translateY(-2px);
 }
 
 .donut-chart__label {
+  font-family: var(--mono, monospace);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
+}
+
+/* Donut chart theme variables */
+:root {
+  --donut-bg-outer: rgba(0, 0, 0, 0.06);
+  --donut-bg-inner: rgba(255, 255, 255, 0.85);
+}
+
+:root[data-theme="dark"] {
+  --donut-bg-outer: rgba(0, 0, 0, 0.35);
+  --donut-bg-inner: rgba(0, 0, 0, 0.5);
 }

@@ -80,6 +80,8 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "talk.config",
     "agents.files.list",
     "agents.files.get",
+    "clawhub.search",
+    "clawhub.token.get",
   ],
   [WRITE_SCOPE]: [
     "send",
@@ -122,6 +124,8 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "set-heartbeats",
     "system-event",
     "agents.files.set",
+    "clawhub.install",
+    "clawhub.token.set",
   ],
 };
 

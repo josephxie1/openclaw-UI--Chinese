@@ -44,13 +44,21 @@
         "from": "node-bin",
         "to": "node-bin",
         "filter": [
-          "node"
+          "node",
+          "npm",
+          "npx",
+          "lib/**"
         ]
       }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "icon.png",
+      "identity": "dengcheng xie (TS24L3Q4NA)",
+      "hardenedRuntime": true,
+      "entitlements": null,
+      "entitlementsInherit": null,
+      "notarize": false,
       "target": [
         {
           "target": "dmg",

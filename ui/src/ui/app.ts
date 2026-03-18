@@ -412,6 +412,17 @@ export class OpenClawApp extends LitElement {
   @state() skillsBusyKey: string | null = null;
   @state() skillMessages: Record<string, SkillMessage> = {};
 
+  // ClawHub marketplace
+  @state() clawhubQuery = "";
+  @state() clawhubResults: unknown[] = [];
+  @state() clawhubLoading = false;
+  @state() clawhubInstalling: string | null = null;
+  @state() clawhubError: string | null = null;
+  @state() clawhubMessage: string | null = null;
+  @state() clawhubTokenMasked: string | null = null;
+  @state() clawhubTokenDraft = "";
+  @state() clawhubTokenSaving = false;
+
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
   @state() debugHealth: HealthSnapshot | null = null;

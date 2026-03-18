@@ -134,9 +134,9 @@ export async function runExec(
       ? await execFileAsync(
           process.env.ComSpec ?? "cmd.exe",
           ["/d", "/s", "/c", buildCmdExeCommandLine(execCommand, execArgs)],
-          { ...options, windowsVerbatimArguments: true },
+          { ...options, windowsVerbatimArguments: true, windowsHide: true },
         )
-      : await execFileAsync(execCommand, execArgs, options);
+      : await execFileAsync(execCommand, execArgs, { ...options, windowsHide: true });
     if (shouldLogVerbose()) {
       if (stdout.trim()) {
         logDebug(stdout.trim());
@@ -234,6 +234,7 @@ export async function runCommandWithTimeout(
       stdio,
       cwd,
       env: resolvedEnv,
+      windowsHide: true,
       windowsVerbatimArguments: useCmdWrapper ? true : windowsVerbatimArguments,
       ...(shouldSpawnWithShell({ resolvedCommand, platform: process.platform })
         ? { shell: true }

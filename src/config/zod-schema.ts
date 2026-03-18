@@ -814,6 +814,12 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    clawhub: z
+      .object({
+        token: z.string().optional().register(sensitive),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {

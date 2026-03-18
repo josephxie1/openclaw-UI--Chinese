@@ -11,6 +11,11 @@ import { isTruthyEnvValue, normalizeEnv } from "./infra/env.js";
 import { isMainModule } from "./infra/is-main.js";
 import { installProcessWarningFilter } from "./infra/warning-filter.js";
 import { attachChildProcessBridge } from "./process/child-process-bridge.js";
+import { applyWindowsSpawnPatch } from "./infra/windows-spawn-patch.js";
+
+// Safety-net: on Windows, patch all child_process spawn functions to inject
+// windowsHide: true, preventing CMD window flashes for every child process.
+applyWindowsSpawnPatch();
 
 const ENTRY_WRAPPER_PAIRS = [
   { wrapperBasename: "openclaw.mjs", entryBasename: "entry.js" },
@@ -98,6 +103,7 @@ if (
       {
         stdio: "inherit",
         env: process.env,
+        windowsHide: true,
       },
     );
 

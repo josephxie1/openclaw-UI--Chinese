@@ -31,6 +31,20 @@ import {
   resolveModelPrimary,
 } from "./agents-utils.ts";
 
+// ── Module-level avatar preview map ──────────────────────────────────────────
+// Stores data URIs set locally this session so they show immediately, before
+// any gateway cache/reload cycle. Keyed by agentId.
+export const _avatarPreviewMap = new Map<string, string>();
+
+function resolveDisplayAvatarSrc(
+  agent: Parameters<typeof resolveAgentAvatarSrc>[0],
+  agentIdentity: Parameters<typeof resolveAgentAvatarSrc>[1],
+): string | null {
+  const preview = _avatarPreviewMap.get(agent.id);
+  if (preview) return preview;
+  return resolveAgentAvatarSrc(agent, agentIdentity);
+}
+
 export type AgentsPanel = "overview" | "files" | "tools" | "skills" | "channels" | "cron";
 
 export type AgentsProps = {
@@ -98,6 +112,7 @@ export type AgentsProps = {
   onAgentSkillToggle: (agentId: string, skillName: string, enabled: boolean) => void;
   onAgentSkillsClear: (agentId: string) => void;
   onAgentSkillsDisableAll: (agentId: string) => void;
+  onAvatarUrlChange: (agentId: string, url: string) => void;
 };
 
 export type AgentContext = {
@@ -143,7 +158,7 @@ export function renderAgents(props: AgentsProps) {
               : agents.map((agent) => {
                   const badge = agentBadgeText(agent.id, defaultId);
                   const emoji = resolveAgentEmoji(agent, props.agentIdentityById[agent.id] ?? null);
-                  const avatarSrc = resolveAgentAvatarSrc(
+                  const avatarSrc = resolveDisplayAvatarSrc(
                     agent,
                     props.agentIdentityById[agent.id] ?? null,
                   );
@@ -183,6 +198,12 @@ export function renderAgents(props: AgentsProps) {
                   selectedAgent,
                   defaultId,
                   props.agentIdentityById[selectedAgent.id] ?? null,
+                  {
+                    configForm: props.configForm,
+                    configSaving: props.configSaving,
+                    onAvatarUrlChange: props.onAvatarUrlChange,
+                    onConfigSave: props.onConfigSave,
+                  },
                 )}
                 ${renderAgentTabs(props.activePanel, (panel) => props.onSelectPanel(panel))}
                 ${
@@ -210,6 +231,7 @@ export function renderAgents(props: AgentsProps) {
                         fallbackDropdownExpandedGroups: props.fallbackDropdownExpandedGroups,
                         onFallbackDropdownToggle: props.onFallbackDropdownToggle,
                         onFallbackDropdownGroupToggle: props.onFallbackDropdownGroupToggle,
+                        onAvatarUrlChange: props.onAvatarUrlChange,
                       })
                     : nothing
                 }
@@ -322,12 +344,45 @@ function renderAgentHeader(
   agent: AgentsListResult["agents"][number],
   defaultId: string | null,
   agentIdentity: AgentIdentityResult | null,
+  opts?: {
+    configForm: Record<string, unknown> | null;
+    configSaving: boolean;
+    onAvatarUrlChange: (agentId: string, url: string) => void;
+    onConfigSave: () => void;
+  },
 ) {
   const badge = agentBadgeText(agent.id, defaultId);
   const displayName = normalizeAgentLabel(agent);
   const subtitle = agent.identity?.theme?.trim() || t("agentsView.defaultSubtitle");
   const emoji = resolveAgentEmoji(agent, agentIdentity);
-  const avatarSrc = resolveAgentAvatarSrc(agent, agentIdentity);
+  const avatarSrc = resolveDisplayAvatarSrc(agent, agentIdentity);
+
+  // Resolve current config avatar URL for the input
+  const configEntry = opts?.configForm
+    ? (resolveAgentConfig(opts.configForm, agent.id).entry as Record<string, unknown> | undefined)
+    : undefined;
+  const configAvatarUrl =
+    configEntry?.identity &&
+    typeof (configEntry.identity as Record<string, unknown>)?.avatar === "string"
+      ? ((configEntry.identity as Record<string, unknown>).avatar as string)
+      : "";
+
+  const handleUrlInput = (e: Event) => {
+    if (!opts) return;
+    const url = (e.target as HTMLInputElement).value.trim();
+    if (url) {
+      _avatarPreviewMap.set(agent.id, url);
+    } else {
+      _avatarPreviewMap.delete(agent.id);
+    }
+    opts.onAvatarUrlChange(agent.id, url);
+  };
+
+  const handleUrlCommit = () => {
+    if (!opts) return;
+    opts.onConfigSave();
+  };
+
   return html`
     <section class="card agent-header">
       <div class="agent-header-main">
@@ -336,9 +391,24 @@ function renderAgentHeader(
             ? html`<img class="agent-avatar agent-avatar--lg" src="${avatarSrc}" alt="${displayName}" />`
             : html`<div class="agent-avatar agent-avatar--lg">${emoji || displayName.slice(0, 1)}</div>`
         }
-        <div>
+        <div style="min-width:0;flex:1;">
           <div class="card-title">${displayName}</div>
           <div class="card-sub">${subtitle}</div>
+          ${opts ? html`
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+              <input
+                class="input"
+                type="url"
+                placeholder="头像 URL (https://...)"
+                .value=${configAvatarUrl}
+                ?disabled=${opts.configSaving}
+                @input=${handleUrlInput}
+                @blur=${handleUrlCommit}
+                @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
+                style="font-size:11px;flex:1;min-width:0;height:26px;padding:0 8px;"
+              />
+            </div>
+          ` : nothing}
         </div>
       </div>
       <div class="agent-header-meta">
@@ -398,6 +468,7 @@ function renderAgentOverview(params: {
   fallbackDropdownExpandedGroups: Set<string>;
   onFallbackDropdownToggle: () => void;
   onFallbackDropdownGroupToggle: (label: string) => void;
+  onAvatarUrlChange: (agentId: string, url: string) => void;
 }) {
   const {
     agent,
@@ -417,6 +488,7 @@ function renderAgentOverview(params: {
     onModelDropdownGroupToggle,
     onFallbackDropdownToggle,
     onFallbackDropdownGroupToggle,
+    onAvatarUrlChange,
   } = params;
   const config = resolveAgentConfig(configForm, agent.id);
   const modelGroups = resolveGroupedModels(configForm);
@@ -453,6 +525,12 @@ function renderAgentOverview(params: {
     : agentIdentityError
       ? t("agentsView.unavailable")
       : "";
+  // Current avatar URL from config (editable)
+  const currentAvatarUrl =
+    (config.entry as Record<string, unknown> | undefined)?.identity &&
+    typeof ((config.entry as Record<string, unknown>).identity as Record<string, unknown>)?.avatar === "string"
+      ? ((config.entry as Record<string, unknown>).identity as Record<string, unknown>).avatar as string
+      : "";
   const isDefault = Boolean(params.defaultId && agent.id === params.defaultId);
 
   return html`
@@ -480,6 +558,28 @@ function renderAgentOverview(params: {
         <div class="agent-kv">
           <div class="label">${t("agentsView.identityEmoji")}</div>
           <div>${identityEmoji}</div>
+        </div>
+        <div class="agent-kv" style="grid-column: span 2;">
+          <div class="label">头像 URL</div>
+          <input
+            class="input"
+            type="url"
+            placeholder="https://example.com/avatar.png 或留空使用自动生成头像"
+            .value=${currentAvatarUrl}
+            ?disabled=${configLoading || configSaving}
+            @input=${(e: Event) => {
+              const url = (e.target as HTMLInputElement).value.trim();
+              // Immediate preview via the module-level map
+              if (url) {
+                _avatarPreviewMap.set(agent.id, url);
+              } else {
+                _avatarPreviewMap.delete(agent.id);
+              }
+              onAvatarUrlChange(agent.id, url);
+            }}
+            style="font-size:12px;"
+          />
+          <div class="agent-kv-sub muted">支持 http/https URL。修改后点击下方保存生效。</div>
         </div>
         <div class="agent-kv">
           <div class="label">${t("agentsView.skillsFilter")}</div>

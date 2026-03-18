@@ -287,6 +287,16 @@ export type AppViewState = {
     skillEdits: Record<string, string>;
     skillMessages: Record<string, SkillMessage>;
     skillsBusyKey: string | null;
+    // ClawHub marketplace
+    clawhubQuery: string;
+    clawhubResults: unknown[];
+    clawhubLoading: boolean;
+    clawhubInstalling: string | null;
+    clawhubError: string | null;
+    clawhubMessage: string | null;
+    clawhubTokenMasked: string | null;
+    clawhubTokenDraft: string;
+    clawhubTokenSaving: boolean;
     debugLoading: boolean;
     debugStatus: StatusSummary | null;
     debugHealth: HealthSnapshot | null;

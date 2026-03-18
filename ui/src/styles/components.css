@@ -1,4 +1,5 @@
 @import "./chat.css";
+@import "./overview-ranch.css";
 
 /* ===========================================
    Update Banner
@@ -37,7 +38,6 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
-  background: var(--card);
   border-radius: var(--radius-lg);
   padding: 20px;
   animation: rise 0.35s var(--ease-out) backwards;
@@ -2211,6 +2211,32 @@ pre.code-block {
   width: 48px;
   height: 48px;
   font-size: 20px;
+}
+
+.agent-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.agent-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 0;
+  border-radius: 50%;
+  transition: opacity 0.15s ease;
+}
+
+.agent-avatar-wrap:hover .agent-avatar-overlay {
+  opacity: 1;
 }
 
 .agent-info {

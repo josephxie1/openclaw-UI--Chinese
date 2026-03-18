@@ -204,6 +204,11 @@ function startGateway(extraArgs = [], customHome = null) {
     const env = Object.assign({}, process.env, {
       NODE_PATH: path.join(bundled.dir, "node_modules"),
     });
+    // Prepend bundled node-bin to PATH so npm/npx are available for skill installs
+    const nodeBinDir = path.dirname(nodeBin);
+    if (app.isPackaged && nodeBinDir !== ".") {
+      env.PATH = nodeBinDir + path.delimiter + (env.PATH || "");
+    }
     // Remove npm env vars and set correct gateway version
     delete env.npm_package_version;
     delete env.npm_package_name;
@@ -339,6 +344,28 @@ function startGateway(extraArgs = [], customHome = null) {
   });
 }
 
+/**
+ * Agresivamente libera el puerto matando todos los procesos gateway y ocupantes del puerto.
+ */
+function forceCleanPort(portNum) {
+  const { execSync } = require("child_process");
+  try {
+    execSync("pkill -9 -f openclaw-gateway 2>/dev/null || true");
+  } catch {}
+  for (let i = 0; i < 10; i++) {
+    try {
+      const pids = execSync(`lsof -ti:${portNum} 2>/dev/null`, { encoding: "utf-8" }).trim();
+      if (!pids) return true;
+      console.log(`[desktop] Port ${portNum} still held by pid ${pids.replace(/\n/g, ", ")}, killing...`);
+      execSync(`kill -9 ${pids.replace(/\n/g, " ")} 2>/dev/null || true`);
+      execSync("sleep 0.5");
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 function stopGateway() {
   return new Promise((resolve) => {
     if (!gatewayProcess) return resolve();
@@ -346,21 +373,27 @@ function stopGateway() {
     const proc = gatewayProcess;
     gatewayProcess = null;
 
+    // Matar el proceso inmediatamente con SIGKILL (no SIGTERM que puede triggear auto-restart)
+    try {
+      proc.kill("SIGKILL");
+    } catch {}
+
     const timeout = setTimeout(() => {
+      // Fallback: limpiar puerto por si el proceso no murió
       try {
-        proc.kill("SIGKILL");
+        forceCleanPort(DESKTOP_PORT);
       } catch {}
       resolve();
-    }, 5000);
+    }, 3000);
 
     proc.once("exit", () => {
       clearTimeout(timeout);
+      // Limpieza adicional del puerto para matar subprocesos huérfanos
+      try {
+        forceCleanPort(DESKTOP_PORT);
+      } catch {}
       resolve();
     });
-
-    try {
-      proc.kill("SIGTERM");
-    } catch {}
   });
 }
 
@@ -403,9 +436,10 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    title: "OpenClaw Desktop",
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 12, y: 18 },
+    // macOS: 原生标题栏；Windows/Linux: 自定义 chrome
+    ...(process.platform === "darwin"
+      ? {}
+      : { titleBarStyle: "hidden", titleBarOverlay: true }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -731,79 +765,52 @@ app
   .whenReady()
   .then(async () => {
     let isFirstLaunch = false;
-    // Check if gateway is already running
-    const alreadyRunning = await isGatewayRunning();
 
-    if (alreadyRunning) {
-      // Ask user what to do
-      const { nativeImage } = require("electron");
-      const dialogIcon = nativeImage.createFromPath(path.join(__dirname, "icon.png"));
-      const { response } = await dialog.showMessageBox({
-        type: "question",
-        icon: dialogIcon,
-        title: "OpenClaw Desktop",
-        message: `检测到端口 ${GATEWAY_PORT} 已有网关在运行`,
-        detail: "你可以连接到已有的网关，或者启动一个新的独立网关。",
-        buttons: ["连接已有网关", "启动新网关", "退出"],
-        defaultId: 0,
-        cancelId: 2,
-      });
+    // Desktop 永远使用独立配置目录和独立端口，不连接主 gateway
+    const DESKTOP_PORT = GATEWAY_PORT + 1; // 18790
+    const independentHome = path.join(app.getPath("home"), ".openclaw-desktop");
+    GATEWAY_URL_ACTUAL = `http://127.0.0.1:${DESKTOP_PORT}`;
 
-      if (response === 2) {
-        app.quit();
-        return;
-      }
+    console.log(
+      "[desktop] Starting Desktop gateway on port " +
+        DESKTOP_PORT +
+        " with home: " +
+        independentHome,
+    );
 
-      if (response === 0) {
-        // Connect to existing
-        console.log("[desktop] Connecting to existing gateway on port " + GATEWAY_PORT);
-        externalGateway = true;
-      } else {
-        // Start new independent gateway on a different port with separate config
-        const newPort = GATEWAY_PORT + 1;
-        const independentHome = path.join(app.getPath("home"), ".openclaw-desktop");
-        console.log(
-          "[desktop] Starting independent gateway on port " +
-            newPort +
-            " with home: " +
-            independentHome,
-        );
-        GATEWAY_URL_ACTUAL = `http://127.0.0.1:${newPort}`;
-
-        // Create minimal config for independent instance
-        const independentConfigDir = path.join(independentHome, ".openclaw");
-        if (!fs.existsSync(independentConfigDir)) {
-          fs.mkdirSync(independentConfigDir, { recursive: true });
-        }
-        const independentConfig = path.join(independentConfigDir, "openclaw.json");
-        if (!fs.existsSync(independentConfig)) {
-          const independentWorkspace = path.join(independentConfigDir, "workspace");
-          if (!fs.existsSync(independentWorkspace)) {
-            fs.mkdirSync(independentWorkspace, { recursive: true });
-          }
-          fs.writeFileSync(
-            independentConfig,
-            JSON.stringify(buildMinimalConfig(independentWorkspace), null, 2) + "\n",
-          );
-          isFirstLaunch = true;
-        } else {
-          // Config exists — check if models are configured
-          try {
-            const raw = fs.readFileSync(independentConfig, "utf-8");
-            const config = JSON.parse(raw);
-            const providers = config?.models?.providers;
-            if (!providers || Object.keys(providers).length === 0) {
-              console.log("[desktop] Independent config exists but no models, showing onboarding");
-              isFirstLaunch = true;
-            }
-          } catch {
-            // Parse error, skip
-          }
-        }
-      }
-    } else {
-      isFirstLaunch = ensureMinimalConfig();
+    // 确保独立配置目录存在
+    const independentConfigDir = path.join(independentHome, ".openclaw");
+    if (!fs.existsSync(independentConfigDir)) {
+      fs.mkdirSync(independentConfigDir, { recursive: true });
     }
+    const independentConfig = path.join(independentConfigDir, "openclaw.json");
+    if (!fs.existsSync(independentConfig)) {
+      const independentWorkspace = path.join(independentConfigDir, "workspace");
+      if (!fs.existsSync(independentWorkspace)) {
+        fs.mkdirSync(independentWorkspace, { recursive: true });
+      }
+      fs.writeFileSync(
+        independentConfig,
+        JSON.stringify(buildMinimalConfig(independentWorkspace), null, 2) + "\n",
+      );
+      isFirstLaunch = true;
+    } else {
+      // 配置已存在 — 检查是否配置了模型
+      try {
+        const raw = fs.readFileSync(independentConfig, "utf-8");
+        const config = JSON.parse(raw);
+        const providers = config?.models?.providers;
+        if (!providers || Object.keys(providers).length === 0) {
+          console.log("[desktop] Config exists but no models, showing onboarding");
+          isFirstLaunch = true;
+        }
+      } catch {
+        // Parse error, skip
+      }
+    }
+
+    // 启动前强力清理端口（杀掉所有残留的 gateway 进程）
+    forceCleanPort(DESKTOP_PORT);
 
     // Pass onboarding flag to renderer via env → preload
     if (isFirstLaunch) {
@@ -860,16 +867,9 @@ app
       mainWindow.hide();
     }
 
-    // Start gateway (splash is already showing)
+    // 永远以独立模式启动 gateway
     if (!externalGateway) {
-      if (alreadyRunning) {
-        // Independent gateway on new port
-        const newPort = GATEWAY_PORT + 1;
-        const independentHome = path.join(app.getPath("home"), ".openclaw-desktop");
-        startGateway(["--port", String(newPort)], independentHome);
-      } else {
-        startGateway();
-      }
+      startGateway(["--port", String(DESKTOP_PORT)], independentHome);
       try {
         await waitForGateway(GATEWAY_URL_ACTUAL);
       } catch (err) {
@@ -906,22 +906,12 @@ app
         : GATEWAY_URL_ACTUAL;
       mainWindow.loadURL(url);
 
-      // Inject desktop-specific CSS and theme sync after page loads
+      // Inject desktop-specific CSS after page loads
       mainWindow.webContents.on("did-finish-load", () => {
         mainWindow.webContents.executeJavaScript(`
           (function() {
-            // Add CSS for traffic light area and draggable title bar
             const style = document.createElement('style');
             style.textContent = \`
-              /* Topbar is the window drag region */
-              .topbar { -webkit-app-region: drag; padding-left: 80px !important; }
-              /* All interactive content inside topbar = clickable, not draggable */
-              .topbar * { -webkit-app-region: no-drag; }
-              /* Setup wizard overlay must not be blocked by topbar drag */
-              .setup-wizard, .setup-wizard * { -webkit-app-region: no-drag; }
-              /* Leave room for traffic lights in nav */
-              .nav { padding-top: 40px !important; }
-
               /* ── Desktop compact wizard ── */
               .setup-wizard { padding: 0.5rem; }
               .setup-wizard__container {
@@ -991,12 +981,9 @@ for (const sig of ["SIGINT", "SIGTERM"]) {
       try {
         gatewayProcess.kill("SIGKILL");
       } catch {}
+      gatewayProcess = null;
     }
-    try {
-      const { execSync } = require("child_process");
-      const portNum = GATEWAY_URL_ACTUAL.match(/:(\d+)/)?.[1];
-      if (portNum) execSync(`lsof -ti:${portNum} | xargs kill -9 2>/dev/null || true`);
-    } catch {}
+    forceCleanPort(DESKTOP_PORT);
     app.quit();
   });
 }

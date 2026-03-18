@@ -453,7 +453,8 @@ async function loadOverviewUsageCost(state: {
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     const weekAgo = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10);
-    const [weekRes, dayRes] = await Promise.all([
+    const allTimeStart = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10);
+    const [weekRes, dayRes, allRes] = await Promise.all([
       state.client.request("sessions.usage", {
         startDate: weekAgo,
         endDate: today,
@@ -464,7 +465,15 @@ async function loadOverviewUsageCost(state: {
         endDate: today,
         includeContextWeight: true,
       }),
+      state.client.request("sessions.usage", {
+        startDate: allTimeStart,
+        endDate: today,
+      }),
     ]);
+    // All-time totals
+    const allTimeTotals = allRes
+      ? (allRes as import("./types.ts").SessionsUsageResult).totals
+      : undefined;
     if (weekRes) {
       const result = weekRes as import("./types.ts").SessionsUsageResult;
       const apiDaily = result.aggregates?.daily ?? [];
@@ -484,7 +493,7 @@ async function loadOverviewUsageCost(state: {
         updatedAt: result.updatedAt,
         days: 7,
         daily: fullDaily,
-        totals: result.totals,
+        totals: allTimeTotals ?? result.totals,
       } as import("./types.ts").CostUsageSummary;
       state.overviewWeekUsageResult = result;
     }

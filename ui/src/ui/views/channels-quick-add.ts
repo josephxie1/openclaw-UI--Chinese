@@ -254,7 +254,7 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                   />
                                   <span class="quick-add__hint">${t("channelsQuickAdd.agentNameHint")}</span>
                                 </label>
-                                <label class="quick-add__field" style="grid-column: span 2;">
+                                 <label class="quick-add__field" style="grid-column: span 2;">
                                   <span class="quick-add__label">${t("channelsQuickAdd.avatar") ?? "头像"}</span>
                                   <div class="channel-quick-add__avatar-grid">
                                     ${randomAvatarOptions.map(
@@ -268,19 +268,60 @@ export function renderChannelsQuickAdd(props: ChannelsQuickAddProps) {
                                         </button>
                                       `,
                                     )}
+                                    <!-- Custom image preview (shown when a file has been picked) -->
+                                    ${form.agentEmoji && /^data:image\//i.test(form.agentEmoji) && !randomAvatarOptions.find(o => o.dataUri === form.agentEmoji)
+                                      ? html`
+                                        <button
+                                          type="button"
+                                          class="channel-quick-add__avatar-btn active"
+                                          title="已选择本地图片"
+                                        >
+                                          <img src=${form.agentEmoji} alt="custom avatar" width="36" height="36" style="object-fit:cover;border-radius:4px;" />
+                                        </button>
+                                      `
+                                      : ""}
                                     <button
                                       type="button"
                                       class="channel-quick-add__avatar-btn channel-quick-add__avatar-refresh"
                                       title="${t("channelsQuickAdd.refreshAvatars") ?? "换一批"}"
                                       @click=${() => {
                                         randomAvatarOptions = generateRandomAvatars(8);
-                                        // Force re-render
                                         props.onFieldChange("agentEmoji", form.agentEmoji || "🤖");
                                       }}
                                     >
-                                      🎲
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    </button>
+                                    <!-- File picker button -->
+                                    <button
+                                      type="button"
+                                      class="channel-quick-add__avatar-btn channel-quick-add__avatar-upload"
+                                      title="从本地文件选择"
+                                      @click=${() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = "image/*";
+                                        input.onchange = () => {
+                                          const file = input.files?.[0];
+                                          if (!file) return;
+                                          const reader = new FileReader();
+                                          reader.onload = () => {
+                                            if (typeof reader.result === "string") {
+                                              props.onFieldChange("agentEmoji", reader.result);
+                                            }
+                                          };
+                                          reader.readAsDataURL(file);
+                                        };
+                                        input.click();
+                                      }}
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                                     </button>
                                   </div>
+                                  <span class="quick-add__hint" style="margin-top:6px;">点击图片选择，
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    换一批，
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    上传本地图片</span>
                                 </label>
                                 <div class="quick-add__field" style="grid-column: span 2;">
                                   <span class="quick-add__label">${t("channelsQuickAdd.agentModel")}</span>

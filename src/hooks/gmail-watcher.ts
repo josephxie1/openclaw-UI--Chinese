@@ -71,6 +71,7 @@ function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
   const child = spawn("gog", args, {
     stdio: ["ignore", "pipe", "pipe"],
     detached: false,
+    windowsHide: true,
   });
 
   child.stdout?.on("data", (data: Buffer) => {

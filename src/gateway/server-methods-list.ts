@@ -96,6 +96,10 @@ const BASE_METHODS = [
   "chat.history",
   "chat.abort",
   "chat.send",
+  "clawhub.search",
+  "clawhub.install",
+  "clawhub.token.get",
+  "clawhub.token.set",
 ];
 
 export function listGatewayMethods(): string[] {

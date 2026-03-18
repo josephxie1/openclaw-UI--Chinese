@@ -204,6 +204,8 @@
   background: var(--bg);
   scrollbar-width: none;
   /* Firefox */
+  display: flex;
+  flex-direction: column;
   transition:
     width var(--shell-focus-duration) var(--shell-focus-ease),
     padding var(--shell-focus-duration) var(--shell-focus-ease),
@@ -290,6 +292,11 @@
 
 .nav-group:last-child {
   margin-bottom: 0;
+}
+
+.nav-group--links {
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .nav-group__items {

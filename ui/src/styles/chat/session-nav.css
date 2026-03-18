@@ -37,8 +37,10 @@
 .session-item--active {
     color: var(--text);
     font-weight: 500;
+    background: var(--accent-bg, color-mix(in srgb, var(--accent) 12%, transparent));
     border-left: 2px solid var(--accent);
     padding-left: 30px;
+    border-radius: var(--radius-sm);
 }
 
 .session-item__name {

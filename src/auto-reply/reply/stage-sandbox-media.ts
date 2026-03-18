@@ -210,7 +210,7 @@ async function scpFile(remoteHost: string, remotePath: string, localPath: string
         `${safeRemoteHost}:${remotePath}`,
         localPath,
       ],
-      { stdio: ["ignore", "ignore", "pipe"] },
+      { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
     );
 
     let stderr = "";
