@@ -1,8 +1,44 @@
-# OpenClaw 中文版 🇨🇳
+<p align="center">
+  <strong>🌐 Language / 语言</strong><br>
+  <strong>中文</strong> | <a href="README_EN.md">English</a>
+</p>
 
-基于 [OpenClaw](https://github.com/openclaw/openclaw) 的完整中文化分支，包含 **后端 + UI** 的全面增强。
+# OpenClaw 增强版 🚀
+
+[OpenClaw](https://github.com/openclaw/openclaw) 增强版 — 跨平台桌面客户端 + 完整中文化 + React 前端重构 + 3D 牧场场景 + 30+ 项 UI/性能增强。开箱即用，无需命令行。
 
 ## ✨ 特性
+
+### 🎮 React 前端重构 (v2026.3.15)
+
+- **全新 React 前端** — 基于 React + Zustand + Framer Motion 重构整个 UI，组件化架构
+- **18 个完整视图** — Overview、Chat、Agents、Channels、Config、Models、Sessions、Cron、Usage 等
+- **响应式布局** — 手机 / 平板 / 桌面全设备自适应（clamp + 断点 + 弹性网格）
+- **Apple 签名 + 公证** — DMG 通过 Apple Notarization，无 Gatekeeper 警告
+
+### 🌾 3D 像素牧场场景 (v2026.3.15)
+
+- **Three.js 3D 牧场** — Agent 以像素角色在 3D 等距草地上活动
+- **2D 像素牧场** — 备选 Canvas 2D 渲染模式
+- **动态工作区域** — Agent 根据状态在不同区域移动（处理中/等待中/空闲）
+- **活动标签** — 实时显示 Agent 当前任务描述
+- **Gacha 风格头像** — 3:4 竖版 Agent 肖像卡片
+
+### 🧠 AI 聊天增强元素 (v2026.3.15)
+
+- **🔍 搜索源引用** — 聊天中展示 Web 搜索来源（favicon + 可折叠链接列表）
+- **📊 上下文用量指示** — 实时 token 消耗可视化
+- **📝 内联引用标注** — 消息内嵌引用标签
+- **⏳ 队列状态** — 消息排队进度可视化
+- **📋 任务步骤面板** — 多步任务的分步展示与跟踪
+- **🔗 思维链展示** — 可折叠的 AI 推理过程面板
+
+### 📱 全面响应式适配 (v2026.3.15)
+
+- 导航侧栏在平板端自动收起为水平条
+- 聊天输入区在小屏自适应（去除固定 padding，按钮紧凑化）
+- 内容区 max-width 自动居中
+- 移动端 ≤400px 极致紧凑模式
 
 ### 🌐 全面中文化
 
@@ -29,42 +65,41 @@
 - Usage 页面自动刷新
 - Block Streaming 支持（飞书消息分段实时发送）
 
-### � 聊天界面升级 (v2026.3.7)
+### 💬 聊天界面升级
 
-- **Shiki 语法高亮** — 集成 Shiki 引擎（github-dark 主题），支持 40+ 编程语言自动识别
+- **Shiki 语法高亮** — 集成 Shiki 引擎（github-dark 主题），支持 40+ 编程语言自动识别，行号 + 复制按钮
 - **块级 Markdown 缓存** — 流式输出性能大幅提升，仅重渲染最后一个块
 - **🧠 思维推理面板** — 可折叠的 AI 思考过程面板，自动提取首行作为摘要标题
 - **工具调用卡片** — 三态图标（加载动画 / ✅ 完成 / 🔴 错误），折叠式卡片
 - **聊天布局优化** — 无边框气泡、发送者名称加粗、宽屏体验优化
 - **悬停复制按钮** — 鼠标悬停消息时显示一键复制
 
-### 🔗 渠道配对审批 (v2026.3.8)
+### 🔗 渠道配对审批
 
 - 节点/设备页面顶部新增**渠道配对请求**卡片
 - 支持飞书、Telegram 等渠道用户的配对审批
 - 一键批准，无需命令行操作
-- 切换到节点页面自动加载待审批请求
 
-### 📊 令牌用量趋势图增强 (v2026.3.8)
+### 📊 令牌用量趋势图增强
 
 - **Chart.js 图表** — 替代手绘 SVG，渐变填充折线图 + 格式化 tooltip
 - **1d / 7d / ctx 三模式切换** — 今日按小时、近 7 天按日、上下文构成柱状图
-- **上下文构成分析** — 水平柱状图展示 System / Tools / Skills / Files 的 token 占比，支持 1d/7d 子切换
-- **Agent 下拉筛选** — 多 Agent 场景下按 Agent 过滤数据（自定义下拉组件，暗色/亮色主题适配）
-- **副标题显示总量** — 如 `今日（按小时）· 12.5K tokens`
-- **拖拽优化** — MutationObserver 仅监听直接子节点，避免 Chart.js DOM 更新导致的卡顿
+- **上下文构成分析** — 水平柱状图展示 System / Tools / Skills / Files 的 token 占比
+- **Agent 下拉筛选** — 多 Agent 场景下按 Agent 过滤数据
 
-### 📂 侧边栏会话历史 (v2026.3.7)
+### 📂 侧边栏会话历史
 
 - Chat 手风琴组下方显示**会话历史列表**
 - 每个会话显示友好名称 + 相对时间（如 5m, 2h, 3d）
 - 当前活跃会话左侧高亮标识，点击快速切换
-- 新会话按钮创建独立 session，每个会话有独立聊天记录
+- 新会话按钮创建独立 session
 
-### �🛡 性能修复
+### 🛡 性能修复
 
 - 修复大配置文件 `config.get` RangeError 崩溃问题
 - Session 状态追踪独立于 diagnostics 开关，始终启用
+- 修复聊天输入区在手机上高度过大、按钮错位
+- 修复 tablet 视口下 `.chat-main` 缩为极窄宽度
 
 ## 📸 截图预览
 
@@ -108,59 +143,57 @@
 | ---------------------------------- | ---------------------------------- |
 | ![暗色主题](docs/暗色主题支持.png) | ![任务栏支持](docs/任务栏支持.png) |
 
-## � Desktop 桌面版（macOS）
+## 🖥 Desktop 桌面版（推荐）
 
-独立 Electron 桌面应用，内置完整 Gateway 后端，无需单独安装 Node.js。
+独立 Electron 桌面应用，内置完整 Gateway 后端，**无需安装 Node.js，开箱即用**。
 
-### 下载
+### 下载安装
 
-从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载 DMG：
+从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载对应平台安装包：
 
-- **OpenClaw-1.0.0-standalone-arm64.dmg** — Apple Silicon（M1/M2/M3/M4）
+| 平台 | 下载 | 说明 |
+|------|------|------|
+| **macOS Apple Silicon** | [OpenClaw-1.0.0-standalone-arm64.dmg](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-1.0.0-standalone-arm64.dmg) | M1/M2/M3/M4，已签名+公证 |
 
-打开 DMG，将 OpenClaw 拖入 Applications。首次运行前需要移除隔离属性：
+#### macOS 首次运行
 
-```bash
-xattr -cr /Applications/OpenClaw.app
-```
+打开 DMG，将 OpenClaw 拖入 Applications。v2026.3.15 版本已签名并通过 Apple 公证，无需额外操作。
+
+> 如遇 Gatekeeper 提示，运行 `xattr -cr /Applications/OpenClaw.app`。
 
 ### Desktop 版特性
 
 - 🚀 **开箱即用** — 内置完整 Gateway 后端，无需安装 Node.js、无需命令行操作
-- 🧙 **配置引导向导** — 首次启动自动弹出交互式引导，选择模型提供商 → 填入 API Key → 选择默认模型，三步完成配置
+- 🧙 **配置引导向导** — 首次启动自动弹出交互式引导，三步完成配置
 - ⚡ **免去繁琐配置** — 无需手动编辑 `openclaw.json`，向导自动生成完整配置文件
-- 📡 **快速添加模型** — 内置 11 家预置提供商（硅基流动、Kimi Code、Google Gemini、OpenAI、Claude、MiniMax 等），一键添加
+- 📡 **快速添加模型** — 内置 11 家预置提供商
 - 🔄 **Gateway 自动重启** — 后端崩溃自动恢复，无需手动干预
-- 🎯 **macOS 原生集成** — 托盘图标、Dock 图标管理、开机启动
-- 📂 **侧栏会话列表** — 自动加载所有会话，折叠展开即时响应
-- 🖼️ **Agent 头像同步** — 侧栏、头部、聊天区头像统一渲染
-- 💬 **快速添加频道** — Telegram / 飞书一键配置 + Agent 自动绑定
+- 🎯 **原生系统集成** — macOS 托盘图标 / Windows 系统托盘
+- 🛡 **Apple 公证** — 已通过 Apple Notarization，安装无警告
 
 ### 从源码构建 Desktop
 
 ```bash
-# 交互式构建脚本
+# 交互式构建脚本（macOS）
 ./scripts/desktop-build.sh
 
 # 0) 直接启动 Desktop Dev（不构建）
 # 1) 构建最新 Desktop Dev（构建后端 + UI + 同步 + 启动 dev）
 # 2) 完整构建 DMG（构建后端 + UI + DMG 打包）
-
-# DMG 输出位置：desktop/release/OpenClaw-1.0.0-standalone-arm64.dmg
 ```
 
 ---
 
-## �📦 安装
+## 📦 CLI 命令行安装
+
+> 💡 **推荐使用上方桌面版**，以下 CLI 方式适合服务器部署或高级用户。
 
 ### 先决条件
 
 - **Node.js 22** 或更新版本
 
 ```bash
-# 检查 Node 版本
-node --version
-# 应输出 v22.x.x 或更高
+node --version  # 应输出 v22.x.x 或更高
 ```
 
 > 如未安装 Node.js，前往 [nodejs.org](https://nodejs.org/) 下载安装，或使用 `nvm install 22`。
@@ -169,34 +202,13 @@ node --version
 
 ### macOS / Linux
 
-#### 方式一：直接安装（最简单）
-
-```bash
-npm install -g https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.7-zh/openclaw-2026.3.2.tgz
-```
-
-#### 方式二：一键脚本安装（自动检测并安装 Node.js）
+#### 方式一：一键脚本安装（自动检测并安装 Node.js）
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/josephxie1/openclaw-UI--Chinese/main/scripts/install-remote.sh | bash
 ```
 
-#### 方式三：手动下载安装
-
-从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载最新的 `.tgz` 文件，然后：
-
-```bash
-# 安装（后端 + UI 完整替换）
-npm install -g openclaw-2026.3.2.tgz
-
-# 验证安装
-openclaw --version
-
-# 启动网关
-openclaw gateway
-```
-
-#### 方式三：从源码构建
+#### 方式二：从源码构建
 
 ```bash
 git clone https://github.com/josephxie1/openclaw-UI--Chinese.git
@@ -211,13 +223,7 @@ npm install -g openclaw-*.tgz
 
 ### Windows
 
-#### 方式一：直接安装（最简单）
-
-```powershell
-npm install -g https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.7-zh/openclaw-2026.3.2.tgz
-```
-
-#### 方式二：一键脚本安装（自动检测并安装 Node.js）
+#### 方式一：一键脚本安装（自动检测并安装 Node.js）
 
 以 **管理员身份** 打开 PowerShell，运行：
 
@@ -225,22 +231,7 @@ npm install -g https://github.com/josephxie1/openclaw-UI--Chinese/releases/downl
 iwr -useb https://raw.githubusercontent.com/josephxie1/openclaw-UI--Chinese/main/scripts/install-remote.ps1 | iex
 ```
 
-#### 方式三：手动下载安装
-
-1. 从 [Releases](https://github.com/josephxie1/openclaw-UI--Chinese/releases) 下载最新的 `.tgz` 文件
-2. 以 **管理员身份** 打开 PowerShell 或 CMD，运行：
-
-```powershell
-npm install -g openclaw-2026.3.2.tgz
-
-# 验证安装
-openclaw --version
-
-# 启动网关
-openclaw gateway
-```
-
-#### 方式三：从源码构建
+#### 方式二：从源码构建
 
 ```powershell
 git clone https://github.com/josephxie1/openclaw-UI--Chinese.git
@@ -258,7 +249,6 @@ npm install -g openclaw-2026.3.2.tgz
 安装后需要创建配置文件 `~/.openclaw/openclaw.json`：
 
 ```bash
-# 初始化配置
 openclaw config init
 ```
 
@@ -285,9 +275,7 @@ openclaw config init
   },
   "agents": {
     "defaults": {
-      "model": "my-provider/model-name",
-      "blockStreamingDefault": "on",
-      "blockStreamingBreak": "text_end"
+      "model": "my-provider/model-name"
     }
   },
   "gateway": {
@@ -302,7 +290,6 @@ openclaw config init
 ## 🔄 更新
 
 ```bash
-# 下载新版 tgz 后重新安装
 npm install -g openclaw-新版本.tgz
 ```
 
@@ -317,8 +304,8 @@ npm install -g openclaw
 | 模块                         | 状态       |
 | ---------------------------- | ---------- |
 | 导航和标签栏                 | ✅         |
-| 概览页（含 Agent 状态监控）  | ✅         |
-| 聊天界面（含自定义 Tooltip） | ✅         |
+| 概览页（含 3D 牧场场景）     | ✅         |
+| 聊天界面（含 AI 增强元素）   | ✅         |
 | 配置表单（Schema 标签）      | ✅ 700+ 条 |
 | 配置表单（Schema 帮助文本）  | ✅ 460+ 条 |
 | Agent 管理                   | ✅         |
@@ -332,4 +319,5 @@ npm install -g openclaw
 
 ## 📄 许可证
 
-[MIT](LICENSE) — 基于 [OpenClaw](https://github.com/openclaw/openclaw)（MIT License）。
+- **原 OpenClaw 代码**：[MIT](LICENSE) — 基于 [OpenClaw](https://github.com/openclaw/openclaw)
+- **React 前端 (`ui-react/`)、桌面端、文档截图**：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — © 2026 Joseph Xie，禁止商用

@@ -19,3 +19,29 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Additional License for OpenClaw Enhanced (中文增强版)
+
+Copyright (c) 2026 Joseph Xie
+
+The following directories contain original work by Joseph Xie and are
+licensed under CC BY-NC 4.0 (Creative Commons Attribution-NonCommercial 4.0
+International):
+
+  - ui-react/          (React frontend)
+  - desktop/main.js    (Electron shell)
+  - docs/*.png         (Screenshots and documentation images)
+
+You are free to:
+  - Share — copy and redistribute the material in any medium or format
+  - Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+  - Attribution — You must give appropriate credit to Joseph Xie
+  - NonCommercial — You may NOT use the material for commercial purposes
+
+Full license text: https://creativecommons.org/licenses/by-nc/4.0/
+
+All other files in this repository remain under the MIT License above.
