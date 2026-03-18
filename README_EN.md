@@ -145,17 +145,17 @@
 
 ### 🆕 v2026.3.15 New Feature Screenshots
 
-| Overview + 2D Ranch Scene            | Chat (Thinking + Tool Calls)          |
-| ------------------------------------ | ------------------------------------- |
-| ![Overview Ranch](assets/01.png)     | ![Chat Interface](assets/02.png)      |
+| Overview + 2D Ranch Scene                  | Chat (Thinking + Tool Calls)               |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Overview Ranch](assets/overview-ranch.png)| ![Chat Interface](assets/chat-tools.png)   |
 
-| Config Page (Chinese Schema)         | Agent Settings + Sidebar              |
-| ------------------------------------ | ------------------------------------- |
-| ![Config Page](assets/03.png)        | ![Agent Settings](assets/04.png)      |
+| Config Page (Chinese Schema)               | Agent Settings + Sidebar                   |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Config Page](assets/config-schema.png)   | ![Agent Settings](assets/agent-settings.png)|
 
-| Channel Management + Quick Add       | Overview Bottom (Charts + Agent Cards)|
-| ------------------------------------ | ------------------------------------- |
-| ![Channel Mgmt](assets/05.png)       | ![Agent Cards](assets/06.png)         |
+| Channel Management + Quick Add             | Overview Bottom (Charts + Agent Cards)     |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Channel Mgmt](assets/channel-quickadd.png)| ![Agent Cards](assets/overview-cards.png) |
 
 ## 🖥 Desktop App (Recommended)
 
