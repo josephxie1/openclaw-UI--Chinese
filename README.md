@@ -189,7 +189,8 @@
 
 | 平台 | 下载 | 说明 |
 |------|------|------|
-| **macOS Apple Silicon** | [OpenClaw-1.0.0-standalone-arm64.dmg](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-1.0.0-standalone-arm64.dmg) | M1/M2/M3/M4，已签名+公证 |
+| **macOS Apple Silicon** | [OpenClaw-1.1.0-standalone-arm64.dmg](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-1.1.0-standalone-arm64.dmg) | M1/M2/M3/M4 |
+| **Windows x64** | [OpenClaw-Setup-1.1.0-win-x64.exe](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-Setup-1.1.0-win-x64.exe) | 64 位 Windows |
 
 #### macOS 首次运行
 

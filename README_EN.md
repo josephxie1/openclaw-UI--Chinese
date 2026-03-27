@@ -189,7 +189,8 @@ Download the installer for your platform from [Releases](https://github.com/jose
 
 | Platform | Download | Notes |
 |----------|----------|-------|
-| **macOS Apple Silicon** | [OpenClaw-1.0.0-standalone-arm64.dmg](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-1.0.0-standalone-arm64.dmg) | M1/M2/M3/M4, signed + notarized |
+| **macOS Apple Silicon** | [OpenClaw-1.1.0-standalone-arm64.dmg](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-1.1.0-standalone-arm64.dmg) | M1/M2/M3/M4 |
+| **Windows x64** | [OpenClaw-Setup-1.1.0-win-x64.exe](https://github.com/josephxie1/openclaw-UI--Chinese/releases/download/v2026.3.15-zh/OpenClaw-Setup-1.1.0-win-x64.exe) | 64-bit Windows |
 
 #### macOS First Run
 
