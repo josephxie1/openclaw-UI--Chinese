@@ -105,57 +105,79 @@
 
 ### 🆕 v2026.3.15 New Features
 
-| Overview + 2D Ranch Scene                  | Chat (Thinking + Tool Calls)               |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Overview Ranch](assets/overview-ranch.png)| ![Chat Interface](assets/chat-tools.png)   |
+#### Overview + 2D Ranch Scene
+![Overview Ranch](assets/overview-ranch.png)
 
-| Config Page (Chinese Schema)               | Agent Settings + Sidebar                   |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Config Page](assets/config-schema.png)   | ![Agent Settings](assets/agent-settings.png)|
+#### Chat Interface (Thinking + Tool Calls)
+![Chat Interface](assets/chat-tools.png)
 
-| Channel Management + Quick Add             | Overview Bottom (Charts + Agent Cards)     |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Channel Mgmt](assets/channel-quickadd.png)| ![Agent Cards](assets/overview-cards.png) |
+#### Config Page (Chinese Schema)
+![Config Page](assets/config-schema.png)
+
+#### Agent Settings + Sidebar
+![Agent Settings](assets/agent-settings.png)
+
+#### Channel Management + Quick Add
+![Channel Mgmt](assets/channel-quickadd.png)
+
+#### Overview Bottom (Charts + Agent Cards)
+![Agent Cards](assets/overview-cards.png)
 
 ### 🚀 Startup & Setup Wizard
 
-| Splash Screen              | Welcome Wizard             |
-| -------------------------- | -------------------------- |
-| ![Splash](docs/01.png)     | ![Welcome](docs/02.png)    |
+#### Splash Screen
+![Splash](docs/01.png)
 
-| Select Model Provider          | Configure API Key            |
-| ------------------------------- | ---------------------------- |
-| ![Model Provider](docs/03.png) | ![API Key](docs/04.png)     |
+#### Welcome Wizard
+![Welcome](docs/02.png)
 
-| Add Messaging Channel        | Setup Complete             |
-| ----------------------------- | -------------------------- |
-| ![Add Channel](docs/05.png)  | ![Complete](docs/06.png)   |
+#### Select Model Provider
+![Model Provider](docs/03.png)
+
+#### Configure API Key
+![API Key](docs/04.png)
+
+#### Add Messaging Channel
+![Add Channel](docs/05.png)
+
+#### Setup Complete
+![Complete](docs/06.png)
 
 ### 💬 Chat & Main Interface
 
-| Full Chinese UI                          | Overview Page                        |
-| ---------------------------------------- | ------------------------------------ |
-| ![Chinese UI](docs/全量汉化.png)         | ![Overview](docs/概览页面.png)        |
+#### Full Chinese UI
+![Chinese UI](docs/全量汉化.png)
 
-| Markdown Code Highlighting                          | Tool Call UI                                   |
-| --------------------------------------------------- | ---------------------------------------------- |
-| ![Code Highlighting](docs/增加markdown代码显示.png) | ![Tool Calls](docs/工具调用显示优化.png)        |
+#### Overview Page
+![Overview](docs/概览页面.png)
+
+#### Markdown Code Highlighting
+![Code Highlighting](docs/增加markdown代码显示.png)
+
+#### Tool Call UI
+![Tool Calls](docs/工具调用显示优化.png)
 
 ### ⚙️ Config Management
 
-| Model Config Page                            | Channel Quick Add                            |
-| -------------------------------------------- | -------------------------------------------- |
-| ![Model Config](docs/模型配置页面.png)        | ![Channel Config](docs/频道快速配置.png)      |
+#### Model Config Page
+![Model Config](docs/模型配置页面.png)
 
-| Config File Editor                                 | Channel Visual Approval                            |
-| -------------------------------------------------- | -------------------------------------------------- |
-| ![Config Editor](docs/配置文件快速编辑.png)         | ![Channel Approval](docs/频道可视化审批.png)        |
+#### Channel Quick Add
+![Channel Config](docs/频道快速配置.png)
+
+#### Config File Editor
+![Config Editor](docs/配置文件快速编辑.png)
+
+#### Channel Visual Approval
+![Channel Approval](docs/频道可视化审批.png)
 
 ### 🎨 More Features
 
-| Dark Theme                               | System Tray                              |
-| ---------------------------------------- | ---------------------------------------- |
-| ![Dark Theme](docs/暗色主题支持.png)      | ![Tray](docs/任务栏支持.png)              |
+#### Dark Theme
+![Dark Theme](docs/暗色主题支持.png)
+
+#### System Tray
+![Tray](docs/任务栏支持.png)
 
 ## 🖥 Desktop App (Recommended)
 
