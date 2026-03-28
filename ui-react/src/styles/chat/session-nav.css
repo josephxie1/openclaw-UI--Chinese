@@ -78,8 +78,7 @@
 
 /* "New session" button */
 .session-item--new {
-    color: var(--accent, #8ab4f8);
-    border: 1px dashed color-mix(in srgb, var(--accent, #8ab4f8) 30%, transparent);
+    color: var(--text);
     margin-bottom: 4px;
     justify-content: center;
     gap: 6px;
@@ -87,8 +86,7 @@
 }
 
 .session-item--new:hover {
-    background: color-mix(in srgb, var(--accent, #8ab4f8) 8%, transparent);
-    border-color: color-mix(in srgb, var(--accent, #8ab4f8) 50%, transparent);
+    background: var(--hover, rgba(255, 255, 255, 0.06));
 }
 
 .session-item__icon {
@@ -132,4 +130,132 @@
 
 :root[data-theme="light"] .session-item--active:hover {
     background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+/* ── Three-dot menu button ── */
+
+.session-item__dots {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 16px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 150ms ease, background 150ms ease, color 150ms ease;
+    z-index: 2;
+}
+
+.session-item:hover .session-item__dots {
+    opacity: 1;
+}
+
+.session-item__dots:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+/* Acortar el nombre en hover para dejar espacio al botón dots */
+.session-item:hover .session-item__name {
+    mask-image: linear-gradient(to right, #000 65%, transparent 90%);
+    -webkit-mask-image: linear-gradient(to right, #000 65%, transparent 90%);
+}
+
+/* Ocultar time label cuando dots aparecen */
+.session-item:hover .session-item__time {
+    opacity: 0;
+}
+
+/* ── Renaming inline input ── */
+
+.session-item--renaming {
+    padding: 4px 8px;
+}
+
+.session-item__rename-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body, sans-serif);
+    font-size: 13px;
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ── Context menu (Portal) ── */
+
+.session-context-menu {
+    position: fixed;
+    min-width: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+    padding: 6px;
+    z-index: 200;
+    animation: user-menu-enter 0.12s var(--ease-out, ease-out);
+}
+
+:root[data-theme="dark"] .session-context-menu {
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.session-context-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-family: var(--font-body, sans-serif);
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 120ms ease;
+}
+
+.session-context-menu__item svg {
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+.session-context-menu__item:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.session-context-menu__item--danger {
+    color: var(--danger, #e53935);
+}
+
+.session-context-menu__item--danger:hover {
+    background: color-mix(in srgb, var(--danger, #e53935) 8%, transparent);
+}
+
+.session-context-menu__divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 8px;
 }

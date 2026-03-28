@@ -7,20 +7,25 @@ import {
   ReadingIndicator,
 } from "../components/chat/ChatMessage.tsx";
 import { MarkdownSidebar } from "../components/chat/MarkdownSidebar.tsx";
+
 import { Queue, QueueSection, QueueList, QueueItem } from "../components/chat/Queue.tsx";
 import { t } from "../i18n/index.ts";
-import { handleSendChat, type ChatHost } from "../lib/app-chat.ts";
+import { handleSendChat, refreshChat, type ChatHost } from "../lib/app-chat.ts";
 import { resolveAssistantAvatarUrl } from "../lib/app-render.ts";
+
 import { handleChatScroll, scheduleChatScroll } from "../lib/app-scroll.ts";
+
 import { highlightCodeBlocks } from "../lib/chat/code-highlight.ts";
 import { normalizeMessage } from "../lib/chat/message-normalizer.ts";
 import { normalizeRoleForGrouping } from "../lib/chat/message-normalizer.ts";
-import { abortChatRun, type ChatState } from "../lib/controllers/chat.ts";
-import { loadSessions } from "../lib/controllers/sessions.ts";
+
+import { abortChatRun, loadChatHistory, type ChatState } from "../lib/controllers/chat.ts";
+import { loadSessions, patchSession } from "../lib/controllers/sessions.ts";
 import { detectTextDirection } from "../lib/text-direction.ts";
 import type { ChatItem, MessageGroup } from "../lib/types/chat-types.ts";
 import type { ChatAttachment } from "../lib/ui-types.ts";
 import { useAppStore, getReactiveState } from "../store/appStore.ts";
+import { getUserProfile } from "../lib/user-profile.ts";
 
 const CloseIcon = () => (
   <svg
@@ -337,23 +342,160 @@ function AttachmentPreview({
   }
   return (
     <div className="chat-attachments">
-      {attachments.map((att) => (
-        <div key={att.id} className="chat-attachment">
-          <img
-            src={att.dataUrl}
-            alt={t("chatView.attachmentAlt")}
-            className="chat-attachment__img"
-          />
-          <button
-            className="chat-attachment__remove"
-            type="button"
-            aria-label="Remove attachment"
-            onClick={() => onRemove(att.id)}
-          >
-            ✕
-          </button>
+      {attachments.map((att) => {
+        const isImage = att.mimeType.startsWith("image/");
+        return (
+          <div key={att.id} className={`chat-attachment${isImage ? "" : " chat-attachment--file"}`}>
+            {isImage ? (
+              <img
+                src={att.dataUrl}
+                alt={t("chatView.attachmentAlt")}
+                className="chat-attachment__img"
+              />
+            ) : (
+              <div className="chat-attachment__file-info">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span className="chat-attachment__filename">
+                  {att.fileName || "文件"}
+                </span>
+              </div>
+            )}
+            <button
+              className="chat-attachment__remove"
+              type="button"
+              aria-label="Remove attachment"
+              onClick={() => onRemove(att.id)}
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Compose Model Selector (selector de modelo inline) ──────
+
+function ComposeModelSelector() {
+  const sessionKey = useAppStore((st) => st.sessionKey);
+  const sessionsResult = useAppStore((st) => st.sessionsResult);
+  const connected = useAppStore((st) => st.connected);
+  const client = useAppStore((st) => st.client);
+
+  type ModelEntry = { id: string; name?: string; provider: string };
+  type GroupedModels = { provider: string; models: ModelEntry[] };
+
+  const [groups, setGroups] = useState<GroupedModels[]>([]);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Obtener el modelo actual de la sesión activa
+  const currentModel = React.useMemo(() => {
+    if (!sessionsResult?.sessions || !sessionKey) return null;
+    const session = sessionsResult.sessions.find((s) => s.key === sessionKey);
+    return session?.model ?? null;
+  }, [sessionsResult, sessionKey]);
+
+  // Cargar modelos vía RPC al abrir el dropdown
+  useEffect(() => {
+    if (!open || !client || !connected) return;
+    client.request("models.list", {}).then((res) => {
+      const payload = res as { models?: ModelEntry[] } | null;
+      if (!Array.isArray(payload?.models)) return;
+      const byProvider = new Map<string, ModelEntry[]>();
+      for (const m of payload!.models) {
+        if (!m?.provider || !m?.id) continue;
+        const list = byProvider.get(m.provider) ?? [];
+        list.push(m);
+        byProvider.set(m.provider, list);
+      }
+      const result: GroupedModels[] = [];
+      for (const [provider, models] of byProvider) {
+        result.push({ provider, models: models.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)) });
+      }
+      result.sort((a, b) => a.provider.localeCompare(b.provider));
+      setGroups(result);
+    }).catch(() => { /* ignorar */ });
+  }, [open, client, connected]);
+
+  // Cerrar al hacer clic fuera
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("click", handleClick, true);
+    return () => window.removeEventListener("click", handleClick, true);
+  }, [open]);
+
+  const handleSelect = useCallback((provider: string, modelId: string) => {
+    setOpen(false);
+    const rs = getReactiveState();
+    const key = rs.sessionKey;
+    if (!key) return;
+    void patchSession(rs as never, key, { model: `${provider}/${modelId}` });
+  }, []);
+
+  // Nombre corto del modelo para el botón
+  const displayName = currentModel
+    ? (currentModel.includes("/") ? currentModel.split("/").pop()! : currentModel)
+    : "模型";
+
+  return (
+    <div className="chat-compose__model-selector" ref={containerRef}>
+      <button
+        type="button"
+        className="chat-compose__model-trigger"
+        disabled={!connected}
+        onClick={() => setOpen((prev) => !prev)}
+        title={currentModel ?? "选择模型"}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+        <span className="chat-compose__model-name">{displayName}</span>
+        <span className="chat-compose__model-chevron">{open ? "▴" : "▾"}</span>
+      </button>
+
+      {open && (
+        <div className="chat-compose__model-panel">
+          {groups.length === 0 && (
+            <div className="chat-compose__model-empty">加载中…</div>
+          )}
+          {groups.map((group) => (
+            <div key={group.provider} className="chat-compose__model-group">
+              {groups.length > 1 && (
+                <div className="chat-compose__model-group-label">{group.provider}</div>
+              )}
+              {group.models.map((m) => {
+                const fullRef = `${group.provider}/${m.id}`;
+                const active = fullRef === currentModel;
+                return (
+                  <button
+                    key={fullRef}
+                    type="button"
+                    className={`chat-compose__model-item${active ? " chat-compose__model-item--active" : ""}`}
+                    onClick={() => handleSelect(group.provider, m.id)}
+                    title={fullRef}
+                  >
+                    <span className="chat-compose__model-check">{active ? "✓" : ""}</span>
+                    <span>{m.name || m.id}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -444,10 +586,14 @@ export function ChatView() {
   // --- Refs ---
   const threadRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   // --- Textarea height (state-driven for motion) ---
   const [textareaHeight, setTextareaHeight] = useState(TEXTAREA_MIN_BLURRED);
   const [textareaFocused, setTextareaFocused] = useState(false);
+  const [scrolledUp, setScrolledUp] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
 
   // --- Auto-scroll ---
   useEffect(() => {
@@ -536,6 +682,31 @@ export function ChatView() {
     [set],
   );
 
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.addEventListener("load", () => {
+          const dataUrl = reader.result as string;
+          const att: ChatAttachment = {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            dataUrl,
+            mimeType: file.type,
+            fileName: file.name,
+          };
+          set({ chatAttachments: [...(s.getState().chatAttachments ?? []), att] });
+        });
+        reader.readAsDataURL(file);
+      }
+      e.target.value = "";
+      setAttachMenuOpen(false);
+    },
+    [set],
+  );
+
   const handleCloseSidebar = useCallback(
     () => set({ sidebarOpen: false, sidebarContent: null }),
     [set],
@@ -547,8 +718,9 @@ export function ChatView() {
   }, [applySettings, settings]);
 
   const handleScrollToBottom = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (s.getState() as any).scrollToBottom?.({ smooth: true });
+    if (threadRef.current) {
+      threadRef.current.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+    }
   }, []);
 
   const hasAttachments = (chatAttachments?.length ?? 0) > 0;
@@ -585,12 +757,26 @@ export function ChatView() {
           className="chat-main"
           style={{ flex: showSidebar ? `0 0 ${splitRatio * 100}%` : "1 1 100%" }}
           ref={threadRef}
-          onScroll={(e) => handleChatScroll(getReactiveState() as never, e.nativeEvent)}
+          onScroll={(e) => {
+            handleChatScroll(getReactiveState() as never, e.nativeEvent);
+            const el = e.currentTarget as HTMLElement;
+            const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+            setScrolledUp(dist > 200);
+          }}
         >
           {/* Message thread */}
           <div className="chat-thread" role="log" aria-live="polite">
             {loading && <div className="muted">{t("chatView.loadingChat")}</div>}
 
+            {/* Bienvenida cuando no hay mensajes */}
+            {!loading && chatItems.length === 0 && (
+              <div className="chat-welcome">
+                <h1 className="chat-welcome__greeting">
+                  你好，{getUserProfile().name}
+                </h1>
+                <p className="chat-welcome__subtitle">有什么可以帮助你的吗？</p>
+              </div>
+            )}
             {chatItems.map((item) => {
               if (item.kind === "divider") {
                 return (
@@ -662,10 +848,19 @@ export function ChatView() {
       <FallbackIndicator status={fallbackStatus as never} />
       <CompactionIndicator status={compactionStatus as never} />
 
-      {/* New messages */}
-      {chatNewMessagesBelow && (
-        <button className="btn chat-new-messages" type="button" onClick={handleScrollToBottom}>
-          New messages ↓
+      {/* 回到底部按钮 */}
+      {scrolledUp && (
+        <button
+          className="chat-scroll-bottom"
+          type="button"
+          onClick={handleScrollToBottom}
+          aria-label="回到底部"
+          title="回到底部"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 5v14" />
+            <path d="m19 12-7 7-7-7" />
+          </svg>
         </button>
       )}
 
@@ -707,6 +902,22 @@ export function ChatView() {
           }}
         />
         <div className="chat-compose__row">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={handleFileSelect}
+          />
+          <input
+            ref={docInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.csv,.md,.json,.xml,.xlsx,.pptx"
+            multiple
+            hidden
+            onChange={handleFileSelect}
+          />
           <label className="field chat-compose__field">
             <span>{t("chatView.message")}</span>
             <motion.textarea
@@ -737,18 +948,68 @@ export function ChatView() {
               style={{ overflow: textareaHeight >= TEXTAREA_MAX_HEIGHT ? "auto" : "hidden" }}
             />
           </label>
-          <div className="chat-compose__actions">
-            <button
-              className="btn"
-              disabled={!connected || (!canAbort && sending)}
-              onClick={canAbort ? handleAbort : handleNewSession}
-            >
-              {canAbort ? t("chatView.stop") : t("chatView.newSession")}
-            </button>
-            <button className="btn primary" disabled={!connected} onClick={handleSend}>
-              {isBusy ? t("chatView.queue") : t("chatView.send")}
-              <kbd className="btn-kbd">↵</kbd>
-            </button>
+          <div className="chat-compose__bottom">
+            <div className="chat-compose__left">
+              <div className="chat-compose__attach-wrap">
+                <button
+                  className="chat-compose__attach"
+                  type="button"
+                  onClick={() => setAttachMenuOpen(!attachMenuOpen)}
+                  disabled={!connected}
+                  title="添加文件"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                </button>
+                {attachMenuOpen && (
+                  <>
+                    <div
+                      className="chat-compose__attach-overlay"
+                      onClick={() => setAttachMenuOpen(false)}
+                    />
+                    <div className="chat-compose__attach-menu">
+                      <button
+                        type="button"
+                        onClick={() => { fileInputRef.current?.click(); }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                          <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                          <circle cx="9" cy="9" r="2" />
+                          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                        </svg>
+                        <span>上传图片</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { docInputRef.current?.click(); }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span>上传附件</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+              <ComposeModelSelector />
+            </div>
+            <div className="chat-compose__actions">
+              <button
+                className="btn"
+                disabled={!connected || (!canAbort && sending)}
+                onClick={canAbort ? handleAbort : handleNewSession}
+              >
+                {canAbort ? t("chatView.stop") : t("chatView.newSession")}
+              </button>
+              <button className="btn primary" disabled={!connected} onClick={handleSend}>
+                {isBusy ? t("chatView.queue") : t("chatView.send")}
+                <kbd className="btn-kbd">↵</kbd>
+              </button>
+            </div>
           </div>
         </div>
       </div>

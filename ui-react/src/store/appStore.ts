@@ -583,7 +583,7 @@ function makeInitialState(): AppState {
     sessionsFilterLimit: "120",
     sessionsIncludeGlobal: true,
     sessionsIncludeUnknown: false,
-    sessionsHideCron: true,
+    sessionsHideCron: false,
 
     usageLoading: false,
     usageResult: null,

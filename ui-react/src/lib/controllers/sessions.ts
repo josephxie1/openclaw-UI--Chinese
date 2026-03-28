@@ -62,6 +62,7 @@ export async function patchSession(
   key: string,
   patch: {
     label?: string | null;
+    model?: string | null;
     thinkingLevel?: string | null;
     verboseLevel?: string | null;
     reasoningLevel?: string | null;
@@ -73,6 +74,9 @@ export async function patchSession(
   const params: Record<string, unknown> = { key };
   if ("label" in patch) {
     params.label = patch.label;
+  }
+  if ("model" in patch) {
+    params.model = patch.model;
   }
   if ("thinkingLevel" in patch) {
     params.thinkingLevel = patch.thinkingLevel;

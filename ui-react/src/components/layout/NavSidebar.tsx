@@ -1,13 +1,16 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "../../i18n/index.ts";
 import { resolveSessionDisplayName, isCronSessionKey } from "../../lib/app-render.helpers.ts";
 import { setTab as setTabLib, syncUrlWithSessionKey } from "../../lib/app-settings.ts";
 import { getSessionPreview } from "../../lib/chat/session-preview.ts";
 import { loadChatHistory, type ChatState } from "../../lib/controllers/chat.ts";
+import { deleteSessionAndRefresh, patchSession } from "../../lib/controllers/sessions.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../../lib/external-link.ts";
 import { icons } from "../../lib/icons.ts";
-import { TAB_GROUPS, titleForTab, iconForTab, pathForTab, type Tab } from "../../lib/navigation.ts";
+import { TAB_GROUPS, titleForTab, iconForTab, pathForTab, normalizeBasePath, type Tab } from "../../lib/navigation.ts";
 import { useAppStore, getReactiveState } from "../../store/appStore.ts";
+import { UserProfileBar } from "./UserProfileBar.tsx";
 
 const MAX_SIDEBAR_SESSIONS = 20;
 
@@ -59,6 +62,9 @@ export function NavSidebar() {
   const sessionKey = useAppStore((s) => s.sessionKey);
   const applySettings = useAppStore((s) => s.applySettings);
 
+  const base = normalizeBasePath(basePath ?? "");
+  const faviconSrc = base ? `${base}/favicon.svg` : "/favicon.svg";
+
   const setTab = useCallback((next: Tab) => {
     // Use the lib setTab which triggers refreshActiveTab to load data
     setTabLib(getReactiveState() as never, next);
@@ -104,7 +110,34 @@ export function NavSidebar() {
 
   return (
     <aside className={navClass}>
-      {TAB_GROUPS.map((group) => {
+      {/* Brand / Logo */}
+      <div className="nav-brand">
+        <div className="brand">
+          <div className="brand-logo">
+            <img src={faviconSrc} alt="OpenClaw" />
+          </div>
+          <div className="brand-text">
+            <div className="brand-title">OPENCLAW</div>
+            <div className="brand-sub">{t("global.brandSub")}</div>
+          </div>
+        </div>
+        <button
+          className="nav-collapse-toggle"
+          onClick={() => applySettings({ ...settings, navCollapsed: !settings.navCollapsed })}
+          title={settings.navCollapsed ? t("nav.expand") : t("nav.collapse")}
+          aria-label={settings.navCollapsed ? t("nav.expand") : t("nav.collapse")}
+        >
+          <span className="nav-collapse-toggle__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      {(TAB_GROUPS as ReadonlyArray<{ label: string; tabs: readonly string[] }>).filter((g) => g.label !== "settings" && g.label !== "agent" && g.label !== "control").map((group) => {
         const isGroupCollapsed = settings.navGroupsCollapsed?.[group.label] ?? false;
 
         // Overview — standalone nav item, no group wrapper
@@ -178,26 +211,23 @@ export function NavSidebar() {
                   {filtered.map((session) => {
                     const isActive = session.key === sessionKey;
                     const baseName = resolveSessionDisplayName(session.key, session);
-                    // Usar preview cacheado si el nombre es genérico
                     const preview = getSessionPreview(session.key);
                     const name = preview || baseName;
                     const time = formatRelativeTime(session.updatedAt);
                     return (
-                      <button
+                      <SessionItem
                         key={session.key}
-                        className={`session-item${isActive ? " session-item--active" : ""}`}
-                        onClick={() => {
-                          if (isActive) {
-                            return;
+                        sessionKey={session.key}
+                        name={name}
+                        time={time}
+                        isActive={isActive}
+                        onSwitch={() => {
+                          if (!isActive) {
+                            switchSession(session.key);
+                            setTab("chat");
                           }
-                          switchSession(session.key);
-                          setTab("chat");
                         }}
-                        title={name}
-                      >
-                        <span className="session-item__name">{name}</span>
-                        {time && <span className="session-item__time">{time}</span>}
-                      </button>
+                      />
                     );
                   })}
                 </div>
@@ -224,7 +254,7 @@ export function NavSidebar() {
               <span className="nav-label__chevron">{isGroupCollapsed ? "+" : "−"}</span>
             </button>
             <div className="nav-group__items">
-              {(group.tabs as readonly Tab[]).map((t_) => {
+              {(group.tabs as readonly Tab[]).filter((t_) => t_ !== "skills" && t_ !== "nodes" && t_ !== "usage").map((t_) => {
                 const href = pathForTab(t_, basePath);
                 return (
                   <a
@@ -254,28 +284,172 @@ export function NavSidebar() {
         );
       })}
 
-      {/* Resources links */}
-      <div className="nav-group nav-group--links">
-        <div className="nav-label nav-label--static">
-          <span className="nav-label__text">{t("common.resources")}</span>
-        </div>
-        <div className="nav-group__items">
-          <a
-            className="nav-item nav-item--external"
-            href="https://docs.openclaw.ai"
-            target={EXTERNAL_LINK_TARGET}
-            rel={buildExternalLinkRel()}
-            title={`${t("common.docs")} (opens in new tab)`}
-          >
-            <span
-              className="nav-item__icon"
-              aria-hidden="true"
-              dangerouslySetInnerHTML={{ __html: litIconToHtml(icons.book) }}
-            />
-            <span className="nav-item__text">{t("common.docs")}</span>
-          </a>
-        </div>
+
+      {/* Spacer para empujar los items de abajo */}
+      <div style={{ flex: 1 }} />
+
+      {/* Items de configuración — antes en topbar */}
+      <div className="nav-group__items nav-bottom-items">
+        {(["models", "channels", "cron"] as const).map((t_) => {
+          const href = pathForTab(t_, basePath);
+          return (
+            <a
+              key={t_}
+              href={href}
+              className={`nav-item${tab === t_ ? " active" : ""}`}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                setTab(t_);
+              }}
+              title={titleForTab(t_)}
+            >
+              <span
+                className="nav-item__icon"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: litIconToHtml(icons[iconForTab(t_)]) }}
+              />
+              <span className="nav-item__text">{titleForTab(t_)}</span>
+            </a>
+          );
+        })}
       </div>
+
+      {/* User Profile Bar */}
+      <UserProfileBar />
     </aside>
+  );
+}
+
+/* ─── SessionItem — session with ⋯ context menu ─── */
+
+type SessionItemProps = {
+  sessionKey: string;
+  name: string;
+  time: string;
+  isActive: boolean;
+  onSwitch: () => void;
+};
+
+function SessionItem({ sessionKey, name, time, isActive, onSwitch }: SessionItemProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(name);
+  const dotsRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        !menuRef.current?.contains(target) &&
+        !dotsRef.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
+  const openMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (dotsRef.current) {
+      const rect = dotsRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setMenuOpen(true);
+  }, []);
+
+  const handleRename = useCallback(() => {
+    setMenuOpen(false);
+    setRenameValue(name);
+    setRenaming(true);
+  }, [name]);
+
+  const handleRenameSave = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== name) {
+      const rs = getReactiveState();
+      void patchSession(rs as never, sessionKey, { label: trimmed });
+    }
+    setRenaming(false);
+  }, [renameValue, name, sessionKey]);
+
+  const handleDelete = useCallback(() => {
+    setMenuOpen(false);
+    const rs = getReactiveState();
+    void deleteSessionAndRefresh(rs as never, sessionKey);
+  }, [sessionKey]);
+
+  if (renaming) {
+    return (
+      <div className="session-item session-item--renaming">
+        <input
+          className="session-item__rename-input"
+          value={renameValue}
+          autoFocus
+          onChange={(e) => setRenameValue(e.target.value)}
+          onBlur={handleRenameSave}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleRenameSave();
+            if (e.key === "Escape") setRenaming(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={`session-item${isActive ? " session-item--active" : ""}`}
+        onClick={onSwitch}
+        title={name}
+        role="button"
+        tabIndex={0}
+      >
+        <span className="session-item__name">{name}</span>
+        {time && <span className="session-item__time">{time}</span>}
+        <button
+          ref={dotsRef}
+          className="session-item__dots"
+          onClick={openMenu}
+          title="更多操作"
+        >
+          ⋯
+        </button>
+      </div>
+
+      {menuOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="session-context-menu"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button className="session-context-menu__item" onClick={handleRename}>
+              <svg viewBox="0 0 24 24" width="14" height="14">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                <path d="m15 5 4 4" />
+              </svg>
+              <span>重命名</span>
+            </button>
+            <div className="session-context-menu__divider" />
+            <button className="session-context-menu__item session-context-menu__item--danger" onClick={handleDelete}>
+              <svg viewBox="0 0 24 24" width="14" height="14">
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+              <span>删除</span>
+            </button>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

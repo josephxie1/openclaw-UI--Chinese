@@ -3,6 +3,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { t } from "../../i18n/index.ts";
 import type { AssistantIdentity } from "../assistant-identity.ts";
 import { avatarFromName } from "../helpers/multiavatar.ts";
+import { getUserProfile } from "../user-profile.ts";
 import { icons } from "../icons.ts";
 import { toSanitizedMarkdownHtml, toSanitizedMarkdownHtmlBlocks } from "../markdown.ts";
 import { openExternalUrlSafe } from "../open-external-url.ts";
@@ -239,12 +240,6 @@ function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" |
   const normalized = normalizeRoleForGrouping(role);
   const assistantName = assistant?.name?.trim() || "Assistant";
   const assistantAvatar = assistant?.avatar?.trim() || "";
-  const initial =
-    normalized === "user"
-      ? "U"
-      : normalized === "assistant"
-        ? assistantName.charAt(0).toUpperCase() || "A"
-        : "?";
   const className =
     normalized === "user" ? "user" : normalized === "assistant" ? "assistant" : "other";
 
@@ -269,7 +264,18 @@ function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" |
     />`;
   }
 
-  return html`<div class="chat-avatar ${className}">${initial}</div>`;
+  // Usuario: usar perfil de localStorage
+  if (normalized === "user") {
+    const userProfile = getUserProfile();
+    const userAvatarSrc = userProfile.avatar || avatarFromName(userProfile.name);
+    return html`<img
+      class="chat-avatar ${className}"
+      src="${userAvatarSrc}"
+      alt="${userProfile.name}"
+    />`;
+  }
+
+  return html`<div class="chat-avatar ${className}">?</div>`;
 }
 
 function isAvatarUrl(value: string): boolean {

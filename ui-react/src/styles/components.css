@@ -2838,6 +2838,7 @@ pre.code-block {
   animation: oc-dropdown-in 0.15s var(--ease-out);
 }
 
+
 :root[data-theme="light"] .oc-dropdown__panel {
   background: var(--bg);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);

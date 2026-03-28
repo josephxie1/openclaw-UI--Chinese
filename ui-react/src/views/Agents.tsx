@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAppStore, getReactiveState } from "../store/appStore.ts";
 import { LitBridge } from "../components/LitBridge.tsx";
 import { renderAgents, type AgentsPanel } from "../lib/views/agents.ts";
@@ -13,6 +14,16 @@ import { _avatarPreviewMap } from "../lib/views/agents.ts";
 import { AgentConfigDrawer, DefaultsConfigDrawer } from "./AgentsConfig.tsx";
 import { analyzeConfigSchema } from "../lib/views/config-form.ts";
 import type { JsonSchema } from "../lib/views/config-form.shared.ts";
+import { Dropdown, MultiDropdown } from "../components/common/Dropdown.tsx";
+import {
+  resolveGroupedModels,
+  resolveAgentConfig,
+  resolveModelPrimary,
+  resolveModelLabel,
+  normalizeModelValue,
+  resolveEffectiveModelFallbacks,
+} from "../lib/views/agents-utils.ts";
+import { t } from "../i18n/index.ts";
 import "../styles/agents-config.css";
 
 export function AgentsView() {
@@ -46,11 +57,7 @@ export function AgentsView() {
   const toolsCatalogLoading = s((st) => st.toolsCatalogLoading ?? false);
   const toolsCatalogError = s((st) => st.toolsCatalogError ?? null);
 
-  // Modelo desplegable
-  const modelDropdownOpen = s((st) => st.modelDropdownOpen);
-  const modelDropdownExpandedGroups = s((st) => st.modelDropdownExpandedGroups);
-  const fallbackDropdownOpen = s((st) => st.fallbackDropdownOpen);
-  const fallbackDropdownExpandedGroups = s((st) => st.fallbackDropdownExpandedGroups);
+  // Modelo — ahora gestionado por el componente React AgentModelSection
 
   // Habilidades
   const agentSkillsReport = s((st) => st.agentSkillsReport);
@@ -154,11 +161,6 @@ export function AgentsView() {
         cronStatus,
         cronJobs,
         cronError,
-        // Modelo
-        modelDropdownOpen,
-        modelDropdownExpandedGroups,
-        fallbackDropdownOpen,
-        fallbackDropdownExpandedGroups,
         // ─── Callbacks ──────────────────────────────────────────
         onSelectAgent: (id: string) => {
           const state = s.getState();
@@ -283,84 +285,6 @@ export function AgentsView() {
             removeConfigFormValue(rs as never, [...basePath, "deny"]);
           }
         },
-        // Modelo callbacks
-        onModelChange: (agentId: string, modelId: string | null) => {
-          set({ modelDropdownOpen: false });
-          const rs = getReactiveState();
-          if (!rs.configForm) return;
-          const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
-          const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
-          const basePath = ["agents", "list", index, "model"];
-          if (!modelId) {
-            removeConfigFormValue(rs as never, basePath);
-            return;
-          }
-          const entry = list[index] as { model?: unknown };
-          const existing = entry?.model;
-          if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-            const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
-            const next = { primary: modelId, ...(Array.isArray(fallbacks) ? { fallbacks } : {}) };
-            updateConfigFormValue(rs as never, basePath, next);
-          } else {
-            updateConfigFormValue(rs as never, basePath, modelId);
-          }
-        },
-        onModelFallbacksChange: (agentId: string, fallbacks: string[]) => {
-          const rs = getReactiveState();
-          if (!rs.configForm) return;
-          const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
-          const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
-          const basePath = ["agents", "list", index, "model"];
-          const entry = list[index] as { model?: unknown };
-          const normalized = fallbacks.map((n) => n.trim()).filter(Boolean);
-          const existing = entry.model;
-          const resolvePrimary = () => {
-            if (typeof existing === "string") return existing.trim() || null;
-            if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-              const p = (existing as { primary?: unknown }).primary;
-              if (typeof p === "string") return p.trim() || null;
-            }
-            return null;
-          };
-          const primary = resolvePrimary();
-          if (normalized.length === 0) {
-            if (primary) { updateConfigFormValue(rs as never, basePath, primary); }
-            else { removeConfigFormValue(rs as never, basePath); }
-            return;
-          }
-          const next = primary ? { primary, fallbacks: normalized } : { fallbacks: normalized };
-          updateConfigFormValue(rs as never, basePath, next);
-        },
-        onModelDropdownToggle: () => {
-          const isOpen = !s.getState().modelDropdownOpen;
-          set({ modelDropdownOpen: isOpen });
-          if (isOpen) {
-            const close = () => { set({ modelDropdownOpen: false }); document.removeEventListener("click", close); };
-            requestAnimationFrame(() => document.addEventListener("click", close, { once: true }));
-          }
-        },
-        onModelDropdownGroupToggle: (label: string) => {
-          const next = new Set(s.getState().modelDropdownExpandedGroups);
-          next.has(label) ? next.delete(label) : next.add(label);
-          set({ modelDropdownExpandedGroups: next });
-        },
-        onFallbackDropdownToggle: () => {
-          const isOpen = !s.getState().fallbackDropdownOpen;
-          set({ fallbackDropdownOpen: isOpen });
-          if (isOpen) {
-            const close = () => { set({ fallbackDropdownOpen: false }); document.removeEventListener("click", close); };
-            requestAnimationFrame(() => document.addEventListener("click", close, { once: true }));
-          }
-        },
-        onFallbackDropdownGroupToggle: (label: string) => {
-          const next = new Set(s.getState().fallbackDropdownExpandedGroups);
-          next.has(label) ? next.delete(label) : next.add(label);
-          set({ fallbackDropdownExpandedGroups: next });
-        },
         // Habilidades callbacks
         onSkillsFilterChange: (next: string) => set({ skillsFilter: next }),
         onSkillsRefresh: () => {
@@ -436,7 +360,6 @@ export function AgentsView() {
      configSchema, configSchemaLoading, configUiHints,
      agentFilesList, agentFileActive, agentFileSaving, agentFilesLoading, agentFilesError,
      toolsCatalogResult, toolsCatalogLoading, toolsCatalogError,
-     modelDropdownOpen, fallbackDropdownOpen,
      agentSkillsReport, agentSkillsLoading, agentSkillsError, agentSkillsAgentId, skillsFilter,
      channelsSnapshot, channelsLoading, channelsError, channelsLastSuccess,
      cronLoading, cronStatus, cronJobs, cronError],
@@ -445,6 +368,7 @@ export function AgentsView() {
   return (
     <>
       <LitBridge template={template} />
+      <AgentModelSection />
       <AgentConfigDrawer
         open={configDrawerOpen}
         agent={selectedAgentData}
@@ -473,3 +397,198 @@ export function AgentsView() {
     </>
   );
 }
+
+// ─── Sección de modelo con React Dropdowns (Portal) ─────────
+
+function AgentModelSection() {
+  const s = useAppStore;
+  const configForm = s((st) => st.configForm);
+  const configLoading = s((st) => st.configLoading);
+  const configSaving = s((st) => st.configSaving);
+  const configFormDirty = s((st) => st.configFormDirty);
+  const selectedAgentId = s((st) => st.agentsSelectedId);
+  const agentsList = s((st) => st.agentsList);
+  const activePanel = s((st) => st.agentsPanel);
+
+  // Buscar el portal container renderizado por Lit
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // Comprobar si ya existe
+    const el = document.getElementById("agents-model-portal");
+    if (el) { setPortalEl(el); return; }
+
+    // Observar mutaciones hasta que aparezca
+    const observer = new MutationObserver(() => {
+      const found = document.getElementById("agents-model-portal");
+      if (found) {
+        setPortalEl(found);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [selectedAgentId, activePanel]);
+
+  // Datos del modelo
+  const defaultId = agentsList?.defaultId ?? null;
+  const agents = agentsList?.agents ?? [];
+  const agent = selectedAgentId ? agents.find((a) => a.id === selectedAgentId) ?? null : null;
+
+  const config = useMemo(
+    () => (agent ? resolveAgentConfig(configForm, agent.id) : null),
+    [configForm, agent],
+  );
+
+  const modelGroups = useMemo(() => resolveGroupedModels(configForm), [configForm]);
+
+  const isDefault = Boolean(defaultId && agent?.id === defaultId);
+
+  const model = config?.entry?.model
+    ? resolveModelLabel(config.entry.model)
+    : resolveModelLabel(config?.defaults?.model);
+  const defaultModel = resolveModelLabel(config?.defaults?.model);
+  const modelPrimary =
+    resolveModelPrimary(config?.entry?.model) || (model !== "-" ? normalizeModelValue(model) : null);
+  const defaultPrimary =
+    resolveModelPrimary(config?.defaults?.model) || (defaultModel !== "-" ? normalizeModelValue(defaultModel) : null);
+  const effectivePrimary = modelPrimary ?? defaultPrimary ?? null;
+  const modelFallbacks = resolveEffectiveModelFallbacks(config?.entry?.model, config?.defaults?.model);
+
+  // Handlers
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      if (!agent) return;
+      const rs = getReactiveState();
+      if (!rs.configForm) return;
+      const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
+      if (!Array.isArray(list)) return;
+      const index = list.findIndex(
+        (e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agent.id,
+      );
+      if (index < 0) return;
+      const basePath = ["agents", "list", index, "model"];
+      if (!modelId) {
+        removeConfigFormValue(rs as never, basePath);
+        return;
+      }
+      const entry = list[index] as { model?: unknown };
+      const existing = entry?.model;
+      if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+        const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
+        const next = { primary: modelId, ...(Array.isArray(fallbacks) ? { fallbacks } : {}) };
+        updateConfigFormValue(rs as never, basePath, next);
+      } else {
+        updateConfigFormValue(rs as never, basePath, modelId);
+      }
+    },
+    [agent],
+  );
+
+  const handleFallbackToggle = useCallback(
+    (value: string) => {
+      if (!agent) return;
+      const rs = getReactiveState();
+      if (!rs.configForm) return;
+      const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
+      if (!Array.isArray(list)) return;
+      const index = list.findIndex(
+        (e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agent.id,
+      );
+      if (index < 0) return;
+      const basePath = ["agents", "list", index, "model"];
+      const entry = list[index] as { model?: unknown };
+      const current = modelFallbacks ?? [];
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      const normalized = next.map((n) => n.trim()).filter(Boolean);
+      const existing = entry.model;
+      const resolvePrimary = () => {
+        if (typeof existing === "string") return existing.trim() || null;
+        if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+          const p = (existing as { primary?: unknown }).primary;
+          if (typeof p === "string") return p.trim() || null;
+        }
+        return null;
+      };
+      const primary = resolvePrimary();
+      if (normalized.length === 0) {
+        if (primary) updateConfigFormValue(rs as never, basePath, primary);
+        else removeConfigFormValue(rs as never, basePath);
+        return;
+      }
+      const obj = primary ? { primary, fallbacks: normalized } : { fallbacks: normalized };
+      updateConfigFormValue(rs as never, basePath, obj);
+    },
+    [agent, modelFallbacks],
+  );
+
+  // No renderizar si no hay portal container o no hay agent seleccionado
+  if (!portalEl || !agent || activePanel !== "overview") return null;
+
+  const disabled = !configForm || configLoading || configSaving;
+
+  const primaryPlaceholder = isDefault
+    ? (t("agentsView.noConfiguredModels") ?? "无可用模型")
+    : defaultPrimary
+      ? (t("agentsView.inheritDefaultWith", { model: defaultPrimary }) ?? `继承默认 (${defaultPrimary})`)
+      : (t("agentsView.inheritDefault") ?? "继承默认");
+
+  const fallbackGroups = modelGroups
+    .map((g) => ({
+      label: g.providerId,
+      items: g.models.filter((m) => m.value !== effectivePrimary),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  return createPortal(
+    <div className="agent-model-select" style={{ marginTop: 20 }}>
+      <div className="label">{t("agentsView.modelSelection") ?? "模型选择"}</div>
+      <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 260, flex: 1 }}>
+          <div className="label" style={{ marginBottom: 6 }}>
+            {isDefault
+              ? (t("agentsView.primaryModelDefault") ?? "主模型（默认）")
+              : (t("agentsView.primaryModel") ?? "主模型")}
+          </div>
+          <Dropdown
+            value={effectivePrimary}
+            placeholder={primaryPlaceholder}
+            groups={modelGroups.map((g) => ({ label: g.providerId, items: g.models }))}
+            disabled={disabled}
+            onSelect={handleModelChange}
+          />
+        </div>
+        <div style={{ minWidth: 260, flex: 1 }}>
+          <div className="label" style={{ marginBottom: 6 }}>
+            {t("agentsView.fallbacks") ?? "备选模型（逗号分隔）"}
+          </div>
+          <MultiDropdown
+            values={modelFallbacks ?? []}
+            placeholder={t("agentsView.fallbacksPlaceholder") ?? "选择备选模型"}
+            groups={fallbackGroups}
+            disabled={disabled}
+            onToggleItem={handleFallbackToggle}
+          />
+        </div>
+      </div>
+      <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
+        <button
+          className="btn btn--sm"
+          disabled={configLoading}
+          onClick={() => void loadConfig(getReactiveState() as never)}
+        >
+          {t("agentsView.reloadConfig") ?? "重新加载配置"}
+        </button>
+        <button
+          className="btn btn--sm primary"
+          disabled={configSaving || !configFormDirty}
+          onClick={() => void saveConfig(getReactiveState() as never)}
+        >
+          {configSaving ? (t("shared.saving") ?? "保存中…") : (t("shared.save") ?? "保存")}
+        </button>
+      </div>
+    </div>,
+    portalEl,
+  );
+}
+

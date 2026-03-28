@@ -1,5 +1,5 @@
 export declare const BrowserToolSchema: import("@sinclair/typebox").TObject<{
-    action: import("@sinclair/typebox").TUnsafe<"close" | "stop" | "open" | "start" | "console" | "status" | "navigate" | "profiles" | "snapshot" | "upload" | "focus" | "act" | "tabs" | "screenshot" | "pdf" | "dialog">;
+    action: import("@sinclair/typebox").TUnsafe<"close" | "stop" | "open" | "start" | "console" | "status" | "navigate" | "profiles" | "snapshot" | "upload" | "focus" | "act" | "dialog" | "pdf" | "screenshot" | "tabs">;
     target: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TUnsafe<"sandbox" | "node" | "host">>;
     node: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TString>;
     profile: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TString>;

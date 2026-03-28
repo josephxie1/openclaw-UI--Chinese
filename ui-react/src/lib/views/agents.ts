@@ -1,6 +1,5 @@
 import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
-import { renderDropdown, renderMultiDropdown } from "../components/dropdown.ts";
 import type { ConfigUiHints } from "../types.ts";
 import type {
   AgentIdentityResult,
@@ -292,18 +291,6 @@ export function renderAgents(props: AgentsProps) {
                         configLoading: props.configLoading,
                         configSaving: props.configSaving,
                         configDirty: props.configDirty,
-                        modelDropdownOpen: props.modelDropdownOpen,
-                        modelDropdownExpandedGroups: props.modelDropdownExpandedGroups,
-                        onConfigReload: props.onConfigReload,
-                        onConfigSave: props.onConfigSave,
-                        onModelChange: props.onModelChange,
-                        onModelFallbacksChange: props.onModelFallbacksChange,
-                        onModelDropdownToggle: props.onModelDropdownToggle,
-                        onModelDropdownGroupToggle: props.onModelDropdownGroupToggle,
-                        fallbackDropdownOpen: props.fallbackDropdownOpen,
-                        fallbackDropdownExpandedGroups: props.fallbackDropdownExpandedGroups,
-                        onFallbackDropdownToggle: props.onFallbackDropdownToggle,
-                        onFallbackDropdownGroupToggle: props.onFallbackDropdownGroupToggle,
                         onAvatarUrlChange: props.onAvatarUrlChange,
                       })
                     : nothing
@@ -530,18 +517,6 @@ function renderAgentOverview(params: {
   configLoading: boolean;
   configSaving: boolean;
   configDirty: boolean;
-  modelDropdownOpen: boolean;
-  modelDropdownExpandedGroups: Set<string>;
-  onConfigReload: () => void;
-  onConfigSave: () => void;
-  onModelChange: (agentId: string, modelId: string | null) => void;
-  onModelFallbacksChange: (agentId: string, fallbacks: string[]) => void;
-  onModelDropdownToggle: () => void;
-  onModelDropdownGroupToggle: (label: string) => void;
-  fallbackDropdownOpen: boolean;
-  fallbackDropdownExpandedGroups: Set<string>;
-  onFallbackDropdownToggle: () => void;
-  onFallbackDropdownGroupToggle: (label: string) => void;
   onAvatarUrlChange: (agentId: string, url: string) => void;
 }) {
   const {
@@ -553,15 +528,6 @@ function renderAgentOverview(params: {
     agentIdentityError,
     configLoading,
     configSaving,
-    configDirty,
-    onConfigReload,
-    onConfigSave,
-    onModelChange,
-    onModelFallbacksChange,
-    onModelDropdownToggle,
-    onModelDropdownGroupToggle,
-    onFallbackDropdownToggle,
-    onFallbackDropdownGroupToggle,
     onAvatarUrlChange,
   } = params;
   const config = resolveAgentConfig(configForm, agent.id);
@@ -661,69 +627,7 @@ function renderAgentOverview(params: {
         </div>
       </div>
 
-      <div class="agent-model-select" style="margin-top: 20px;">
-        <div class="label">${t("agentsView.modelSelection")}</div>
-        <div class="row" style="gap: 12px; flex-wrap: wrap;">
-          <div style="min-width: 260px; flex: 1;">
-            <div class="label" style="margin-bottom: 6px;">${isDefault ? t("agentsView.primaryModelDefault") : t("agentsView.primaryModel")}</div>
-            ${renderDropdown({
-              value: effectivePrimary,
-              placeholder: isDefault
-                ? t("agentsView.noConfiguredModels")
-                : defaultPrimary
-                  ? t("agentsView.inheritDefaultWith", { model: defaultPrimary })
-                  : t("agentsView.inheritDefault"),
-              groups: modelGroups.map((g) => ({
-                label: g.providerId,
-                items: g.models,
-              })),
-              open: params.modelDropdownOpen,
-              disabled: !configForm || configLoading || configSaving,
-              expandedGroups: params.modelDropdownExpandedGroups,
-              onSelect: (value) => onModelChange(agent.id, value || null),
-              onToggle: onModelDropdownToggle,
-              onGroupToggle: onModelDropdownGroupToggle,
-            })}
-          </div>
-          <div style="min-width: 260px; flex: 1;">
-            <div class="label" style="margin-bottom: 6px;">${t("agentsView.fallbacks")}</div>
-            ${renderMultiDropdown({
-              values: modelFallbacks ?? [],
-              placeholder: t("agentsView.fallbacksPlaceholder") ?? "选择备选模型",
-              groups: modelGroups
-                .map((g) => ({
-                  label: g.providerId,
-                  items: g.models.filter((m) => m.value !== effectivePrimary),
-                }))
-                .filter((g) => g.items.length > 0),
-              open: params.fallbackDropdownOpen,
-              disabled: !configForm || configLoading || configSaving,
-              expandedGroups: params.fallbackDropdownExpandedGroups,
-              onToggleItem: (value) => {
-                const current = modelFallbacks ?? [];
-                const next = current.includes(value)
-                  ? current.filter((v) => v !== value)
-                  : [...current, value];
-                onModelFallbacksChange(agent.id, next);
-              },
-              onToggle: onFallbackDropdownToggle,
-              onGroupToggle: onFallbackDropdownGroupToggle,
-            })}
-          </div>
-        </div>
-        <div class="row" style="justify-content: flex-end; gap: 8px;">
-          <button class="btn btn--sm" ?disabled=${configLoading} @click=${onConfigReload}>
-            ${t("agentsView.reloadConfig")}
-          </button>
-          <button
-            class="btn btn--sm primary"
-            ?disabled=${configSaving || !configDirty}
-            @click=${onConfigSave}
-          >
-            ${configSaving ? t("shared.saving") : t("shared.save")}
-          </button>
-        </div>
-      </div>
+      <div id="agents-model-portal"></div>
     </section>
   `;
 }

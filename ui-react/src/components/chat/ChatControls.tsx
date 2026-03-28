@@ -172,53 +172,6 @@ export function ChatControls() {
       >
         <RefreshIcon />
       </button>
-
-      <span className="chat-controls__separator">|</span>
-
-      <button
-        className={`btn btn--sm btn--icon${showThinking ? " active" : ""}`}
-        disabled={disableThinkingToggle}
-        onClick={handleToggleThinking}
-        aria-pressed={showThinking}
-        data-tooltip={
-          disableThinkingToggle
-            ? t("chat.onboardingDisabled")
-            : t("chat.thinkingToggle")
-        }
-      >
-        <BrainIcon />
-      </button>
-
-      <button
-        className={`btn btn--sm btn--icon${focusActive ? " active" : ""}`}
-        disabled={disableFocusToggle}
-        onClick={handleToggleFocus}
-        aria-pressed={focusActive}
-        data-tooltip={
-          disableFocusToggle
-            ? t("chat.onboardingDisabled")
-            : t("chat.focusToggle")
-        }
-      >
-        <FocusIcon />
-      </button>
-
-      <button
-        className={`btn btn--sm btn--icon${hideCron ? " active" : ""}`}
-        onClick={handleToggleCronFilter}
-        aria-pressed={hideCron}
-        data-tooltip={
-          hideCron
-            ? hiddenCronCount > 0
-              ? t("chat.showCronSessionsHidden", {
-                  count: String(hiddenCronCount),
-                })
-              : t("chat.showCronSessions")
-            : t("chat.hideCronSessions")
-        }
-      >
-        <ClockIcon />
-      </button>
     </div>
   );
 }

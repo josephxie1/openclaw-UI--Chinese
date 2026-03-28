@@ -9,6 +9,7 @@ import {
   updateConfigFormValue,
 } from "../lib/controllers/config.ts";
 import type { DropdownGroup } from "../lib/components/dropdown.ts";
+import type { AllowlistModel } from "../lib/views/models-default-config.ts";
 
 
 // ---- Models page with Quick-Add + Default Model Config ----
@@ -190,7 +191,7 @@ export function ModelsView() {
   }, []);
 
   // Build model groups for default model config
-  const { modelGroups, visionModelGroups, hasVisionModels, curDef, curImg } = useMemo(() => {
+  const { modelGroups, visionModelGroups, hasVisionModels, curDef, curImg, allModels, allowedModels, modelsMode } = useMemo(() => {
     const cfgProviders = ((configForm as Record<string, unknown>)?.models as Record<string, unknown>)?.providers as
       | Record<string, unknown>
       | undefined;
@@ -198,6 +199,7 @@ export function ModelsView() {
     type MEntry = { id: string; name?: string; input?: string[] };
     const mg: DropdownGroup[] = [];
     const vmg: DropdownGroup[] = [];
+    const am: AllowlistModel[] = [];
     let hasVis = false;
 
     if (cfgProviders) {
@@ -208,6 +210,7 @@ export function ModelsView() {
         for (const m of ml) {
           const item = { value: `${pid}/${m.id}`, label: m.name || m.id };
           allItems.push(item);
+          am.push({ value: `${pid}/${m.id}`, label: m.name || m.id, provider: pid });
           if (m.input?.includes("image")) {
             visItems.push(item);
             hasVis = true;
@@ -218,6 +221,7 @@ export function ModelsView() {
       }
     }
 
+    // Leer allowlist desde agents.defaults.models
     const agC = (configForm as Record<string, unknown>)?.agents as Record<string, unknown> | undefined;
     const dC = (agC?.defaults ?? {}) as Record<string, unknown>;
     const def =
@@ -227,6 +231,10 @@ export function ModelsView() {
           ? (((dC.model as Record<string, unknown>).primary as string) ?? "")
           : "";
 
+    // Extraer set de modelos permitidos
+    const modelsMap = (dC.models ?? {}) as Record<string, unknown>;
+    const allowed = new Set<string>(Object.keys(modelsMap));
+
     const tC = (configForm as Record<string, unknown>)?.tools as Record<string, unknown> | undefined;
     const mM = (((tC?.media ?? {}) as Record<string, unknown>).models ?? []) as Array<{
       provider?: string;
@@ -235,7 +243,16 @@ export function ModelsView() {
     const fm = mM[0];
     const img = fm ? `${fm.provider ?? ""}/${fm.model ?? ""}` : "";
 
-    return { modelGroups: mg, visionModelGroups: vmg, hasVisionModels: hasVis, curDef: def, curImg: img };
+    return {
+      modelGroups: mg,
+      visionModelGroups: vmg,
+      hasVisionModels: hasVis,
+      curDef: def,
+      curImg: img,
+      allModels: am,
+      allowedModels: allowed,
+      modelsMode: (((configForm as Record<string, unknown>)?.models as Record<string, unknown>)?.mode as string) || "merge",
+    };
   }, [configForm]);
 
   // Event handlers for default model config
@@ -254,6 +271,31 @@ export function ModelsView() {
       const modelId = rest.join("/");
       updateConfigFormValue(getReactiveState() as never, ["tools", "media", "models"], [{ provider, model: modelId }]);
     }
+    void applyConfig(getReactiveState() as never);
+  }, []);
+
+  const onAllowlistChange = useCallback((e: Event) => {
+    const allowed = (e as CustomEvent).detail.allowed as string[];
+    // Construir el mapa de allowlist: { "provider/model": { alias: "Name" } }
+    const modelsMap: Record<string, { alias: string }> = {};
+    for (const ref of allowed) {
+      // Encontrar el label del modelo
+      const found = (s.getState().configForm as Record<string, unknown>);
+      const providers = ((found?.models as Record<string, unknown>)?.providers ?? {}) as Record<string, unknown>;
+      const [provId, ...rest] = ref.split("/");
+      const modelId = rest.join("/");
+      const provData = (providers[provId] ?? {}) as Record<string, unknown>;
+      const ml = (provData.models ?? []) as Array<{ id: string; name?: string }>;
+      const m = ml.find((x) => x.id === modelId);
+      modelsMap[ref] = { alias: m?.name || modelId };
+    }
+    updateConfigFormValue(getReactiveState() as never, ["agents", "defaults", "models"], modelsMap);
+    void applyConfig(getReactiveState() as never);
+  }, []);
+
+  const onModelsModeChange = useCallback((e: Event) => {
+    const mode = (e as CustomEvent).detail.mode as string;
+    updateConfigFormValue(getReactiveState() as never, ["models", "mode"], mode);
     void applyConfig(getReactiveState() as never);
   }, []);
 
@@ -281,19 +323,25 @@ export function ModelsView() {
             .visionModelGroups=${visionModelGroups}
             .currentDefaultModel=${curDef}
             .currentImageModel=${curImg}
+            .allModels=${allModels}
+            .allowedModels=${allowedModels}
+            .modelsMode=${modelsMode}
             ?saving=${configSaving}
             ?hasVisionModels=${hasVisionModels}
             @default-model-change=${onDefaultModelChange}
             @image-model-change=${onImageModelChange}
+            @allowlist-change=${onAllowlistChange}
+            @models-mode-change=${onModelsModeChange}
           ></oc-default-model-config>
         </div>
       `,
     [
       form, busy, error, preset, selectedIds,
       modelGroups, visionModelGroups, curDef, curImg, configSaving, hasVisionModels,
+      allModels, allowedModels, modelsMode,
       onPresetChange, onPresetModelToggle, onPresetSelectAll,
       onFieldChange, onModelChange, onAddModel, onRemoveModel, onSubmit,
-      onDefaultModelChange, onImageModelChange,
+      onDefaultModelChange, onImageModelChange, onAllowlistChange, onModelsModeChange,
     ],
   );
 

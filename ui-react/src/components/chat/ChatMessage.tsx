@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "../../i18n/index.ts";
 import type { AssistantIdentity } from "../../lib/assistant-identity.ts";
+import { getUserProfile } from "../../lib/user-profile.ts";
 import {
   extractTextCached,
   extractThinkingCached,
@@ -73,12 +74,6 @@ function Avatar({
   const normalized = normalizeRoleForGrouping(role);
   const assistantName = assistant?.name?.trim() || "Assistant";
   const assistantAvatar = assistant?.avatar?.trim() || "";
-  const initial =
-    normalized === "user"
-      ? "U"
-      : normalized === "assistant"
-        ? assistantName.charAt(0).toUpperCase() || "A"
-        : "?";
   const className =
     normalized === "user" ? "user" : normalized === "assistant" ? "assistant" : "other";
 
@@ -91,7 +86,14 @@ function Avatar({
     return <img className={`chat-avatar ${className}`} src={defaultAvatar} alt={assistantName} />;
   }
 
-  return <div className={`chat-avatar ${className}`}>{initial}</div>;
+  // Usuario: usar perfil de localStorage (avatar personalizado o multiavatar)
+  if (normalized === "user") {
+    const userProfile = getUserProfile();
+    const userAvatarSrc = userProfile.avatar || avatarFromName(userProfile.name);
+    return <img className={`chat-avatar ${className}`} src={userAvatarSrc} alt={userProfile.name} />;
+  }
+
+  return <div className={`chat-avatar ${className}`}>?</div>;
 }
 
 // ─── Message Images ──────────────────────────────────────────

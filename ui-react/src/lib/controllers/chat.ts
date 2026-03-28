@@ -167,10 +167,12 @@ export async function sendChatMessage(
           if (!parsed) {
             return null;
           }
+          const isImage = parsed.mimeType.startsWith("image/");
           return {
-            type: "image",
+            type: isImage ? "image" : "document",
             mimeType: parsed.mimeType,
             content: parsed.content,
+            ...(att.fileName ? { fileName: att.fileName } : {}),
           };
         })
         .filter((a): a is NonNullable<typeof a> => a !== null)
@@ -256,6 +258,19 @@ export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
     const finalMessage = normalizeFinalAssistantMessage(payload.message);
     if (finalMessage) {
       state.chatMessages = [...state.chatMessages, finalMessage];
+    } else {
+      // Fallback: si la normalización falla, preservar el texto streameado
+      const streamedText = state.chatStream ?? "";
+      if (streamedText.trim()) {
+        state.chatMessages = [
+          ...state.chatMessages,
+          {
+            role: "assistant",
+            content: [{ type: "text", text: streamedText }],
+            timestamp: Date.now(),
+          },
+        ];
+      }
     }
     state.chatStream = null;
     state.chatRunId = null;

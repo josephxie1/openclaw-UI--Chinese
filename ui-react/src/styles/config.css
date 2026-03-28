@@ -1917,6 +1917,132 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
+/* ── Model Allowlist (inside oc-default-model-config) ── */
+
+.model-allowlist__mode-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.model-allowlist__mode-select:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.model-allowlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-allowlist__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-allowlist__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px 8px;
+  background: var(--bg-hover);
+  border-radius: 10px;
+}
+
+.model-allowlist__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.model-allowlist__action-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.model-allowlist__action-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--bg-hover);
+  border-color: var(--text-dim, var(--muted));
+}
+
+.model-allowlist__action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.model-allowlist__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.model-allowlist__provider-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 4px 2px;
+}
+
+.model-allowlist__provider-label:first-child {
+  padding-top: 0;
+}
+
+.model-allowlist__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-size: 13px;
+}
+
+.model-allowlist__item:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.model-allowlist__item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.model-allowlist__label {
+  font-weight: 500;
+  color: var(--text);
+}
+
 .quick-add-content {
   padding: 22px;
 }
