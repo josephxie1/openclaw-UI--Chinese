@@ -1,5 +1,6 @@
 import { LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { resolveAgentIdFromSessionKey } from "../../../src/routing/session-key.js";
 import { i18n, I18nController, isSupportedLocale } from "../i18n/index.ts";
 import {
   handleChannelConfigReload as handleChannelConfigReloadInternal,
@@ -42,6 +43,7 @@ import {
   loadOverview as loadOverviewInternal,
   setTab as setTabInternal,
   setTheme as setThemeInternal,
+  setThemeMode as setThemeModeInternal,
   onPopState as onPopStateInternal,
 } from "./app-settings.ts";
 import {
@@ -52,8 +54,12 @@ import {
 } from "./app-tool-stream.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import { normalizeAssistantIdentity } from "./assistant-identity.ts";
+import { exportChatMarkdown } from "./chat/export.ts";
+import {
+  loadToolsEffective as loadToolsEffectiveInternal,
+  refreshVisibleToolsEffectiveForCurrentSession as refreshVisibleToolsEffectiveForCurrentSessionInternal,
+} from "./controllers/agents.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
-import type { CronFieldErrors } from "./controllers/cron.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
@@ -61,26 +67,29 @@ import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
-import type { ResolvedTheme, ThemeMode } from "./theme.ts";
+import { VALID_THEME_NAMES, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
 import type {
   AgentsListResult,
   AgentsFilesListResult,
   AgentIdentityResult,
   ConfigSnapshot,
   ConfigUiHints,
+  ChatModelOverride,
   CronJob,
   CronRunLogEntry,
   CronStatus,
-  HealthSnapshot,
+  HealthSummary,
   LogEntry,
   LogLevel,
+  ModelCatalogEntry,
   PresenceEntry,
   ChannelsStatusSnapshot,
   SessionsListResult,
   SkillStatusReport,
-  ToolsCatalogResult,
   StatusSummary,
   NostrProfile,
+  ToolsCatalogResult,
+  ToolsEffectiveResult,
 } from "./types.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
 import { generateUUID } from "./uuid.ts";
@@ -95,14 +104,6 @@ declare global {
 const bootAssistantIdentity = normalizeAssistantIdentity({});
 
 function resolveOnboardingMode(): boolean {
-  // Desktop Electron bridge
-  const desktop = (window as unknown as Record<string, unknown>).desktop as
-    | { isOnboarding?: boolean }
-    | undefined;
-  if (desktop?.isOnboarding) {
-    return true;
-  }
-  // URL parameter fallback
   if (!window.location.search) {
     return false;
   }
@@ -119,6 +120,7 @@ function resolveOnboardingMode(): boolean {
 export class OpenClawApp extends LitElement {
   private i18nController = new I18nController(this);
   clientInstanceId = generateUUID();
+  connectGeneration = 0;
   @state() settings: UiSettings = loadSettings();
   constructor() {
     super();
@@ -127,18 +129,15 @@ export class OpenClawApp extends LitElement {
     }
   }
   @state() password = "";
+  @state() loginShowGatewayToken = false;
+  @state() loginShowGatewayPassword = false;
   @state() tab: Tab = "chat";
   @state() onboarding = resolveOnboardingMode();
-  @state() wizardStep = 1;
-  @state() wizardDirection = 1;
-  @state() wizardAnimating = false;
-  @state() wizardPresetDropdownOpen = false;
-  @state() wizardModelDropdownOpen = false;
-  @state() wizardApiKeyVisible = false;
-  @state() wizardSaving = false;
   @state() connected = false;
-  @state() theme: ThemeMode = this.settings.theme ?? "system";
+  @state() theme: ThemeName = this.settings.theme ?? "claw";
+  @state() themeMode: ThemeMode = this.settings.themeMode ?? "system";
   @state() themeResolved: ResolvedTheme = "dark";
+  @state() themeOrder: ThemeName[] = this.buildThemeOrder(this.theme);
   @state() hello: GatewayHelloOk | null = null;
   @state() lastError: string | null = null;
   @state() lastErrorCode: string | null = null;
@@ -150,6 +149,7 @@ export class OpenClawApp extends LitElement {
   @state() assistantName = bootAssistantIdentity.name;
   @state() assistantAvatar = bootAssistantIdentity.avatar;
   @state() assistantAgentId = bootAssistantIdentity.agentId ?? null;
+  @state() serverVersion: string | null = null;
 
   @state() sessionKey = this.settings.sessionKey;
   @state() chatLoading = false;
@@ -157,6 +157,7 @@ export class OpenClawApp extends LitElement {
   @state() chatMessage = "";
   @state() chatMessages: unknown[] = [];
   @state() chatToolMessages: unknown[] = [];
+  @state() chatStreamSegments: Array<{ text: string; ts: number }> = [];
   @state() chatStream: string | null = null;
   @state() chatStreamStartedAt: number | null = null;
   @state() chatRunId: string | null = null;
@@ -164,9 +165,16 @@ export class OpenClawApp extends LitElement {
   @state() fallbackStatus: FallbackStatus | null = null;
   @state() chatAvatarUrl: string | null = null;
   @state() chatThinkingLevel: string | null = null;
+  @state() chatModelOverrides: Record<string, ChatModelOverride | null> = {};
+  @state() chatModelsLoading = false;
+  @state() chatModelCatalog: ModelCatalogEntry[] = [];
   @state() chatQueue: ChatQueueItem[] = [];
   @state() chatAttachments: ChatAttachment[] = [];
   @state() chatManualRefreshInFlight = false;
+  @state() navDrawerOpen = false;
+
+  onSlashAction?: (action: string) => void;
+
   // Sidebar state for tool output viewing
   @state() sidebarOpen = false;
   @state() sidebarContent: string | null = null;
@@ -190,6 +198,7 @@ export class OpenClawApp extends LitElement {
   @state() execApprovalBusy = false;
   @state() execApprovalError: string | null = null;
   @state() pendingGatewayUrl: string | null = null;
+  pendingGatewayToken: string | null = null;
 
   @state() configLoading = false;
   @state() configRaw = "{\n}\n";
@@ -204,48 +213,34 @@ export class OpenClawApp extends LitElement {
   @state() configSchema: unknown = null;
   @state() configSchemaVersion: string | null = null;
   @state() configSchemaLoading = false;
-  @state() pluginSchemaCache: Record<string, unknown> = {};
-  pluginSchemaLoading = new Set<string>();
   @state() configUiHints: ConfigUiHints = {};
   @state() configForm: Record<string, unknown> | null = null;
   @state() configFormOriginal: Record<string, unknown> | null = null;
   @state() configFormDirty = false;
-  @state() configRawLoading = false;
   @state() configFormMode: "form" | "raw" = "form";
   @state() configSearchQuery = "";
   @state() configActiveSection: string | null = null;
   @state() configActiveSubsection: string | null = null;
-  @state() modelsActiveSubsection: string | null = null;
-  @state() agentsConfigActiveSubsection: string | null = null;
-  @state() modelsQuickAddExpanded = false;
-  @state() modelsQuickAddForm = {
-    provider: "",
-    baseUrl: "",
-    api: "openai-completions",
-    apiKey: "",
-    models: [{ id: "", name: "" }],
-  };
-  @state() modelsQuickAddBusy = false;
-  @state() modelsQuickAddError: string | null = null;
-  @state() modelsQuickAddPreset = "";
-  @state() modelsQuickAddSelectedIds: string[] = [];
-
-  @state() channelQuickAddExpanded = false;
-  @state() channelQuickAddBusy = false;
-  @state() channelQuickAddError: string | null = null;
-  @state() channelQuickAddForm = {
-    channelType: "telegram" as "telegram" | "feishu",
-    accountId: "",
-    botToken: "",
-    appId: "",
-    appSecret: "",
-    botName: "",
-    createAgent: true,
-    agentId: "",
-    agentName: "",
-    agentEmoji: "🤖",
-    agentModel: "",
-  };
+  @state() communicationsFormMode: "form" | "raw" = "form";
+  @state() communicationsSearchQuery = "";
+  @state() communicationsActiveSection: string | null = null;
+  @state() communicationsActiveSubsection: string | null = null;
+  @state() appearanceFormMode: "form" | "raw" = "form";
+  @state() appearanceSearchQuery = "";
+  @state() appearanceActiveSection: string | null = null;
+  @state() appearanceActiveSubsection: string | null = null;
+  @state() automationFormMode: "form" | "raw" = "form";
+  @state() automationSearchQuery = "";
+  @state() automationActiveSection: string | null = null;
+  @state() automationActiveSubsection: string | null = null;
+  @state() infrastructureFormMode: "form" | "raw" = "form";
+  @state() infrastructureSearchQuery = "";
+  @state() infrastructureActiveSection: string | null = null;
+  @state() infrastructureActiveSubsection: string | null = null;
+  @state() aiAgentsFormMode: "form" | "raw" = "form";
+  @state() aiAgentsSearchQuery = "";
+  @state() aiAgentsActiveSection: string | null = null;
+  @state() aiAgentsActiveSubsection: string | null = null;
 
   @state() channelsLoading = false;
   @state() channelsSnapshot: ChannelsStatusSnapshot | null = null;
@@ -263,10 +258,6 @@ export class OpenClawApp extends LitElement {
   @state() presenceError: string | null = null;
   @state() presenceStatus: string | null = null;
 
-  @state() channelPairingsLoading = false;
-  @state() channelPairings: import("./controllers/channel-pairing.ts").ChannelPairingGroup[] = [];
-  @state() channelPairingsError: string | null = null;
-
   @state() agentsLoading = false;
   @state() agentsList: AgentsListResult | null = null;
   @state() agentsError: string | null = null;
@@ -274,15 +265,12 @@ export class OpenClawApp extends LitElement {
   @state() toolsCatalogLoading = false;
   @state() toolsCatalogError: string | null = null;
   @state() toolsCatalogResult: ToolsCatalogResult | null = null;
-  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" =
-    "overview";
-  @state() modelDropdownOpen = false;
-  @state() modelDropdownExpandedGroups: Set<string> = new Set();
-  @state() fallbackDropdownOpen = false;
-  @state() fallbackDropdownExpandedGroups: Set<string> = new Set();
-  @state() chAgentDropdownOpen = false;
-  @state() chModelDropdownOpen = false;
-  @state() chModelDropdownExpandedGroups: Set<string> = new Set();
+  @state() toolsEffectiveLoading = false;
+  @state() toolsEffectiveLoadingKey: string | null = null;
+  @state() toolsEffectiveResultKey: string | null = null;
+  @state() toolsEffectiveError: string | null = null;
+  @state() toolsEffectiveResult: ToolsEffectiveResult | null = null;
+  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" = "files";
   @state() agentFilesLoading = false;
   @state() agentFilesError: string | null = null;
   @state() agentFilesList: AgentsFilesListResult | null = null;
@@ -301,15 +289,17 @@ export class OpenClawApp extends LitElement {
   @state() sessionsLoading = false;
   @state() sessionsResult: SessionsListResult | null = null;
   @state() sessionsError: string | null = null;
-  @state() sessionActivity: import("./types.js").SessionActivityResult | null = null;
-  @state() overviewCostDaily: import("./types.js").CostUsageSummary | null = null;
-  @state() overviewUsageResult: import("./types.js").SessionsUsageResult | null = null;
-  @state() overviewWeekUsageResult: import("./types.js").SessionsUsageResult | null = null;
   @state() sessionsFilterActive = "";
   @state() sessionsFilterLimit = "120";
   @state() sessionsIncludeGlobal = true;
   @state() sessionsIncludeUnknown = false;
   @state() sessionsHideCron = true;
+  @state() sessionsSearchQuery = "";
+  @state() sessionsSortColumn: "key" | "kind" | "updated" | "tokens" = "updated";
+  @state() sessionsSortDir: "asc" | "desc" = "desc";
+  @state() sessionsPage = 0;
+  @state() sessionsPageSize = 25;
+  @state() sessionsSelectedKeys: Set<string> = new Set();
 
   @state() usageLoading = false;
   @state() usageResult: import("./types.js").SessionsUsageResult | null = null;
@@ -384,7 +374,7 @@ export class OpenClawApp extends LitElement {
   @state() cronStatus: CronStatus | null = null;
   @state() cronError: string | null = null;
   @state() cronForm: CronFormState = { ...DEFAULT_CRON_FORM };
-  @state() cronFieldErrors: CronFieldErrors = {};
+  @state() cronFieldErrors: import("./controllers/cron.js").CronFieldErrors = {};
   @state() cronEditingJobId: string | null = null;
   @state() cronRunsJobId: string | null = null;
   @state() cronRunsLoadingMore = false;
@@ -404,29 +394,34 @@ export class OpenClawApp extends LitElement {
 
   @state() updateAvailable: import("./types.js").UpdateAvailable | null = null;
 
+  // Overview dashboard state
+  @state() attentionItems: import("./types.js").AttentionItem[] = [];
+  @state() paletteOpen = false;
+  @state() paletteQuery = "";
+  @state() paletteActiveIndex = 0;
+  @state() overviewShowGatewayToken = false;
+  @state() overviewShowGatewayPassword = false;
+  @state() overviewLogLines: string[] = [];
+  @state() overviewLogCursor = 0;
+
   @state() skillsLoading = false;
   @state() skillsReport: SkillStatusReport | null = null;
   @state() skillsError: string | null = null;
   @state() skillsFilter = "";
+  @state() skillsStatusFilter: "all" | "ready" | "needs-setup" | "disabled" = "all";
   @state() skillEdits: Record<string, string> = {};
   @state() skillsBusyKey: string | null = null;
   @state() skillMessages: Record<string, SkillMessage> = {};
+  @state() skillsDetailKey: string | null = null;
 
-  // ClawHub marketplace
-  @state() clawhubQuery = "";
-  @state() clawhubResults: unknown[] = [];
-  @state() clawhubLoading = false;
-  @state() clawhubInstalling: string | null = null;
-  @state() clawhubError: string | null = null;
-  @state() clawhubMessage: string | null = null;
-  @state() clawhubTokenMasked: string | null = null;
-  @state() clawhubTokenDraft = "";
-  @state() clawhubTokenSaving = false;
+  @state() healthLoading = false;
+  @state() healthResult: HealthSummary | null = null;
+  @state() healthError: string | null = null;
 
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
-  @state() debugHealth: HealthSnapshot | null = null;
-  @state() debugModels: unknown[] = [];
+  @state() debugHealth: HealthSummary | null = null;
+  @state() debugModels: ModelCatalogEntry[] = [];
   @state() debugHeartbeat: unknown = null;
   @state() debugCallMethod = "";
   @state() debugCallParams = "{}";
@@ -458,7 +453,6 @@ export class OpenClawApp extends LitElement {
   private nodesPollInterval: number | null = null;
   private logsPollInterval: number | null = null;
   private debugPollInterval: number | null = null;
-  private activityPollInterval: number | null = null;
   private logsScrollFrame: number | null = null;
   private toolStreamById = new Map<string, ToolStreamEntry>();
   private toolStreamOrder: string[] = [];
@@ -466,9 +460,17 @@ export class OpenClawApp extends LitElement {
   basePath = "";
   private popStateHandler = () =>
     onPopStateInternal(this as unknown as Parameters<typeof onPopStateInternal>[0]);
-  private themeMedia: MediaQueryList | null = null;
-  private themeMediaHandler: ((event: MediaQueryListEvent) => void) | null = null;
   private topbarObserver: ResizeObserver | null = null;
+  private globalKeydownHandler = (e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "k") {
+      e.preventDefault();
+      this.paletteOpen = !this.paletteOpen;
+      if (this.paletteOpen) {
+        this.paletteQuery = "";
+        this.paletteActiveIndex = 0;
+      }
+    }
+  };
 
   createRenderRoot() {
     return this;
@@ -476,6 +478,24 @@ export class OpenClawApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.onSlashAction = (action: string) => {
+      switch (action) {
+        case "toggle-focus":
+          this.applySettings({
+            ...this.settings,
+            chatFocusMode: !this.settings.chatFocusMode,
+          });
+          break;
+        case "export":
+          exportChatMarkdown(this.chatMessages, this.assistantName);
+          break;
+        case "refresh-tools-effective": {
+          void refreshVisibleToolsEffectiveForCurrentSessionInternal(this);
+          break;
+        }
+      }
+    };
+    document.addEventListener("keydown", this.globalKeydownHandler);
     handleConnected(this as unknown as Parameters<typeof handleConnected>[0]);
   }
 
@@ -484,12 +504,29 @@ export class OpenClawApp extends LitElement {
   }
 
   disconnectedCallback() {
+    document.removeEventListener("keydown", this.globalKeydownHandler);
     handleDisconnected(this as unknown as Parameters<typeof handleDisconnected>[0]);
     super.disconnectedCallback();
   }
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     handleUpdated(this as unknown as Parameters<typeof handleUpdated>[0], changed);
+    if (!changed.has("sessionKey") || this.agentsPanel !== "tools") {
+      return;
+    }
+    const activeSessionAgentId = resolveAgentIdFromSessionKey(this.sessionKey);
+    if (this.agentsSelectedId && this.agentsSelectedId === activeSessionAgentId) {
+      void loadToolsEffectiveInternal(this, {
+        agentId: this.agentsSelectedId,
+        sessionKey: this.sessionKey,
+      });
+      return;
+    }
+    this.toolsEffectiveResult = null;
+    this.toolsEffectiveResultKey = null;
+    this.toolsEffectiveError = null;
+    this.toolsEffectiveLoading = false;
+    this.toolsEffectiveLoadingKey = null;
   }
 
   connect() {
@@ -541,10 +578,34 @@ export class OpenClawApp extends LitElement {
 
   setTab(next: Tab) {
     setTabInternal(this as unknown as Parameters<typeof setTabInternal>[0], next);
+    this.navDrawerOpen = false;
   }
 
-  setTheme(next: ThemeMode, context?: Parameters<typeof setThemeInternal>[2]) {
+  setTheme(next: ThemeName, context?: Parameters<typeof setThemeInternal>[2]) {
     setThemeInternal(this as unknown as Parameters<typeof setThemeInternal>[0], next, context);
+    this.themeOrder = this.buildThemeOrder(next);
+  }
+
+  setThemeMode(next: ThemeMode, context?: Parameters<typeof setThemeModeInternal>[2]) {
+    setThemeModeInternal(
+      this as unknown as Parameters<typeof setThemeModeInternal>[0],
+      next,
+      context,
+    );
+  }
+
+  setBorderRadius(value: number) {
+    applySettingsInternal(this as unknown as Parameters<typeof applySettingsInternal>[0], {
+      ...this.settings,
+      borderRadius: value,
+    });
+    this.requestUpdate();
+  }
+
+  buildThemeOrder(active: ThemeName): ThemeName[] {
+    const all = [...VALID_THEME_NAMES];
+    const rest = all.filter((id) => id !== active);
+    return [active, ...rest];
   }
 
   async loadOverview() {
@@ -629,13 +690,14 @@ export class OpenClawApp extends LitElement {
     this.execApprovalBusy = true;
     this.execApprovalError = null;
     try {
-      await this.client.request("exec.approval.resolve", {
+      const method = active.kind === "plugin" ? "plugin.approval.resolve" : "exec.approval.resolve";
+      await this.client.request(method, {
         id: active.id,
         decision,
       });
       this.execApprovalQueue = this.execApprovalQueue.filter((entry) => entry.id !== active.id);
     } catch (err) {
-      this.execApprovalError = `Exec approval failed: ${String(err)}`;
+      this.execApprovalError = `Approval failed: ${String(err)}`;
     } finally {
       this.execApprovalBusy = false;
     }
@@ -646,16 +708,20 @@ export class OpenClawApp extends LitElement {
     if (!nextGatewayUrl) {
       return;
     }
+    const nextToken = this.pendingGatewayToken?.trim() || "";
     this.pendingGatewayUrl = null;
+    this.pendingGatewayToken = null;
     applySettingsInternal(this as unknown as Parameters<typeof applySettingsInternal>[0], {
       ...this.settings,
       gatewayUrl: nextGatewayUrl,
+      token: nextToken,
     });
     this.connect();
   }
 
   handleGatewayUrlCancel() {
     this.pendingGatewayUrl = null;
+    this.pendingGatewayToken = null;
   }
 
   // Sidebar handlers for tool output viewing

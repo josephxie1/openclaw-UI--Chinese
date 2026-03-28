@@ -2,70 +2,20 @@
    CHAT TEXT STYLING
    ============================================= */
 
-/* Collapsible thinking/reasoning panel */
-.chat-thinking-panel {
-  margin: 8px 0;
-}
-
-.chat-thinking-panel__trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.chat-thinking {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
-  cursor: pointer;
-  padding: 4px 0;
-  transition: color 150ms ease;
-  list-style: none;
-}
-
-.chat-thinking-panel__trigger::-webkit-details-marker {
-  display: none;
-}
-
-.chat-thinking-panel__trigger:hover {
-  color: var(--text);
-}
-
-.chat-thinking-panel__icon {
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-.chat-thinking-panel__icon svg {
-  width: 16px;
-  height: 16px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.chat-thinking-panel__label {
-  flex: 1;
-  word-break: break-all;
-}
-
-.chat-thinking-panel__toggle::after {
-  content: "expand";
   font-size: 12px;
-  opacity: 0.7;
-  margin-left: 8px;
-  flex-shrink: 0;
+  line-height: 1.4;
 }
 
-.chat-thinking-panel[open] .chat-thinking-panel__toggle::after {
-  content: "collapse";
-}
-
-.chat-thinking-panel__content {
-  padding: 8px 0 4px 24px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-  border-left: 2px solid var(--border);
-  margin-left: 7px;
+:root[data-theme-mode="light"] .chat-thinking {
+  border-color: rgba(16, 24, 40, 0.25);
+  background: rgba(16, 24, 40, 0.04);
 }
 
 .chat-text {
@@ -106,15 +56,30 @@
   font-size: 0.9em;
 }
 
+.chat-text :where(.markdown-inline-image) {
+  display: block;
+  max-width: min(100%, 420px);
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  margin-top: 0.75em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--secondary) 70%, transparent);
+  object-fit: contain;
+}
+
 .chat-text :where(:not(pre) > code) {
   background: rgba(0, 0, 0, 0.15);
   padding: 0.15em 0.4em;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .chat-text :where(pre) {
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   overflow-x: auto;
 }
@@ -145,24 +110,24 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-:root[data-theme="light"] .chat-text :where(blockquote) {
+:root[data-theme-mode="light"] .chat-text :where(blockquote) {
   background: rgba(0, 0, 0, 0.03);
 }
 
-:root[data-theme="light"] .chat-text :where(blockquote blockquote) {
+:root[data-theme-mode="light"] .chat-text :where(blockquote blockquote) {
   background: rgba(0, 0, 0, 0.05);
 }
 
-:root[data-theme="light"] .chat-text :where(blockquote blockquote blockquote) {
+:root[data-theme-mode="light"] .chat-text :where(blockquote blockquote blockquote) {
   background: rgba(0, 0, 0, 0.04);
 }
 
-:root[data-theme="light"] .chat-text :where(:not(pre) > code) {
+:root[data-theme-mode="light"] .chat-text :where(:not(pre) > code) {
   background: rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-:root[data-theme="light"] .chat-text :where(pre:not(.code-block)) {
+:root[data-theme-mode="light"] .chat-text :where(pre) {
   background: rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
@@ -191,4 +156,21 @@
   border-right: 3px solid var(--border);
   padding-left: 0;
   padding-right: 1em;
+}
+
+@media (max-width: 640px) {
+  .chat-text :where(pre) {
+    padding: 8px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .chat-text :where(.markdown-inline-image) {
+    max-width: 100%;
+    max-height: 240px;
+  }
+
+  .chat-text :where(blockquote) {
+    padding: 6px 10px;
+  }
 }

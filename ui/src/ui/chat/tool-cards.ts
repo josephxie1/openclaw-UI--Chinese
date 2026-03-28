@@ -1,9 +1,16 @@
 import { html, nothing } from "lit";
+import {
+  isToolCallContentType,
+  isToolResultContentType,
+  resolveToolBlockArgs,
+} from "../../../../src/chat/tool-content.js";
 import { icons } from "../icons.ts";
-import { resolveToolDisplay } from "../tool-display.ts";
+import { formatToolDetail, resolveToolDisplay } from "../tool-display.ts";
 import type { ToolCard } from "../types/chat-types.ts";
+import { TOOL_INLINE_THRESHOLD } from "./constants.ts";
 import { extractTextCached } from "./message-extract.ts";
 import { isToolResultMessage } from "./message-normalizer.ts";
+import { formatToolOutputForSidebar, getTruncatedPreview } from "./tool-helpers.ts";
 
 export function extractToolCards(message: unknown): ToolCard[] {
   const m = message as Record<string, unknown>;
@@ -11,22 +18,20 @@ export function extractToolCards(message: unknown): ToolCard[] {
   const cards: ToolCard[] = [];
 
   for (const item of content) {
-    const kind = (typeof item.type === "string" ? item.type : "").toLowerCase();
     const isToolCall =
-      ["toolcall", "tool_call", "tooluse", "tool_use"].includes(kind) ||
-      (typeof item.name === "string" && item.arguments != null);
+      isToolCallContentType(item.type) ||
+      (typeof item.name === "string" && resolveToolBlockArgs(item) != null);
     if (isToolCall) {
       cards.push({
         kind: "call",
         name: (item.name as string) ?? "tool",
-        args: coerceArgs(item.arguments ?? item.args),
+        args: coerceArgs(resolveToolBlockArgs(item)),
       });
     }
   }
 
   for (const item of content) {
-    const kind = (typeof item.type === "string" ? item.type : "").toLowerCase();
-    if (kind !== "toolresult" && kind !== "tool_result") {
+    if (!isToolResultContentType(item.type)) {
       continue;
     }
     const text = extractToolText(item);
@@ -46,161 +51,66 @@ export function extractToolCards(message: unknown): ToolCard[] {
   return cards;
 }
 
-/**
- * Pair tool call cards with their result cards by name.
- * Returns merged entries with both args and text when available.
- */
-export function pairToolCards(cards: ToolCard[]): ToolCard[] {
-  const calls = cards.filter((c) => c.kind === "call");
-  const results = cards.filter((c) => c.kind === "result");
-
-  if (calls.length === 0 && results.length === 0) {
-    return [];
-  }
-
-  // Merge call + result by matching name
-  const merged: ToolCard[] = [];
-  const usedResults = new Set<number>();
-
-  for (const call of calls) {
-    const resultIdx = results.findIndex((r, i) => !usedResults.has(i) && r.name === call.name);
-    if (resultIdx >= 0) {
-      usedResults.add(resultIdx);
-      merged.push({
-        kind: "call",
-        name: call.name,
-        args: call.args,
-        text: results[resultIdx].text,
-      });
-    } else {
-      merged.push(call);
-    }
-  }
-
-  // Add any unmatched results
-  for (let i = 0; i < results.length; i++) {
-    if (!usedResults.has(i)) {
-      merged.push(results[i]);
-    }
-  }
-
-  return merged;
-}
-
-function formatArgsJson(args: unknown): string {
-  if (args == null) {
-    return "";
-  }
-  try {
-    return typeof args === "string" ? args : JSON.stringify(args, null, 2);
-  } catch {
-    return typeof args === "string" ? args : JSON.stringify(args);
-  }
-}
-
-function formatResultJson(text: string | undefined): string {
-  if (!text?.trim()) {
-    return "";
-  }
-  const trimmed = text.trim();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      return JSON.stringify(JSON.parse(trimmed), null, 2);
-    } catch {
-      return text;
-    }
-  }
-  return text;
-}
-
-type ToolStatus = "loading" | "done" | "error";
-
-function detectToolStatus(card: ToolCard, isStreaming = false): ToolStatus {
-  // Call without result while actively streaming → loading
-  if (card.kind === "call" && !card.text && isStreaming) {
-    return "loading";
-  }
-  // Check for error in result text
-  if (card.text?.trim()) {
-    const t = card.text.trim();
-    if (t.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(t);
-        if (parsed.status === "error" || parsed.error || parsed.Error) {
-          return "error";
-        }
-      } catch {
-        // not JSON, not an error
-      }
-    }
-  }
-  return "done";
-}
-
-function statusIcon(status: ToolStatus) {
-  switch (status) {
-    case "loading":
-      return icons.loadingPyramid;
-    case "error":
-      return icons.circleAlert;
-    default:
-      return icons.circleCheckBig;
-  }
-}
-
-export function renderToolCardCollapsible(card: ToolCard, isStreaming = false) {
+export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: string) => void) {
   const display = resolveToolDisplay({ name: card.name, args: card.args });
-  const argsJson = formatArgsJson(card.args);
-  const resultJson = formatResultJson(card.text);
-  const hasArgs = Boolean(argsJson.trim());
-  const hasResult = Boolean(resultJson.trim());
-  const hasDetails = hasArgs || hasResult;
-  const status = detectToolStatus(card, isStreaming);
-  const isError = status === "error";
-  const cardClass = `chat-tool-card ${isError ? "chat-tool-card--error" : ""}`;
+  const detail = formatToolDetail(display);
+  const hasText = Boolean(card.text?.trim());
+
+  const canClick = Boolean(onOpenSidebar);
+  const handleClick = canClick
+    ? () => {
+        if (hasText) {
+          onOpenSidebar!(formatToolOutputForSidebar(card.text!));
+          return;
+        }
+        const info = `## ${display.label}\n\n${
+          detail ? `**Command:** \`${detail}\`\n\n` : ""
+        }*No output — tool completed successfully.*`;
+        onOpenSidebar!(info);
+      }
+    : undefined;
+
+  const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
+  const showCollapsed = hasText && !isShort;
+  const showInline = hasText && isShort;
+  const isEmpty = !hasText;
 
   return html`
-    <div class="${cardClass}">
+    <div
+      class="chat-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
+      @click=${handleClick}
+      role=${canClick ? "button" : nothing}
+      tabindex=${canClick ? "0" : nothing}
+      @keydown=${canClick
+        ? (e: KeyboardEvent) => {
+            if (e.key !== "Enter" && e.key !== " ") {
+              return;
+            }
+            e.preventDefault();
+            handleClick?.();
+          }
+        : nothing}
+    >
       <div class="chat-tool-card__header">
         <div class="chat-tool-card__title">
-          <span class="chat-tool-card__status chat-tool-card__status--${status}">${statusIcon(status)}</span>
-          <span class="${isError ? "chat-tool-card__name--error" : ""}">${display.label}</span>
+          <span class="chat-tool-card__icon">${icons[display.icon]}</span>
+          <span>${display.label}</span>
         </div>
+        ${canClick
+          ? html`<span class="chat-tool-card__action"
+              >${hasText ? "View" : ""} ${icons.check}</span
+            >`
+          : nothing}
+        ${isEmpty && !canClick
+          ? html`<span class="chat-tool-card__status">${icons.check}</span>`
+          : nothing}
       </div>
-      ${
-        hasDetails
-          ? html`
-          <details class="chat-tool-card__details" ?open=${isError}>
-            <summary class="chat-tool-card__summary">
-              <span class="chat-tool-card__summary-label">Tool Details</span>
-              <span class="chat-tool-card__summary-toggle"></span>
-            </summary>
-            <div class="chat-tool-card__body">
-              ${
-                hasArgs
-                  ? html`
-                  <div class="chat-tool-card__section">
-                    <div class="chat-tool-card__section-label">ARGUMENTS</div>
-                    <pre class="chat-tool-card__code-block">${argsJson}</pre>
-                  </div>
-                `
-                  : nothing
-              }
-              ${
-                hasResult
-                  ? html`
-                  <div class="chat-tool-card__section">
-                    <div class="chat-tool-card__section-label">RESULT</div>
-                    <pre class="chat-tool-card__code-block">${resultJson}</pre>
-                  </div>
-                `
-                  : nothing
-              }
-            </div>
-          </details>
-        `
-          : nothing
-      }
+      ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
+      ${isEmpty ? html` <div class="chat-tool-card__status-text muted">Completed</div> ` : nothing}
+      ${showCollapsed
+        ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
+        : nothing}
+      ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
     </div>
   `;
 }

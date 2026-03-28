@@ -1,4 +1,4 @@
-import type { ThemeMode } from "./theme.ts";
+import type { ResolvedTheme } from "./theme.ts";
 
 export type ThemeTransitionContext = {
   element?: HTMLElement | null;
@@ -7,59 +7,19 @@ export type ThemeTransitionContext = {
 };
 
 export type ThemeTransitionOptions = {
-  nextTheme: ThemeMode;
+  nextTheme: ResolvedTheme;
   applyTheme: () => void;
+  // Retained so callers from stacked slices can keep passing pointer metadata
+  // while theme switching remains an immediate, non-animated update here.
   context?: ThemeTransitionContext;
-  currentTheme?: ThemeMode | null;
+  currentTheme?: ResolvedTheme | null;
 };
 
-const TRANSITION_DURATION = 350; // ms
-
-const hasReducedMotionPreference = () => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ?? false;
+const cleanupThemeTransition = (root: HTMLElement) => {
+  root.classList.remove("theme-transition");
+  root.style.removeProperty("--theme-switch-x");
+  root.style.removeProperty("--theme-switch-y");
 };
-
-/**
- * Inject a temporary <style> that forces smooth CSS transitions on ALL elements
- * during the theme switch. Uses !important to override element-level transitions.
- * Automatically removed after the transition completes.
- */
-let _transitionStyle: HTMLStyleElement | null = null;
-let _transitionTimer: ReturnType<typeof setTimeout> | null = null;
-
-function injectTransitionOverride() {
-  if (_transitionTimer) {
-    clearTimeout(_transitionTimer);
-    _transitionTimer = null;
-  }
-
-  if (!_transitionStyle) {
-    _transitionStyle = document.createElement("style");
-    _transitionStyle.setAttribute("data-theme-transition", "");
-    _transitionStyle.textContent = `
-      *, *::before, *::after {
-        transition: background-color ${TRANSITION_DURATION}ms ease,
-                    color ${TRANSITION_DURATION}ms ease,
-                    border-color ${TRANSITION_DURATION}ms ease,
-                    box-shadow ${TRANSITION_DURATION}ms ease,
-                    fill ${TRANSITION_DURATION}ms ease,
-                    stroke ${TRANSITION_DURATION}ms ease !important;
-      }
-    `;
-    document.head.appendChild(_transitionStyle);
-  }
-
-  _transitionTimer = setTimeout(() => {
-    if (_transitionStyle?.parentNode) {
-      _transitionStyle.parentNode.removeChild(_transitionStyle);
-    }
-    _transitionStyle = null;
-    _transitionTimer = null;
-  }, TRANSITION_DURATION + 100);
-}
 
 export const startThemeTransition = ({
   nextTheme,
@@ -67,6 +27,9 @@ export const startThemeTransition = ({
   currentTheme,
 }: ThemeTransitionOptions) => {
   if (currentTheme === nextTheme) {
+    // Even when the resolved palette is unchanged (e.g. system->dark on a dark OS),
+    // we still need to persist the user's explicit selection immediately.
+    applyTheme();
     return;
   }
 
@@ -76,14 +39,8 @@ export const startThemeTransition = ({
     return;
   }
 
-  if (hasReducedMotionPreference()) {
-    applyTheme();
-    return;
-  }
-
-  // Inject transition override, wait one frame for it to apply, then switch theme
-  injectTransitionOverride();
-  requestAnimationFrame(() => {
-    applyTheme();
-  });
+  const root = documentReference.documentElement;
+  // Theme updates should be visible immediately on click with no transition lag.
+  applyTheme();
+  cleanupThemeTransition(root);
 };

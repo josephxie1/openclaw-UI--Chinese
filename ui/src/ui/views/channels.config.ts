@@ -1,6 +1,6 @@
-import { html, nothing } from "lit";
-import { t } from "../../i18n/index.ts";
+import { html } from "lit";
 import type { ConfigUiHints } from "../types.ts";
+import { formatChannelExtraValue, resolveChannelConfigValue } from "./channel-config-extras.ts";
 import type { ChannelsProps } from "./channels.types.ts";
 import { analyzeConfigSchema, renderNode, schemaType, type JsonSchema } from "./config-form.ts";
 
@@ -53,32 +53,10 @@ function resolveChannelValue(
   config: Record<string, unknown>,
   channelId: string,
 ): Record<string, unknown> {
-  const channels = (config.channels ?? {}) as Record<string, unknown>;
-  const fromChannels = channels[channelId];
-  const fallback = config[channelId];
-  const resolved =
-    (fromChannels && typeof fromChannels === "object"
-      ? (fromChannels as Record<string, unknown>)
-      : null) ??
-    (fallback && typeof fallback === "object" ? (fallback as Record<string, unknown>) : null);
-  return resolved ?? {};
+  return resolveChannelConfigValue(config, channelId) ?? {};
 }
 
 const EXTRA_CHANNEL_FIELDS = ["groupPolicy", "streamMode", "dmPolicy"] as const;
-
-function formatExtraValue(raw: unknown): string {
-  if (raw == null) {
-    return "n/a";
-  }
-  if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") {
-    return String(raw);
-  }
-  try {
-    return JSON.stringify(raw);
-  } catch {
-    return "n/a";
-  }
-}
 
 function renderExtraChannelFields(value: Record<string, unknown>) {
   const entries = EXTRA_CHANNEL_FIELDS.flatMap((field) => {
@@ -96,7 +74,7 @@ function renderExtraChannelFields(value: Record<string, unknown>) {
         ([field, raw]) => html`
           <div>
             <span class="label">${field}</span>
-            <span>${formatExtraValue(raw)}</span>
+            <span>${formatChannelExtraValue(raw)}</span>
           </div>
         `,
       )}
@@ -104,146 +82,61 @@ function renderExtraChannelFields(value: Record<string, unknown>) {
   `;
 }
 
-/** Fields shown by default for every channel */
-const BASIC_FIELDS = new Set(["accounts", "enabled"]);
-/** Fields shown by default for each account entry inside accounts */
-const BASIC_ACCOUNT_FIELDS = new Set(["appId", "appSecret", "botName", "enabled", "name"]);
-
-/**
- * Strip advanced sub-fields from the accounts schema so only basic
- * account fields are rendered in the main view.
- */
-function filterAccountSchema(accountsSchema: JsonSchema): JsonSchema {
-  // accounts is a map → additionalProperties is the per-account schema
-  const perAccount = accountsSchema.additionalProperties;
-  if (!perAccount || typeof perAccount !== "object") {
-    return accountsSchema;
-  }
-  const perAccountSchema = perAccount;
-  const props = perAccountSchema.properties;
-  if (!props) {
-    return accountsSchema;
-  }
-  const filtered: Record<string, JsonSchema> = {};
-  for (const [k, v] of Object.entries(props)) {
-    if (BASIC_ACCOUNT_FIELDS.has(k)) {
-      filtered[k] = v;
-    }
-  }
-  return {
-    ...accountsSchema,
-    additionalProperties: { ...perAccountSchema, properties: filtered },
-  };
-}
-
 export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const analysis = analyzeConfigSchema(props.schema);
   const normalized = analysis.schema;
   if (!normalized) {
-    return html`
-      <div class="callout danger">${t("channelsView.schemaUnavailable")}</div>
-    `;
+    return html` <div class="callout danger">Schema unavailable. Use Raw.</div> `;
   }
   const node = resolveSchemaNode(normalized, ["channels", props.channelId]);
   if (!node) {
-    return html`
-      <div class="callout danger">${t("channelsView.channelSchemaUnavailable")}</div>
-    `;
+    return html` <div class="callout danger">Channel config schema unavailable.</div> `;
   }
   const configValue = props.configValue ?? {};
   const value = resolveChannelValue(configValue, props.channelId);
-
-  // Split schema properties into basic and advanced
-  const allProps = node.properties ?? {};
-  const basicProps: Record<string, JsonSchema> = {};
-  const advancedProps: Record<string, JsonSchema> = {};
-  for (const [k, v] of Object.entries(allProps)) {
-    if (BASIC_FIELDS.has(k)) {
-      // For accounts, further filter to only show basic account fields
-      basicProps[k] = k === "accounts" ? filterAccountSchema(v) : v;
-    } else {
-      advancedProps[k] = v;
-    }
-  }
-
-  const basicSchema: JsonSchema = { ...node, properties: basicProps };
-  const advancedSchema: JsonSchema = { ...node, properties: advancedProps };
-
-  const commonOpts = {
-    path: ["channels", props.channelId] as Array<string | number>,
-    hints: props.uiHints,
-    unsupported: new Set(analysis.unsupportedPaths),
-    disabled: props.disabled,
-    showLabel: false,
-    onPatch: props.onPatch,
-  };
-
-  const hasAdvanced = Object.keys(advancedProps).length > 0;
-
   return html`
     <div class="config-form">
-      ${renderNode({ schema: basicSchema, value, ...commonOpts })}
-      ${
-        hasAdvanced
-          ? html`
-            <details class="channel-advanced-section">
-              <summary class="channel-advanced-toggle">
-                <span>${t("channelsView.advancedSettings") ?? "高级设置"}</span>
-                <svg class="channel-advanced-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </summary>
-              <div class="channel-advanced-content">
-                ${renderNode({ schema: advancedSchema, value, ...commonOpts })}
-              </div>
-            </details>
-          `
-          : nothing
-      }
+      ${renderNode({
+        schema: node,
+        value,
+        path: ["channels", props.channelId],
+        hints: props.uiHints,
+        unsupported: new Set(analysis.unsupportedPaths),
+        disabled: props.disabled,
+        showLabel: false,
+        onPatch: props.onPatch,
+      })}
     </div>
     ${renderExtraChannelFields(value)}
   `;
 }
 
-export function renderChannelConfigSection(params: {
-  channelId: string;
-  props: ChannelsProps;
-  extraButtons?: unknown;
-}) {
-  const { channelId, props, extraButtons } = params;
+export function renderChannelConfigSection(params: { channelId: string; props: ChannelsProps }) {
+  const { channelId, props } = params;
   const disabled = props.configSaving || props.configSchemaLoading;
   return html`
-    <div style="margin-top: auto; padding-top: 16px;">
-      ${
-        props.configSchemaLoading
-          ? html`
-              <div class="muted">${t("channelsView.loadingSchema")}</div>
-            `
-          : renderChannelConfigForm({
-              channelId,
-              configValue: props.configForm,
-              schema: props.configSchema,
-              uiHints: props.configUiHints,
-              disabled,
-              onPatch: props.onConfigPatch,
-            })
-      }
-      <div class="row" style="margin-top: 12px; flex-wrap: wrap;">
+    <div style="margin-top: 16px;">
+      ${props.configSchemaLoading
+        ? html` <div class="muted">Loading config schema…</div> `
+        : renderChannelConfigForm({
+            channelId,
+            configValue: props.configForm,
+            schema: props.configSchema,
+            uiHints: props.configUiHints,
+            disabled,
+            onPatch: props.onConfigPatch,
+          })}
+      <div class="row" style="margin-top: 12px;">
         <button
           class="btn primary"
           ?disabled=${disabled || !props.configFormDirty}
           @click=${() => props.onConfigSave()}
         >
-          ${props.configSaving ? t("shared.saving") : t("shared.save")}
+          ${props.configSaving ? "Saving…" : "Save"}
         </button>
-        <button
-          class="btn"
-          ?disabled=${disabled}
-          @click=${() => props.onConfigReload()}
-        >
-          ${t("shared.reload")}
+        <button class="btn" ?disabled=${disabled} @click=${() => props.onConfigReload()}>
+          Reload
         </button>
-        ${extraButtons ?? nothing}
       </div>
     </div>
   `;

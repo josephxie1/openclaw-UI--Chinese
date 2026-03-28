@@ -18,6 +18,10 @@ import type {
 } from "../types.ts";
 import { CRON_CHANNEL_LAST } from "../ui-types.ts";
 import type { CronFormState } from "../ui-types.ts";
+import {
+  formatMissingOperatorReadScopeMessage,
+  isMissingOperatorReadScopeError,
+} from "./scope-errors.ts";
 
 export type CronFieldKey =
   | "name"
@@ -84,7 +88,7 @@ export type CronModelSuggestionsState = {
 export function supportsAnnounceDelivery(
   form: Pick<CronFormState, "sessionTarget" | "payloadKind">,
 ) {
-  return form.sessionTarget === "isolated" && form.payloadKind === "agentTurn";
+  return form.sessionTarget !== "main" && form.payloadKind === "agentTurn";
 }
 
 export function normalizeCronFormState(form: CronFormState): CronFormState {
@@ -183,7 +187,12 @@ export async function loadCronStatus(state: CronState) {
     const res = await state.client.request<CronStatus>("cron.status", {});
     state.cronStatus = res;
   } catch (err) {
-    state.cronError = String(err);
+    if (isMissingOperatorReadScopeError(err)) {
+      state.cronStatus = null;
+      state.cronError = formatMissingOperatorReadScopeMessage("cron status");
+    } else {
+      state.cronError = String(err);
+    }
   }
 }
 
@@ -481,6 +490,12 @@ function jobToForm(job: CronJob, prev: CronFormState): CronFormState {
         ? (failureAlert.channel ?? CRON_CHANNEL_LAST)
         : CRON_CHANNEL_LAST,
     failureAlertTo: failureAlert && typeof failureAlert === "object" ? (failureAlert.to ?? "") : "",
+    failureAlertDeliveryMode:
+      failureAlert && typeof failureAlert === "object"
+        ? (failureAlert.mode ?? "announce")
+        : "announce",
+    failureAlertAccountId:
+      failureAlert && typeof failureAlert === "object" ? (failureAlert.accountId ?? "") : "",
     timeoutSeconds:
       job.payload.kind === "agentTurn" && typeof job.payload.timeoutSeconds === "number"
         ? String(job.payload.timeoutSeconds)
@@ -593,12 +608,21 @@ function buildFailureAlert(form: CronFormState) {
     cooldownSeconds !== undefined && Number.isFinite(cooldownSeconds) && cooldownSeconds >= 0
       ? Math.floor(cooldownSeconds * 1000)
       : undefined;
-  return {
+  const deliveryMode = form.failureAlertDeliveryMode;
+  const accountId = form.failureAlertAccountId.trim();
+  const patch: Record<string, unknown> = {
     after: after > 0 ? Math.floor(after) : undefined,
     channel: form.failureAlertChannel.trim() || CRON_CHANNEL_LAST,
     to: form.failureAlertTo.trim() || undefined,
     ...(cooldownMs !== undefined ? { cooldownMs } : {}),
   };
+  // Always include mode and accountId so users can switch/clear them
+  if (deliveryMode) {
+    patch.mode = deliveryMode;
+  }
+  // Include accountId if explicitly set, or send undefined to allow clearing
+  patch.accountId = accountId || undefined;
+  return patch;
 }
 
 export async function addCronJob(state: CronState) {

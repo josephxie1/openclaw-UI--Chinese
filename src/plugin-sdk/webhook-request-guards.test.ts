@@ -5,7 +5,10 @@ import { createMockServerResponse } from "../test-utils/mock-http-response.js";
 import { createFixedWindowRateLimiter } from "./webhook-memory-guards.js";
 import {
   applyBasicWebhookRequestGuards,
+  beginWebhookRequestPipelineOrReject,
+  createWebhookInFlightLimiter,
   isJsonContentType,
+  readWebhookBodyOrReject,
   readJsonWebhookBodyOrReject,
 } from "./webhook-request-guards.js";
 
@@ -43,15 +46,45 @@ function createMockRequest(params: {
   return req;
 }
 
-describe("isJsonContentType", () => {
-  it("accepts application/json and +json suffixes", () => {
-    expect(isJsonContentType("application/json")).toBe(true);
-    expect(isJsonContentType("application/cloudevents+json; charset=utf-8")).toBe(true);
-  });
+async function readJsonBody(chunks: string[], emptyObjectOnEmpty = false) {
+  const req = createMockRequest({ chunks });
+  const res = createMockServerResponse();
+  return {
+    result: await readJsonWebhookBodyOrReject({
+      req,
+      res,
+      maxBytes: 1024,
+      emptyObjectOnEmpty,
+    }),
+    res,
+  };
+}
 
-  it("rejects non-json media types", () => {
-    expect(isJsonContentType("text/plain")).toBe(false);
-    expect(isJsonContentType(undefined)).toBe(false);
+async function readRawBody(params: Parameters<typeof createMockRequest>[0], profile?: "pre-auth") {
+  const req = createMockRequest(params);
+  const res = createMockServerResponse();
+  return {
+    result: await readWebhookBodyOrReject({
+      req,
+      res,
+      profile,
+    }),
+    res,
+  };
+}
+
+describe("isJsonContentType", () => {
+  it.each([
+    { name: "accepts application/json", input: "application/json", expected: true },
+    {
+      name: "accepts +json suffixes",
+      input: "application/cloudevents+json; charset=utf-8",
+      expected: true,
+    },
+    { name: "rejects non-json media types", input: "text/plain", expected: false },
+    { name: "rejects missing media types", input: undefined, expected: false },
+  ])("$name", ({ input, expected }) => {
+    expect(isJsonContentType(input)).toBe(expected);
   });
 });
 
@@ -100,61 +133,127 @@ describe("applyBasicWebhookRequestGuards", () => {
     expect(res2.statusCode).toBe(429);
   });
 
-  it("rejects non-json requests when required", () => {
-    const req = createMockRequest({
-      method: "POST",
-      headers: { "content-type": "text/plain" },
-    });
+  it.each([
+    {
+      name: "allows matching JSON requests",
+      req: createMockRequest({
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      }),
+      expectedOk: true,
+      expectedStatusCode: 200,
+    },
+    {
+      name: "rejects non-json requests when required",
+      req: createMockRequest({
+        method: "POST",
+        headers: { "content-type": "text/plain" },
+      }),
+      expectedOk: false,
+      expectedStatusCode: 415,
+    },
+  ])("$name", ({ req, expectedOk, expectedStatusCode }) => {
     const res = createMockServerResponse();
     const ok = applyBasicWebhookRequestGuards({
       req,
       res,
       requireJsonContentType: true,
     });
-    expect(ok).toBe(false);
-    expect(res.statusCode).toBe(415);
+    expect(ok).toBe(expectedOk);
+    expect(res.statusCode).toBe(expectedStatusCode);
   });
 });
 
 describe("readJsonWebhookBodyOrReject", () => {
-  it("returns parsed JSON body", async () => {
-    const req = createMockRequest({ chunks: ['{"ok":true}'] });
-    const res = createMockServerResponse();
-    await expect(
-      readJsonWebhookBodyOrReject({
-        req,
-        res,
-        maxBytes: 1024,
-        emptyObjectOnEmpty: false,
-      }),
-    ).resolves.toEqual({ ok: true, value: { ok: true } });
+  it.each([
+    {
+      name: "returns parsed JSON body",
+      chunks: ['{"ok":true}'],
+      expected: { ok: true, value: { ok: true } },
+      expectedStatusCode: 200,
+      expectedBody: undefined,
+    },
+    {
+      name: "preserves valid JSON null payload",
+      chunks: ["null"],
+      expected: { ok: true, value: null },
+      expectedStatusCode: 200,
+      expectedBody: undefined,
+    },
+    {
+      name: "writes 400 on invalid JSON payload",
+      chunks: ["{bad json"],
+      expected: { ok: false },
+      expectedStatusCode: 400,
+      expectedBody: "Bad Request",
+    },
+  ])("$name", async ({ chunks, expected, expectedStatusCode, expectedBody }) => {
+    const { result, res } = await readJsonBody(chunks);
+    expect(result).toEqual(expected);
+    expect(res.statusCode).toBe(expectedStatusCode);
+    expect(res.body).toBe(expectedBody);
+  });
+});
+
+describe("readWebhookBodyOrReject", () => {
+  it("returns raw body contents", async () => {
+    const { result } = await readRawBody({ chunks: ["plain text"] });
+    expect(result).toEqual({ ok: true, value: "plain text" });
   });
 
-  it("preserves valid JSON null payload", async () => {
-    const req = createMockRequest({ chunks: ["null"] });
-    const res = createMockServerResponse();
-    await expect(
-      readJsonWebhookBodyOrReject({
-        req,
-        res,
-        maxBytes: 1024,
-        emptyObjectOnEmpty: false,
-      }),
-    ).resolves.toEqual({ ok: true, value: null });
+  it("enforces strict pre-auth default body limits", async () => {
+    const { result, res } = await readRawBody(
+      {
+        headers: { "content-length": String(70 * 1024) },
+      },
+      "pre-auth",
+    );
+    expect(result).toEqual({ ok: false });
+    expect(res.statusCode).toBe(413);
   });
+});
 
-  it("writes 400 on invalid JSON payload", async () => {
-    const req = createMockRequest({ chunks: ["{bad json"] });
-    const res = createMockServerResponse();
-    await expect(
-      readJsonWebhookBodyOrReject({
-        req,
-        res,
-        maxBytes: 1024,
-        emptyObjectOnEmpty: false,
-      }),
-    ).resolves.toEqual({ ok: false });
-    expect(res.statusCode).toBe(400);
-    expect(res.body).toBe("Bad Request");
+describe("beginWebhookRequestPipelineOrReject", () => {
+  it("enforces in-flight request limits and releases slots", () => {
+    const limiter = createWebhookInFlightLimiter({
+      maxInFlightPerKey: 1,
+      maxTrackedKeys: 10,
+    });
+
+    const first = beginWebhookRequestPipelineOrReject({
+      req: createMockRequest({ method: "POST" }),
+      res: createMockServerResponse(),
+      allowMethods: ["POST"],
+      inFlightLimiter: limiter,
+      inFlightKey: "ip:127.0.0.1",
+    });
+    expect(first.ok).toBe(true);
+
+    const secondRes = createMockServerResponse();
+    const second = beginWebhookRequestPipelineOrReject({
+      req: createMockRequest({ method: "POST" }),
+      res: secondRes,
+      allowMethods: ["POST"],
+      inFlightLimiter: limiter,
+      inFlightKey: "ip:127.0.0.1",
+    });
+    expect(second.ok).toBe(false);
+    expect(secondRes.statusCode).toBe(429);
+
+    if (first.ok) {
+      first.release();
+    }
+
+    const third = beginWebhookRequestPipelineOrReject({
+      req: createMockRequest({ method: "POST" }),
+      res: createMockServerResponse(),
+      allowMethods: ["POST"],
+      inFlightLimiter: limiter,
+      inFlightKey: "ip:127.0.0.1",
+    });
+    expect(third.ok).toBe(true);
+    if (third.ok) {
+      third.release();
+    }
   });
 });

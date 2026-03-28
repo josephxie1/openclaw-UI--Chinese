@@ -13,7 +13,7 @@ const DEFAULT_PROFILE: UserProfile = { name: "User", avatar: null };
 export function getUserProfile(): UserProfile {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_PROFILE };
+    if (!raw) {return { ...DEFAULT_PROFILE };}
     const parsed = JSON.parse(raw) as Partial<UserProfile>;
     return {
       name: typeof parsed.name === "string" && parsed.name.trim() ? parsed.name.trim() : DEFAULT_PROFILE.name,

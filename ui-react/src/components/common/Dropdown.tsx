@@ -49,12 +49,12 @@ function DropdownPanel({
 function findLabel(value: string, items?: DropdownItem[], groups?: DropdownGroup[]): string {
   if (items) {
     const found = items.find((i) => i.value === value);
-    if (found) return found.label;
+    if (found) {return found.label;}
   }
   if (groups) {
     for (const g of groups) {
       const found = g.items.find((i) => i.value === value);
-      if (found) return found.label;
+      if (found) {return found.label;}
     }
   }
   return value;
@@ -83,9 +83,9 @@ export function Dropdown({ value, placeholder, items, groups, disabled, onSelect
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
-    if (!open) return;
+    if (!open) {return;}
     const handleMouseDown = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (triggerRef.current?.contains(e.target as Node)) {return;}
       setOpen(false);
     };
     document.addEventListener("mousedown", handleMouseDown);
@@ -93,7 +93,7 @@ export function Dropdown({ value, placeholder, items, groups, disabled, onSelect
   }, [open]);
 
   const handleToggle = useCallback(() => {
-    if (disabled) return;
+    if (disabled) {return;}
     setOpen((prev) => {
       if (!prev && triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
@@ -106,7 +106,7 @@ export function Dropdown({ value, placeholder, items, groups, disabled, onSelect
   const handleGroupToggle = useCallback((label: string) => {
     setExpanded((prev) => {
       // Mutualmente excluyente: solo un grupo abierto a la vez
-      if (prev.has(label)) return new Set();
+      if (prev.has(label)) {return new Set();}
       return new Set([label]);
     });
   }, []);
@@ -217,9 +217,9 @@ export function MultiDropdown({ values, placeholder, items, groups, disabled, on
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
-    if (!open) return;
+    if (!open) {return;}
     const handleMouseDown = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (triggerRef.current?.contains(e.target as Node)) {return;}
       setOpen(false);
     };
     document.addEventListener("mousedown", handleMouseDown);
@@ -227,7 +227,7 @@ export function MultiDropdown({ values, placeholder, items, groups, disabled, on
   }, [open]);
 
   const handleToggle = useCallback(() => {
-    if (disabled) return;
+    if (disabled) {return;}
     setOpen((prev) => {
       if (!prev && triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
@@ -240,7 +240,7 @@ export function MultiDropdown({ values, placeholder, items, groups, disabled, on
   const handleGroupToggle = useCallback((label: string) => {
     setExpanded((prev) => {
       // Mutualmente excluyente: solo un grupo abierto a la vez
-      if (prev.has(label)) return new Set();
+      if (prev.has(label)) {return new Set();}
       return new Set([label]);
     });
   }, []);

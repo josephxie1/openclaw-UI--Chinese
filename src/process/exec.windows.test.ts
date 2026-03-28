@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const spawnMock = vi.hoisted(() => vi.fn());
 const execFileMock = vi.hoisted(() => vi.fn());
@@ -13,7 +13,8 @@ vi.mock("node:child_process", async (importOriginal) => {
   };
 });
 
-import { runCommandWithTimeout, runExec } from "./exec.js";
+let runCommandWithTimeout: typeof import("./exec.js").runCommandWithTimeout;
+let runExec: typeof import("./exec.js").runExec;
 
 type MockChild = EventEmitter & {
   stdout: EventEmitter;
@@ -41,7 +42,34 @@ function createMockChild(params?: { code?: number; signal?: NodeJS.Signals | nul
   return child;
 }
 
+type SpawnCall = [string, string[], Record<string, unknown>];
+
+type ExecCall = [
+  string,
+  string[],
+  Record<string, unknown>,
+  (err: Error | null, stdout: string, stderr: string) => void,
+];
+
+function expectCmdWrappedInvocation(params: {
+  captured: SpawnCall | ExecCall | undefined;
+  expectedComSpec: string;
+}) {
+  if (!params.captured) {
+    throw new Error("expected command wrapper to be called");
+  }
+  expect(params.captured[0]).toBe(params.expectedComSpec);
+  expect(params.captured[1].slice(0, 3)).toEqual(["/d", "/s", "/c"]);
+  expect(params.captured[1][3]).toContain("pnpm.cmd --version");
+  expect(params.captured[2].windowsVerbatimArguments).toBe(true);
+}
+
 describe("windows command wrapper behavior", () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ runCommandWithTimeout, runExec } = await import("./exec.js"));
+  });
+
   afterEach(() => {
     spawnMock.mockReset();
     execFileMock.mockReset();
@@ -59,16 +87,8 @@ describe("windows command wrapper behavior", () => {
     try {
       const result = await runCommandWithTimeout(["pnpm", "--version"], { timeoutMs: 1000 });
       expect(result.code).toBe(0);
-      const captured = spawnMock.mock.calls[0] as
-        | [string, string[], Record<string, unknown>]
-        | undefined;
-      if (!captured) {
-        throw new Error("spawn mock was not called");
-      }
-      expect(captured[0]).toBe(expectedComSpec);
-      expect(captured[1].slice(0, 3)).toEqual(["/d", "/s", "/c"]);
-      expect(captured[1][3]).toContain("pnpm.cmd --version");
-      expect(captured[2].windowsVerbatimArguments).toBe(true);
+      const captured = spawnMock.mock.calls[0] as SpawnCall | undefined;
+      expectCmdWrappedInvocation({ captured, expectedComSpec });
     } finally {
       platformSpy.mockRestore();
     }
@@ -91,21 +111,8 @@ describe("windows command wrapper behavior", () => {
 
     try {
       await runExec("pnpm", ["--version"], 1000);
-      const captured = execFileMock.mock.calls[0] as
-        | [
-            string,
-            string[],
-            Record<string, unknown>,
-            (err: Error | null, stdout: string, stderr: string) => void,
-          ]
-        | undefined;
-      if (!captured) {
-        throw new Error("execFile mock was not called");
-      }
-      expect(captured[0]).toBe(expectedComSpec);
-      expect(captured[1].slice(0, 3)).toEqual(["/d", "/s", "/c"]);
-      expect(captured[1][3]).toContain("pnpm.cmd --version");
-      expect(captured[2].windowsVerbatimArguments).toBe(true);
+      const captured = execFileMock.mock.calls[0] as ExecCall | undefined;
+      expectCmdWrappedInvocation({ captured, expectedComSpec });
     } finally {
       platformSpy.mockRestore();
     }

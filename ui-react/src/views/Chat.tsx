@@ -395,27 +395,27 @@ function ComposeModelSelector() {
 
   // Obtener el modelo actual de la sesión activa
   const currentModel = React.useMemo(() => {
-    if (!sessionsResult?.sessions || !sessionKey) return null;
+    if (!sessionsResult?.sessions || !sessionKey) {return null;}
     const session = sessionsResult.sessions.find((s) => s.key === sessionKey);
     return session?.model ?? null;
   }, [sessionsResult, sessionKey]);
 
   // Cargar modelos vía RPC al abrir el dropdown
   useEffect(() => {
-    if (!open || !client || !connected) return;
+    if (!open || !client || !connected) {return;}
     client.request("models.list", {}).then((res) => {
       const payload = res as { models?: ModelEntry[] } | null;
-      if (!Array.isArray(payload?.models)) return;
+      if (!Array.isArray(payload?.models)) {return;}
       const byProvider = new Map<string, ModelEntry[]>();
-      for (const m of payload!.models) {
-        if (!m?.provider || !m?.id) continue;
+      for (const m of payload.models) {
+        if (!m?.provider || !m?.id) {continue;}
         const list = byProvider.get(m.provider) ?? [];
         list.push(m);
         byProvider.set(m.provider, list);
       }
       const result: GroupedModels[] = [];
       for (const [provider, models] of byProvider) {
-        result.push({ provider, models: models.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)) });
+        result.push({ provider, models: models.toSorted((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)) });
       }
       result.sort((a, b) => a.provider.localeCompare(b.provider));
       setGroups(result);
@@ -424,7 +424,7 @@ function ComposeModelSelector() {
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
-    if (!open) return;
+    if (!open) {return;}
     const handleClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -438,7 +438,7 @@ function ComposeModelSelector() {
     setOpen(false);
     const rs = getReactiveState();
     const key = rs.sessionKey;
-    if (!key) return;
+    if (!key) {return;}
     void patchSession(rs as never, key, { model: `${provider}/${modelId}` });
   }, []);
 
@@ -685,7 +685,7 @@ export function ChatView() {
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
-      if (!files || files.length === 0) return;
+      if (!files || files.length === 0) {return;}
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const reader = new FileReader();

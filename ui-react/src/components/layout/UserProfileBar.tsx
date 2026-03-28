@@ -49,9 +49,9 @@ const LOCALE_LABELS: Record<string, string> = {
 
 /** Convertir icono Lit TemplateResult a HTML string */
 function litIconToHtml(icon: unknown): string {
-  if (!icon || typeof icon !== "object") return "";
+  if (!icon || typeof icon !== "object") {return "";}
   const tmpl = icon as { strings?: readonly string[]; values?: unknown[] };
-  if (!tmpl.strings) return "";
+  if (!tmpl.strings) {return "";}
   let result = "";
   for (let i = 0; i < tmpl.strings.length; i++) {
     result += tmpl.strings[i];
@@ -93,7 +93,7 @@ export function UserProfileBar() {
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) {return;}
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       const insideMenu = menuRef.current?.contains(target);
@@ -201,7 +201,7 @@ export function UserProfileBar() {
               style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void handleAvatarUpload(file);
+                if (file) {void handleAvatarUpload(file);}
                 e.target.value = "";
               }}
             />
@@ -213,7 +213,7 @@ export function UserProfileBar() {
                 onChange={(e) => setNameInput(e.target.value)}
                 onBlur={handleNameSave}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleNameSave();
+                  if (e.key === "Enter") {handleNameSave();}
                   if (e.key === "Escape") {
                     setNameInput(profile.name);
                     setEditingName(false);

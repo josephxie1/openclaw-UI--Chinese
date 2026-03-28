@@ -5,10 +5,22 @@ export const TAB_GROUPS = [
   { label: "chat", tabs: ["chat"] },
   {
     label: "control",
-    tabs: ["overview", "models", "channels", "instances", "sessions", "usage", "cron"],
+    tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"],
   },
-  { label: "agent", tabs: ["agents", "skills", "clawhub", "nodes"] },
-  { label: "settings", tabs: ["agents-config", "config", "json-edit", "debug", "logs"] },
+  { label: "agent", tabs: ["agents", "skills", "nodes"] },
+  {
+    label: "settings",
+    tabs: [
+      "config",
+      "communications",
+      "appearance",
+      "automation",
+      "infrastructure",
+      "aiAgents",
+      "debug",
+      "logs",
+    ],
+  },
 ] as const;
 
 export type Tab =
@@ -20,13 +32,14 @@ export type Tab =
   | "usage"
   | "cron"
   | "skills"
-  | "clawhub"
   | "nodes"
   | "chat"
   | "config"
-  | "json-edit"
-  | "models"
-  | "agents-config"
+  | "communications"
+  | "appearance"
+  | "automation"
+  | "infrastructure"
+  | "aiAgents"
   | "debug"
   | "logs";
 
@@ -39,13 +52,14 @@ const TAB_PATHS: Record<Tab, string> = {
   usage: "/usage",
   cron: "/cron",
   skills: "/skills",
-  clawhub: "/clawhub",
   nodes: "/nodes",
   chat: "/chat",
   config: "/config",
-  "json-edit": "/json-edit",
-  models: "/models",
-  "agents-config": "/agents-config",
+  communications: "/communications",
+  appearance: "/appearance",
+  automation: "/automation",
+  infrastructure: "/infrastructure",
+  aiAgents: "/ai-agents",
   debug: "/debug",
   logs: "/logs",
 };
@@ -151,18 +165,20 @@ export function iconForTab(tab: Tab): IconName {
       return "loader";
     case "skills":
       return "zap";
-    case "clawhub":
-      return "globe";
     case "nodes":
       return "monitor";
     case "config":
       return "settings";
-    case "json-edit":
-      return "fileCode";
-    case "models":
-      return "cube";
-    case "agents-config":
-      return "puzzle";
+    case "communications":
+      return "send";
+    case "appearance":
+      return "spark";
+    case "automation":
+      return "terminal";
+    case "infrastructure":
+      return "globe";
+    case "aiAgents":
+      return "brain";
     case "debug":
       return "bug";
     case "logs":

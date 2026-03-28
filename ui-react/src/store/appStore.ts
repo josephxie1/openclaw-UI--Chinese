@@ -46,10 +46,10 @@ function resolveOnboardingMode(): boolean {
   const desktop = (window as unknown as Record<string, unknown>).desktop as
     | { isOnboarding?: boolean }
     | undefined;
-  if (desktop?.isOnboarding) return true;
-  if (!window.location.search) return false;
+  if (desktop?.isOnboarding) {return true;}
+  if (!window.location.search) {return false;}
   const p = new URLSearchParams(window.location.search).get("onboarding");
-  if (!p) return false;
+  if (!p) {return false;}
   const n = p.trim().toLowerCase();
   return n === "1" || n === "true" || n === "yes" || n === "on";
 }
@@ -799,7 +799,7 @@ let _flushScheduled = false;
 
 function flushPatch() {
   _flushScheduled = false;
-  if (Object.keys(_pendingPatch).length === 0) return;
+  if (Object.keys(_pendingPatch).length === 0) {return;}
   const patch = _pendingPatch;
   _pendingPatch = {};
   useAppStore.setState((s) => ({ ...s, ...patch }));
@@ -820,11 +820,11 @@ export function flushReactiveState() {
  * so Lit-style mutation patterns trigger React re-renders.
  */
 export function getReactiveState(): AppState & AppActions {
-  if (_reactiveProxy) return _reactiveProxy;
+  if (_reactiveProxy) {return _reactiveProxy;}
   _reactiveProxy = new Proxy({} as AppState & AppActions, {
     get(_target, prop, _receiver) {
       // Prefer pending patch values (for reads-after-writes within the same task)
-      if (prop in _pendingPatch) return _pendingPatch[prop as string];
+      if (prop in _pendingPatch) {return _pendingPatch[prop as string];}
       return (useAppStore.getState() as Record<string, unknown>)[prop as string];
     },
     set(_target, prop, value) {
@@ -836,7 +836,7 @@ export function getReactiveState(): AppState & AppActions {
       return true;
     },
     has(_target, prop) {
-      if (prop in _pendingPatch) return true;
+      if (prop in _pendingPatch) {return true;}
       return prop in useAppStore.getState();
     },
   });

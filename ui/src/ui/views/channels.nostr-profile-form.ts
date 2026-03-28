@@ -5,7 +5,6 @@
  */
 
 import { html, nothing, type TemplateResult } from "lit";
-import { t } from "../../i18n/index.ts";
 import type { NostrProfile as NostrProfileType } from "../types.ts";
 
 // ============================================================================
@@ -102,15 +101,23 @@ export function renderNostrProfileForm(params: {
             placeholder=${placeholder ?? ""}
             maxlength=${maxLength ?? 2000}
             rows="3"
-            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; resize: vertical; font-family: inherit;"
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical; font-family: inherit;"
             @input=${(e: InputEvent) => {
               const target = e.target as HTMLTextAreaElement;
               callbacks.onFieldChange(field, target.value);
             }}
             ?disabled=${state.saving}
           ></textarea>
-          ${help ? html`<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${help}</div>` : nothing}
-          ${error ? html`<div style="font-size: 12px; color: var(--danger-color); margin-top: 2px;">${error}</div>` : nothing}
+          ${help
+            ? html`<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                ${help}
+              </div>`
+            : nothing}
+          ${error
+            ? html`<div style="font-size: 12px; color: var(--danger-color); margin-top: 2px;">
+                ${error}
+              </div>`
+            : nothing}
         </div>
       `;
     }
@@ -126,15 +133,23 @@ export function renderNostrProfileForm(params: {
           .value=${value}
           placeholder=${placeholder ?? ""}
           maxlength=${maxLength ?? 256}
-          style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;"
+          style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm);"
           @input=${(e: InputEvent) => {
             const target = e.target as HTMLInputElement;
             callbacks.onFieldChange(field, target.value);
           }}
           ?disabled=${state.saving}
         />
-        ${help ? html`<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${help}</div>` : nothing}
-        ${error ? html`<div style="font-size: 12px; color: var(--danger-color); margin-top: 2px;">${error}</div>` : nothing}
+        ${help
+          ? html`<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              ${help}
+            </div>`
+          : nothing}
+        ${error
+          ? html`<div style="font-size: 12px; color: var(--danger-color); margin-top: 2px;">
+              ${error}
+            </div>`
+          : nothing}
       </div>
     `;
   };
@@ -149,7 +164,7 @@ export function renderNostrProfileForm(params: {
       <div style="margin-bottom: 12px;">
         <img
           src=${picture}
-          alt="${t("channelsView.profilePicPreview")}"
+          alt="Profile picture preview"
           style="max-width: 80px; max-height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);"
           @error=${(e: Event) => {
             const img = e.target as HTMLImageElement;
@@ -165,81 +180,75 @@ export function renderNostrProfileForm(params: {
   };
 
   return html`
-    <div class="nostr-profile-form" style="padding: 16px; background: var(--bg-secondary); border-radius: 8px; margin-top: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 16px;">${t("channelsView.editProfile")}</div>
+    <div
+      class="nostr-profile-form"
+      style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-top: 12px;"
+    >
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;"
+      >
+        <div style="font-weight: 600; font-size: 16px;">Edit Profile</div>
         <div style="font-size: 12px; color: var(--text-muted);">Account: ${accountId}</div>
       </div>
 
-      ${
-        state.error
-          ? html`<div class="callout danger" style="margin-bottom: 12px;">${state.error}</div>`
-          : nothing
-      }
-
-      ${
-        state.success
-          ? html`<div class="callout success" style="margin-bottom: 12px;">${state.success}</div>`
-          : nothing
-      }
-
+      ${state.error
+        ? html`<div class="callout danger" style="margin-bottom: 12px;">${state.error}</div>`
+        : nothing}
+      ${state.success
+        ? html`<div class="callout success" style="margin-bottom: 12px;">${state.success}</div>`
+        : nothing}
       ${renderPicturePreview()}
-
-      ${renderField("name", t("channelsView.username"), {
+      ${renderField("name", "Username", {
         placeholder: "satoshi",
         maxLength: 256,
+        help: "Short username (e.g., satoshi)",
       })}
-
-      ${renderField("displayName", t("channelsView.displayName"), {
+      ${renderField("displayName", "Display Name", {
         placeholder: "Satoshi Nakamoto",
         maxLength: 256,
-        help: t("channelsView.yourFullDisplayName"),
+        help: "Your full display name",
       })}
-
-      ${renderField("about", t("channelsView.bio"), {
+      ${renderField("about", "Bio", {
         type: "textarea",
         placeholder: "Tell people about yourself...",
         maxLength: 2000,
-        help: t("channelsView.briefBio"),
+        help: "A brief bio or description",
       })}
-
-      ${renderField("picture", t("channelsView.avatarUrl"), {
+      ${renderField("picture", "Avatar URL", {
         type: "url",
         placeholder: "https://example.com/avatar.jpg",
-        help: t("channelsView.profilePicUrl"),
+        help: "HTTPS URL to your profile picture",
       })}
+      ${state.showAdvanced
+        ? html`
+            <div
+              style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;"
+            >
+              <div style="font-weight: 500; margin-bottom: 12px; color: var(--text-muted);">
+                Advanced
+              </div>
 
-      ${
-        state.showAdvanced
-          ? html`
-            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
-              <div style="font-weight: 500; margin-bottom: 12px; color: var(--text-muted);">Advanced</div>
-
-              ${renderField("banner", t("channelsView.bannerUrl"), {
+              ${renderField("banner", "Banner URL", {
                 type: "url",
                 placeholder: "https://example.com/banner.jpg",
-                help: t("channelsView.bannerImgUrl"),
+                help: "HTTPS URL to a banner image",
               })}
-
-              ${renderField("website", t("channelsView.website"), {
+              ${renderField("website", "Website", {
                 type: "url",
                 placeholder: "https://example.com",
-                help: t("channelsView.personalWebsite"),
+                help: "Your personal website",
               })}
-
               ${renderField("nip05", "NIP-05 Identifier", {
                 placeholder: "you@example.com",
                 help: "Verifiable identifier (e.g., you@domain.com)",
               })}
-
-              ${renderField("lud16", t("channelsView.lightningAddress"), {
+              ${renderField("lud16", "Lightning Address", {
                 placeholder: "you@getalby.com",
                 help: "Lightning address for tips (LUD-16)",
               })}
             </div>
           `
-          : nothing
-      }
+        : nothing}
 
       <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
         <button
@@ -247,7 +256,7 @@ export function renderNostrProfileForm(params: {
           @click=${callbacks.onSave}
           ?disabled=${state.saving || !isDirty}
         >
-          ${state.saving ? t("shared.saving") : t("channelsView.savePublish")}
+          ${state.saving ? "Saving..." : "Save & Publish"}
         </button>
 
         <button
@@ -255,34 +264,23 @@ export function renderNostrProfileForm(params: {
           @click=${callbacks.onImport}
           ?disabled=${state.importing || state.saving}
         >
-          ${state.importing ? t("channelsView.importing") : t("channelsView.importFromRelays")}
+          ${state.importing ? "Importing..." : "Import from Relays"}
         </button>
 
-        <button
-          class="btn"
-          @click=${callbacks.onToggleAdvanced}
-        >
-          ${state.showAdvanced ? t("channelsView.hideAdvanced") : t("channelsView.showAdvanced")}
+        <button class="btn" @click=${callbacks.onToggleAdvanced}>
+          ${state.showAdvanced ? "Hide Advanced" : "Show Advanced"}
         </button>
 
-        <button
-          class="btn"
-          @click=${callbacks.onCancel}
-          ?disabled=${state.saving}
-        >
-          ${t("channelsView.cancel")}
-        </button>
+        <button class="btn" @click=${callbacks.onCancel} ?disabled=${state.saving}>Cancel</button>
       </div>
 
-      ${
-        isDirty
-          ? html`
-              <div style="font-size: 12px; color: var(--warning-color); margin-top: 8px">
-                ${t("shared.unsavedChanges")}
-              </div>
-            `
-          : nothing
-      }
+      ${isDirty
+        ? html`
+            <div style="font-size: 12px; color: var(--warning-color); margin-top: 8px">
+              You have unsaved changes
+            </div>
+          `
+        : nothing}
     </div>
   `;
 }

@@ -9,27 +9,29 @@ import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
 import type { UiSettings } from "./storage.ts";
 import type { ThemeTransitionContext } from "./theme-transition.ts";
-import type { ThemeMode } from "./theme.ts";
+import type { ResolvedTheme, ThemeMode, ThemeName } from "./theme.ts";
 import type {
   AgentsListResult,
   AgentsFilesListResult,
   AgentIdentityResult,
+  AttentionItem,
   ChannelsStatusSnapshot,
   ConfigSnapshot,
   ConfigUiHints,
-  HealthSnapshot,
+  HealthSummary,
   LogEntry,
   LogLevel,
+  ChatModelOverride,
+  ModelCatalogEntry,
   NostrProfile,
   PresenceEntry,
-  SessionActivityResult,
   SessionsUsageResult,
   CostUsageSummary,
   SessionUsageTimeSeries,
   SessionsListResult,
   SkillStatusReport,
-  ToolsCatalogResult,
   StatusSummary,
+  ToolsCatalogResult,
 } from "./types.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
@@ -38,19 +40,16 @@ import type { SessionLogEntry } from "./views/usage.ts";
 export type AppViewState = {
   settings: UiSettings;
   password: string;
+  loginShowGatewayToken: boolean;
+  loginShowGatewayPassword: boolean;
   tab: Tab;
   onboarding: boolean;
-  wizardStep: number;
-  wizardDirection: number;
-  wizardAnimating: boolean;
-  wizardPresetDropdownOpen: boolean;
-  wizardModelDropdownOpen: boolean;
-  wizardApiKeyVisible: boolean;
-  wizardSaving: boolean;
   basePath: string;
   connected: boolean;
-  theme: ThemeMode;
-  themeResolved: "light" | "dark";
+  theme: ThemeName;
+  themeMode: ThemeMode;
+  themeResolved: ResolvedTheme;
+  themeOrder: ThemeName[];
   hello: GatewayHelloOk | null;
   lastError: string | null;
   lastErrorCode: string | null;
@@ -65,6 +64,7 @@ export type AppViewState = {
   chatAttachments: ChatAttachment[];
   chatMessages: unknown[];
   chatToolMessages: unknown[];
+  chatStreamSegments: Array<{ text: string; ts: number }>;
   chatStream: string | null;
   chatStreamStartedAt: number | null;
   chatRunId: string | null;
@@ -72,11 +72,15 @@ export type AppViewState = {
   fallbackStatus: FallbackStatus | null;
   chatAvatarUrl: string | null;
   chatThinkingLevel: string | null;
+  chatModelOverrides: Record<string, ChatModelOverride | null>;
+  chatModelsLoading: boolean;
+  chatModelCatalog: ModelCatalogEntry[];
   chatQueue: ChatQueueItem[];
   chatManualRefreshInFlight: boolean;
   nodesLoading: boolean;
   nodes: Array<Record<string, unknown>>;
   chatNewMessagesBelow: boolean;
+  navDrawerOpen: boolean;
   sidebarOpen: boolean;
   sidebarContent: string | null;
   sidebarError: string | null;
@@ -110,46 +114,33 @@ export type AppViewState = {
   configSchema: unknown;
   configSchemaVersion: string | null;
   configSchemaLoading: boolean;
-  pluginSchemaCache: Record<string, unknown>;
-  pluginSchemaLoading: Set<string>;
   configUiHints: ConfigUiHints;
   configForm: Record<string, unknown> | null;
   configFormOriginal: Record<string, unknown> | null;
-  configRawLoading: boolean;
   configFormMode: "form" | "raw";
   configSearchQuery: string;
   configActiveSection: string | null;
   configActiveSubsection: string | null;
-  modelsActiveSubsection: string | null;
-  agentsConfigActiveSubsection: string | null;
-  modelsQuickAddExpanded: boolean;
-  modelsQuickAddForm: {
-    provider: string;
-    baseUrl: string;
-    api: string;
-    apiKey: string;
-    models: Array<{ id: string; name: string; supportsImage?: boolean }>;
-  };
-  modelsQuickAddBusy: boolean;
-  modelsQuickAddError: string | null;
-  modelsQuickAddPreset: string;
-  modelsQuickAddSelectedIds: string[];
-  channelQuickAddExpanded: boolean;
-  channelQuickAddBusy: boolean;
-  channelQuickAddError: string | null;
-  channelQuickAddForm: {
-    channelType: "telegram" | "feishu";
-    accountId: string;
-    botToken: string;
-    appId: string;
-    appSecret: string;
-    botName: string;
-    createAgent: boolean;
-    agentId: string;
-    agentName: string;
-    agentEmoji: string;
-    agentModel: string;
-  };
+  communicationsFormMode: "form" | "raw";
+  communicationsSearchQuery: string;
+  communicationsActiveSection: string | null;
+  communicationsActiveSubsection: string | null;
+  appearanceFormMode: "form" | "raw";
+  appearanceSearchQuery: string;
+  appearanceActiveSection: string | null;
+  appearanceActiveSubsection: string | null;
+  automationFormMode: "form" | "raw";
+  automationSearchQuery: string;
+  automationActiveSection: string | null;
+  automationActiveSubsection: string | null;
+  infrastructureFormMode: "form" | "raw";
+  infrastructureSearchQuery: string;
+  infrastructureActiveSection: string | null;
+  infrastructureActiveSubsection: string | null;
+  aiAgentsFormMode: "form" | "raw";
+  aiAgentsSearchQuery: string;
+  aiAgentsActiveSection: string | null;
+  aiAgentsActiveSubsection: string | null;
   channelsLoading: boolean;
   channelsSnapshot: ChannelsStatusSnapshot | null;
   channelsError: string | null;
@@ -165,9 +156,6 @@ export type AppViewState = {
   presenceEntries: PresenceEntry[];
   presenceError: string | null;
   presenceStatus: string | null;
-  channelPairingsLoading: boolean;
-  channelPairings: import("./controllers/channel-pairing.ts").ChannelPairingGroup[];
-  channelPairingsError: string | null;
   agentsLoading: boolean;
   agentsList: AgentsListResult | null;
   agentsError: string | null;
@@ -175,14 +163,12 @@ export type AppViewState = {
   toolsCatalogLoading: boolean;
   toolsCatalogError: string | null;
   toolsCatalogResult: ToolsCatalogResult | null;
+  toolsEffectiveLoading: boolean;
+  toolsEffectiveLoadingKey: string | null;
+  toolsEffectiveResultKey: string | null;
+  toolsEffectiveError: string | null;
+  toolsEffectiveResult: import("./types.js").ToolsEffectiveResult | null;
   agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron";
-  modelDropdownOpen: boolean;
-  modelDropdownExpandedGroups: Set<string>;
-  fallbackDropdownOpen: boolean;
-  fallbackDropdownExpandedGroups: Set<string>;
-  chAgentDropdownOpen: boolean;
-  chModelDropdownOpen: boolean;
-  chModelDropdownExpandedGroups: Set<string>;
   agentFilesLoading: boolean;
   agentFilesError: string | null;
   agentFilesList: AgentsFilesListResult | null;
@@ -200,15 +186,17 @@ export type AppViewState = {
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;
-  sessionActivity: SessionActivityResult | null;
-  overviewCostDaily: CostUsageSummary | null;
-  overviewUsageResult: SessionsUsageResult | null;
-  overviewWeekUsageResult: SessionsUsageResult | null;
   sessionsFilterActive: string;
   sessionsFilterLimit: string;
   sessionsIncludeGlobal: boolean;
   sessionsIncludeUnknown: boolean;
   sessionsHideCron: boolean;
+  sessionsSearchQuery: string;
+  sessionsSortColumn: "key" | "kind" | "updated" | "tokens";
+  sessionsSortDir: "asc" | "desc";
+  sessionsPage: number;
+  sessionsPageSize: number;
+  sessionsSelectedKeys: Set<string>;
   usageLoading: boolean;
   usageResult: SessionsUsageResult | null;
   usageCostSummary: CostUsageSummary | null;
@@ -284,23 +272,18 @@ export type AppViewState = {
     skillsReport: SkillStatusReport | null;
     skillsError: string | null;
     skillsFilter: string;
+    skillsStatusFilter: "all" | "ready" | "needs-setup" | "disabled";
     skillEdits: Record<string, string>;
     skillMessages: Record<string, SkillMessage>;
     skillsBusyKey: string | null;
-    // ClawHub marketplace
-    clawhubQuery: string;
-    clawhubResults: unknown[];
-    clawhubLoading: boolean;
-    clawhubInstalling: string | null;
-    clawhubError: string | null;
-    clawhubMessage: string | null;
-    clawhubTokenMasked: string | null;
-    clawhubTokenDraft: string;
-    clawhubTokenSaving: boolean;
+    skillsDetailKey: string | null;
+    healthLoading: boolean;
+    healthResult: HealthSummary | null;
+    healthError: string | null;
     debugLoading: boolean;
     debugStatus: StatusSummary | null;
-    debugHealth: HealthSnapshot | null;
-    debugModels: unknown[];
+    debugHealth: HealthSummary | null;
+    debugModels: ModelCatalogEntry[];
     debugHeartbeat: unknown;
     debugCallMethod: string;
     debugCallParams: string;
@@ -320,11 +303,22 @@ export type AppViewState = {
     logsMaxBytes: number;
     logsAtBottom: boolean;
     updateAvailable: import("./types.js").UpdateAvailable | null;
+    attentionItems: AttentionItem[];
+    paletteOpen: boolean;
+    paletteQuery: string;
+    paletteActiveIndex: number;
+    streamMode: boolean;
+    overviewShowGatewayToken: boolean;
+    overviewShowGatewayPassword: boolean;
+    overviewLogLines: string[];
+    overviewLogCursor: number;
     client: GatewayBrowserClient | null;
     refreshSessionsAfterChat: Set<string>;
     connect: () => void;
     setTab: (tab: Tab) => void;
-    setTheme: (theme: ThemeMode, context?: ThemeTransitionContext) => void;
+    setTheme: (theme: ThemeName, context?: ThemeTransitionContext) => void;
+    setThemeMode: (mode: ThemeMode, context?: ThemeTransitionContext) => void;
+    setBorderRadius: (value: number) => void;
     applySettings: (next: UiSettings) => void;
     loadOverview: () => Promise<void>;
     loadAssistantIdentity: () => Promise<void>;
@@ -370,7 +364,6 @@ export type AppViewState = {
     handleDebugCall: () => Promise<void>;
     handleRunUpdate: () => Promise<void>;
     setPassword: (next: string) => void;
-    setSessionKey: (next: string) => void;
     setChatMessage: (next: string) => void;
     handleSendChat: (messageOverride?: string, opts?: { restoreDraft?: boolean }) => Promise<void>;
     handleAbortChat: () => Promise<void>;

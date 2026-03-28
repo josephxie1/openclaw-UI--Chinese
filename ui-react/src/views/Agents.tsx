@@ -90,12 +90,12 @@ export function AgentsView() {
 
   // Resolve agent item schema for the drawer
   const analysis = React.useMemo(() => analyzeConfigSchema(configSchema), [configSchema]);
-  const agentsSchema = analysis.schema?.properties?.agents as JsonSchema | undefined;
-  const listSchema = agentsSchema?.properties?.list as JsonSchema | undefined;
+  const agentsSchema = analysis.schema?.properties?.agents;
+  const listSchema = agentsSchema?.properties?.list;
   const itemSchema = listSchema?.items && !Array.isArray(listSchema.items)
     ? listSchema.items
     : undefined;
-  const defaultsSchema = agentsSchema?.properties?.defaults as JsonSchema | undefined;
+  const defaultsSchema = agentsSchema?.properties?.defaults;
   const defaults = ((configForm?.agents as Record<string, unknown> | undefined)?.defaults ?? {}) as Record<string, unknown>;
 
   // Find agent index and data for drawer
@@ -164,7 +164,7 @@ export function AgentsView() {
         // ─── Callbacks ──────────────────────────────────────────
         onSelectAgent: (id: string) => {
           const state = s.getState();
-          if (state.agentsSelectedId === id) return;
+          if (state.agentsSelectedId === id) {return;}
           // Resetear estado de archivos y habilidades del agente anterior
           set({
             agentsSelectedId: id,
@@ -181,9 +181,9 @@ export function AgentsView() {
           void loadAgentIdentity(getReactiveState() as never, id);
           // Pre-cargar datos según el panel activo
           const panel = s.getState().agentsPanel;
-          if (panel === "tools") void loadToolsCatalog(getReactiveState() as never);
-          if (panel === "files") void loadAgentFiles(getReactiveState() as never, id);
-          if (panel === "skills") void loadAgentSkills(getReactiveState() as never, id);
+          if (panel === "tools") {void loadToolsCatalog(getReactiveState() as never);}
+          if (panel === "files") {void loadAgentFiles(getReactiveState() as never, id);}
+          if (panel === "skills") {void loadAgentSkills(getReactiveState() as never, id);}
         },
         onSelectPanel: (panel: AgentsPanel) => {
           set({ agentsPanel: panel });
@@ -203,10 +203,10 @@ export function AgentsView() {
               void loadAgentFiles(getReactiveState() as never, agentId);
             }
           }
-          if (panel === "tools") void loadToolsCatalog(getReactiveState() as never);
-          if (panel === "skills" && agentId) void loadAgentSkills(getReactiveState() as never, agentId);
-          if (panel === "channels") void loadChannels(getReactiveState() as never, false);
-          if (panel === "cron") void loadCron(getReactiveState() as never);
+          if (panel === "tools") {void loadToolsCatalog(getReactiveState() as never);}
+          if (panel === "skills" && agentId) {void loadAgentSkills(getReactiveState() as never, agentId);}
+          if (panel === "channels") {void loadChannels(getReactiveState() as never, false);}
+          if (panel === "cron") {void loadCron(getReactiveState() as never);}
           if (panel === "config") {
             // Cargar schema si no está disponible y abrir drawer
             const rs = getReactiveState();
@@ -224,7 +224,7 @@ export function AgentsView() {
           const nextSelected = rs.agentsSelectedId ?? rs.agentsList?.defaultId ?? rs.agentsList?.agents?.[0]?.id ?? null;
           await loadToolsCatalog(getReactiveState() as never, nextSelected);
           const agentIds = rs.agentsList?.agents?.map((entry) => entry.id) ?? [];
-          if (agentIds.length > 0) void loadAgentIdentities(getReactiveState() as never, agentIds);
+          if (agentIds.length > 0) {void loadAgentIdentities(getReactiveState() as never, agentIds);}
         },
         onConfigReload: () => void loadConfig(getReactiveState() as never),
         onConfigSave: () => void saveConfig(getReactiveState() as never),
@@ -236,7 +236,7 @@ export function AgentsView() {
         onSelectFile: (path: string) => {
           set({ agentFileActive: path });
           const agentId = s.getState().agentsSelectedId;
-          if (agentId) void loadAgentFileContent(getReactiveState() as never, agentId, path);
+          if (agentId) {void loadAgentFileContent(getReactiveState() as never, agentId, path);}
         },
         onFileDraftChange: (path: string, content: string) =>
           set({ agentFileDrafts: { ...s.getState().agentFileDrafts, [path]: content } }),
@@ -248,31 +248,31 @@ export function AgentsView() {
           const state = s.getState();
           const agentId = state.agentsSelectedId;
           const content = state.agentFileDrafts[name] ?? state.agentFileContents[name] ?? "";
-          if (agentId) void saveAgentFile(getReactiveState() as never, agentId, name, content);
+          if (agentId) {void saveAgentFile(getReactiveState() as never, agentId, name, content);}
         },
         // Herramientas callbacks
         onToolsProfileChange: (agentId: string, profile: string | null, clearAllow: boolean) => {
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           const basePath = ["agents", "list", index, "tools"];
           if (profile) {
             updateConfigFormValue(rs as never, [...basePath, "profile"], profile);
           } else {
             removeConfigFormValue(rs as never, [...basePath, "profile"]);
           }
-          if (clearAllow) removeConfigFormValue(rs as never, [...basePath, "allow"]);
+          if (clearAllow) {removeConfigFormValue(rs as never, [...basePath, "allow"]);}
         },
         onToolsOverridesChange: (agentId: string, alsoAllow: string[], deny: string[]) => {
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           const basePath = ["agents", "list", index, "tools"];
           if (alsoAllow.length > 0) {
             updateConfigFormValue(rs as never, [...basePath, "alsoAllow"], alsoAllow);
@@ -289,18 +289,18 @@ export function AgentsView() {
         onSkillsFilterChange: (next: string) => set({ skillsFilter: next }),
         onSkillsRefresh: () => {
           const agentId = s.getState().agentsSelectedId;
-          if (agentId) void loadAgentSkills(getReactiveState() as never, agentId);
+          if (agentId) {void loadAgentSkills(getReactiveState() as never, agentId);}
         },
         onAgentSkillToggle: (agentId: string, skillName: string, enabled: boolean) => {
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           const entry = list[index] as { skills?: unknown };
           const normalizedSkill = skillName.trim();
-          if (!normalizedSkill) return;
+          if (!normalizedSkill) {return;}
           const allSkills = rs.agentSkillsReport?.skills?.map((sk) => sk.name).filter(Boolean) ?? [];
           const existing = Array.isArray(entry.skills) ? entry.skills.map((n) => String(n).trim()).filter(Boolean) : undefined;
           const base = existing ?? allSkills;
@@ -310,20 +310,20 @@ export function AgentsView() {
         },
         onAgentSkillsClear: (agentId: string) => {
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           removeConfigFormValue(rs as never, ["agents", "list", index, "skills"]);
         },
         onAgentSkillsDisableAll: (agentId: string) => {
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           updateConfigFormValue(rs as never, ["agents", "list", index, "skills"], []);
         },
         // Canales callbacks
@@ -338,11 +338,11 @@ export function AgentsView() {
             _avatarPreviewMap.delete(agentId);
           }
           const rs = getReactiveState();
-          if (!rs.configForm) return;
+          if (!rs.configForm) {return;}
           const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-          if (!Array.isArray(list)) return;
+          if (!Array.isArray(list)) {return;}
           const index = list.findIndex((e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agentId);
-          if (index < 0) return;
+          if (index < 0) {return;}
           updateConfigFormValue(rs as never, ["agents", "list", index, "identity", "avatar"], url || null);
         },
         // Global settings (defaults drawer)
@@ -458,15 +458,15 @@ function AgentModelSection() {
   // Handlers
   const handleModelChange = useCallback(
     (modelId: string) => {
-      if (!agent) return;
+      if (!agent) {return;}
       const rs = getReactiveState();
-      if (!rs.configForm) return;
+      if (!rs.configForm) {return;}
       const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-      if (!Array.isArray(list)) return;
+      if (!Array.isArray(list)) {return;}
       const index = list.findIndex(
         (e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agent.id,
       );
-      if (index < 0) return;
+      if (index < 0) {return;}
       const basePath = ["agents", "list", index, "model"];
       if (!modelId) {
         removeConfigFormValue(rs as never, basePath);
@@ -487,15 +487,15 @@ function AgentModelSection() {
 
   const handleFallbackToggle = useCallback(
     (value: string) => {
-      if (!agent) return;
+      if (!agent) {return;}
       const rs = getReactiveState();
-      if (!rs.configForm) return;
+      if (!rs.configForm) {return;}
       const list = (rs.configForm as { agents?: { list?: unknown[] } }).agents?.list;
-      if (!Array.isArray(list)) return;
+      if (!Array.isArray(list)) {return;}
       const index = list.findIndex(
         (e) => e && typeof e === "object" && "id" in e && (e as { id?: string }).id === agent.id,
       );
-      if (index < 0) return;
+      if (index < 0) {return;}
       const basePath = ["agents", "list", index, "model"];
       const entry = list[index] as { model?: unknown };
       const current = modelFallbacks ?? [];
@@ -503,17 +503,17 @@ function AgentModelSection() {
       const normalized = next.map((n) => n.trim()).filter(Boolean);
       const existing = entry.model;
       const resolvePrimary = () => {
-        if (typeof existing === "string") return existing.trim() || null;
+        if (typeof existing === "string") {return existing.trim() || null;}
         if (existing && typeof existing === "object" && !Array.isArray(existing)) {
           const p = (existing as { primary?: unknown }).primary;
-          if (typeof p === "string") return p.trim() || null;
+          if (typeof p === "string") {return p.trim() || null;}
         }
         return null;
       };
       const primary = resolvePrimary();
       if (normalized.length === 0) {
-        if (primary) updateConfigFormValue(rs as never, basePath, primary);
-        else removeConfigFormValue(rs as never, basePath);
+        if (primary) {updateConfigFormValue(rs as never, basePath, primary);}
+        else {removeConfigFormValue(rs as never, basePath);}
         return;
       }
       const obj = primary ? { primary, fallbacks: normalized } : { fallbacks: normalized };
@@ -523,7 +523,7 @@ function AgentModelSection() {
   );
 
   // No renderizar si no hay portal container o no hay agent seleccionado
-  if (!portalEl || !agent || activePanel !== "overview") return null;
+  if (!portalEl || !agent || activePanel !== "overview") {return null;}
 
   const disabled = !configForm || configLoading || configSaving;
 

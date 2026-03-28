@@ -123,6 +123,13 @@ describe("buildGatewayReloadPlan", () => {
     expect(plan.restartReasons).toContain("gateway.port");
   });
 
+  it("restarts the gateway for browser plugin config changes", () => {
+    const plan = buildGatewayReloadPlan(["browser.enabled"]);
+    expect(plan.restartGateway).toBe(true);
+    expect(plan.restartReasons).toContain("browser.enabled");
+    expect(plan.hotReasons).toEqual([]);
+  });
+
   it("restarts the Gmail watcher for hooks.gmail changes", () => {
     const plan = buildGatewayReloadPlan(["hooks.gmail.account"]);
     expect(plan.restartGateway).toBe(false);
@@ -147,6 +154,33 @@ describe("buildGatewayReloadPlan", () => {
     expect(plan.restartChannels).toEqual(expected);
   });
 
+  it("restarts heartbeat when model-related config changes", () => {
+    const plan = buildGatewayReloadPlan([
+      "models.providers.openai.models",
+      "agents.defaults.model",
+    ]);
+    expect(plan.restartGateway).toBe(false);
+    expect(plan.restartHeartbeat).toBe(true);
+    expect(plan.hotReasons).toEqual(
+      expect.arrayContaining(["models.providers.openai.models", "agents.defaults.model"]),
+    );
+  });
+
+  it("restarts heartbeat when agents.defaults.models allowlist changes", () => {
+    const plan = buildGatewayReloadPlan(["agents.defaults.models"]);
+    expect(plan.restartGateway).toBe(false);
+    expect(plan.restartHeartbeat).toBe(true);
+    expect(plan.hotReasons).toContain("agents.defaults.models");
+    expect(plan.noopPaths).toEqual([]);
+  });
+
+  it("hot-reloads health monitor when channelHealthCheckMinutes changes", () => {
+    const plan = buildGatewayReloadPlan(["gateway.channelHealthCheckMinutes"]);
+    expect(plan.restartGateway).toBe(false);
+    expect(plan.restartHealthMonitor).toBe(true);
+    expect(plan.hotReasons).toContain("gateway.channelHealthCheckMinutes");
+  });
+
   it("treats gateway.remote as no-op", () => {
     const plan = buildGatewayReloadPlan(["gateway.remote.url"]);
     expect(plan.restartGateway).toBe(false);
@@ -168,6 +202,58 @@ describe("buildGatewayReloadPlan", () => {
   it("defaults unknown paths to restart", () => {
     const plan = buildGatewayReloadPlan(["unknownField"]);
     expect(plan.restartGateway).toBe(true);
+  });
+
+  it.each([
+    {
+      path: "browser.enabled",
+      expectRestartGateway: true,
+      expectRestartReason: "browser.enabled",
+    },
+    {
+      path: "gateway.channelHealthCheckMinutes",
+      expectRestartGateway: false,
+      expectHotPath: "gateway.channelHealthCheckMinutes",
+      expectRestartHealthMonitor: true,
+    },
+    {
+      path: "hooks.gmail.account",
+      expectRestartGateway: false,
+      expectHotPath: "hooks.gmail.account",
+      expectRestartGmailWatcher: true,
+      expectReloadHooks: true,
+    },
+    {
+      path: "gateway.remote.url",
+      expectRestartGateway: false,
+      expectNoopPath: "gateway.remote.url",
+    },
+    {
+      path: "unknownField",
+      expectRestartGateway: true,
+      expectRestartReason: "unknownField",
+    },
+  ])("classifies reload path: $path", (testCase) => {
+    const plan = buildGatewayReloadPlan([testCase.path]);
+    expect(plan.restartGateway).toBe(testCase.expectRestartGateway);
+    if (testCase.expectHotPath) {
+      expect(plan.hotReasons).toContain(testCase.expectHotPath);
+    }
+    if (testCase.expectNoopPath) {
+      expect(plan.noopPaths).toContain(testCase.expectNoopPath);
+    }
+    if (testCase.expectRestartReason) {
+      expect(plan.restartReasons).toContain(testCase.expectRestartReason);
+    }
+    if (testCase.expectRestartHealthMonitor) {
+      expect(plan.restartHealthMonitor).toBe(true);
+    }
+    if (testCase.expectRestartGmailWatcher) {
+      expect(plan.restartGmailWatcher).toBe(true);
+    }
+    if (testCase.expectReloadHooks) {
+      expect(plan.reloadHooks).toBe(true);
+    }
   });
 });
 

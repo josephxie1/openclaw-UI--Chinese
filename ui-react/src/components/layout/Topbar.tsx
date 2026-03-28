@@ -12,13 +12,13 @@ export function Topbar() {
   const [restarting, setRestarting] = useState(false);
 
   const handleRestart = useCallback(async () => {
-    if (!client || !connected || restarting) return;
+    if (!client || !connected || restarting) {return;}
     setRestarting(true);
     try {
       // Paso 1: obtener hash de la config actual (slim, sin RangeError)
-      const snapshot = await client.request("config.get", {}) as { hash?: string } | null;
+      const snapshot = await client.request("config.get", {});
       const baseHash = snapshot?.hash;
-      if (!baseHash) throw new Error("no hash");
+      if (!baseHash) {throw new Error("no hash");}
       // Paso 2: enviar merge-patch vacío para disparar restart sin cambiar config
       await client.request("config.patch", {
         raw: "{}",

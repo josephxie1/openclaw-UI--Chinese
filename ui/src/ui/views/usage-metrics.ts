@@ -1,10 +1,10 @@
 import { html } from "lit";
-import { t } from "../../i18n/index.ts";
 import {
   buildUsageAggregateTail,
   mergeUsageDailyLatency,
   mergeUsageLatency,
 } from "../../../../src/shared/usage-aggregates.js";
+import { t } from "../../i18n/index.ts";
 import { UsageSessionEntry, UsageTotals, UsageAggregates } from "./usageTypes.ts";
 
 const CHARS_PER_TOKEN = 4;
@@ -29,37 +29,63 @@ function formatHourLabel(hour: number): string {
   return date.toLocaleTimeString(undefined, { hour: "numeric" });
 }
 
+function forEachSessionHourSlice(
+  session: UsageSessionEntry,
+  timeZone: "local" | "utc",
+  visitor: (params: {
+    usage: NonNullable<UsageSessionEntry["usage"]>;
+    hour: number;
+    weekday: number;
+    share: number;
+  }) => void,
+) {
+  const usage = session.usage;
+  if (!usage) {
+    return false;
+  }
+
+  const start = usage.firstActivity ?? session.updatedAt;
+  const end = usage.lastActivity ?? session.updatedAt;
+  if (!start || !end) {
+    return false;
+  }
+
+  const startMs = Math.min(start, end);
+  const endMs = Math.max(start, end);
+  const durationMs = Math.max(endMs - startMs, 1);
+  const totalMinutes = durationMs / 60000;
+
+  let cursor = startMs;
+  while (cursor < endMs) {
+    const date = new Date(cursor);
+    const nextHour = setToHourEnd(date, timeZone);
+    const nextMs = Math.min(nextHour.getTime(), endMs);
+    const minutes = Math.max((nextMs - cursor) / 60000, 0);
+    visitor({
+      usage,
+      hour: getZonedHour(date, timeZone),
+      weekday: getZonedWeekday(date, timeZone),
+      share: minutes / totalMinutes,
+    });
+    cursor = nextMs + 1;
+  }
+
+  return true;
+}
+
 function buildPeakErrorHours(sessions: UsageSessionEntry[], timeZone: "local" | "utc") {
   const hourErrors = Array.from({ length: 24 }, () => 0);
   const hourMsgs = Array.from({ length: 24 }, () => 0);
 
   for (const session of sessions) {
-    const usage = session.usage;
-    if (!usage?.messageCounts || usage.messageCounts.total === 0) {
+    const messageCounts = session.usage?.messageCounts;
+    if (!messageCounts || messageCounts.total === 0) {
       continue;
     }
-    const start = usage.firstActivity ?? session.updatedAt;
-    const end = usage.lastActivity ?? session.updatedAt;
-    if (!start || !end) {
-      continue;
-    }
-    const startMs = Math.min(start, end);
-    const endMs = Math.max(start, end);
-    const durationMs = Math.max(endMs - startMs, 1);
-    const totalMinutes = durationMs / 60000;
-
-    let cursor = startMs;
-    while (cursor < endMs) {
-      const date = new Date(cursor);
-      const hour = getZonedHour(date, timeZone);
-      const nextHour = setToHourEnd(date, timeZone);
-      const nextMs = Math.min(nextHour.getTime(), endMs);
-      const minutes = Math.max((nextMs - cursor) / 60000, 0);
-      const share = minutes / totalMinutes;
-      hourErrors[hour] += usage.messageCounts.errors * share;
-      hourMsgs[hour] += usage.messageCounts.total * share;
-      cursor = nextMs + 1;
-    }
+    forEachSessionHourSlice(session, timeZone, ({ hour, share }) => {
+      hourErrors[hour] += messageCounts.errors * share;
+      hourMsgs[hour] += messageCounts.total * share;
+    });
   }
 
   return hourMsgs
@@ -79,7 +105,7 @@ function buildPeakErrorHours(sessions: UsageSessionEntry[], timeZone: "local" | 
     .map((entry) => ({
       label: formatHourLabel(entry.hour),
       value: `${(entry.rate * 100).toFixed(2)}%`,
-      sub: `${Math.round(entry.errors)} errors · ${Math.round(entry.msgs)} msgs`,
+      sub: `${Math.round(entry.errors)} ${t("usage.overview.errors").toLowerCase()} · ${Math.round(entry.msgs)} ${t("usage.overview.messagesAbbrev")}`,
     }));
 }
 
@@ -89,8 +115,6 @@ type UsageMosaicStats = {
   hourTotals: number[];
   weekdayTotals: Array<{ label: string; tokens: number }>;
 };
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function getZonedHour(date: Date, zone: "local" | "utc"): number {
   return zone === "utc" ? date.getUTCHours() : date.getHours();
@@ -126,34 +150,26 @@ function buildUsageMosaicStats(
     }
     totalTokens += usage.totalTokens;
 
-    const start = usage.firstActivity ?? session.updatedAt;
-    const end = usage.lastActivity ?? session.updatedAt;
-    if (!start || !end) {
+    if (
+      !forEachSessionHourSlice(session, timeZone, ({ usage, hour, weekday, share }) => {
+        hourTotals[hour] += usage.totalTokens * share;
+        weekdayTotals[weekday] += usage.totalTokens * share;
+      })
+    ) {
       continue;
     }
     hasData = true;
-
-    const startMs = Math.min(start, end);
-    const endMs = Math.max(start, end);
-    const durationMs = Math.max(endMs - startMs, 1);
-    const totalMinutes = durationMs / 60000;
-
-    let cursor = startMs;
-    while (cursor < endMs) {
-      const date = new Date(cursor);
-      const hour = getZonedHour(date, timeZone);
-      const weekday = getZonedWeekday(date, timeZone);
-      const nextHour = setToHourEnd(date, timeZone);
-      const nextMs = Math.min(nextHour.getTime(), endMs);
-      const minutes = Math.max((nextMs - cursor) / 60000, 0);
-      const share = minutes / totalMinutes;
-      hourTotals[hour] += usage.totalTokens * share;
-      weekdayTotals[weekday] += usage.totalTokens * share;
-      cursor = nextMs + 1;
-    }
   }
 
-  const weekdayLabels = WEEKDAYS.map((label, index) => ({
+  const weekdayLabels = [
+    t("usage.mosaic.sun"),
+    t("usage.mosaic.mon"),
+    t("usage.mosaic.tue"),
+    t("usage.mosaic.wed"),
+    t("usage.mosaic.thu"),
+    t("usage.mosaic.fri"),
+    t("usage.mosaic.sat"),
+  ].map((label, index) => ({
     label,
     tokens: weekdayTotals[index],
   }));
@@ -178,12 +194,16 @@ function renderUsageMosaic(
       <div class="card usage-mosaic">
         <div class="usage-mosaic-header">
           <div>
-            <div class="usage-mosaic-title">${t("usageView.activityByTime")}</div>
-            <div class="usage-mosaic-sub">${t("usageView.estimatesRequire")}</div>
+            <div class="usage-mosaic-title">${t("usage.mosaic.title")}</div>
+            <div class="usage-mosaic-sub">${t("usage.mosaic.subtitleEmpty")}</div>
           </div>
-          <div class="usage-mosaic-total">${formatTokens(0)} tokens</div>
+          <div class="usage-mosaic-total">
+            ${formatTokens(0)} ${t("usage.metrics.tokens").toLowerCase()}
+          </div>
         </div>
-        <div class="muted" style="padding: 12px; text-align: center;">${t("usageView.noTimelineDataYet")}</div>
+        <div class="usage-empty-block usage-empty-block--compact">
+          ${t("usage.mosaic.noTimelineData")}
+        </div>
       </div>
     `;
   }
@@ -195,21 +215,30 @@ function renderUsageMosaic(
     <div class="card usage-mosaic">
       <div class="usage-mosaic-header">
         <div>
-          <div class="usage-mosaic-title">Activity by Time</div>
+          <div class="usage-mosaic-title">${t("usage.mosaic.title")}</div>
           <div class="usage-mosaic-sub">
-            ${t("usageView.mosaicDescription")}${timeZone === "utc" ? t("usageView.timeZoneUtc") : t("usageView.timeZoneLocal")}.
+            ${t("usage.mosaic.subtitle", {
+              zone:
+                timeZone === "utc"
+                  ? t("usage.filters.timeZoneUtc")
+                  : t("usage.filters.timeZoneLocal"),
+            })}
           </div>
         </div>
-        <div class="usage-mosaic-total">${formatTokens(stats.totalTokens)} tokens</div>
+        <div class="usage-mosaic-total">
+          ${formatTokens(stats.totalTokens)} ${t("usage.metrics.tokens").toLowerCase()}
+        </div>
       </div>
       <div class="usage-mosaic-grid">
         <div class="usage-mosaic-section">
-          <div class="usage-mosaic-section-title">${t("usageView.dayOfWeek")}</div>
+          <div class="usage-mosaic-section-title">${t("usage.mosaic.dayOfWeek")}</div>
           <div class="usage-daypart-grid">
             ${stats.weekdayTotals.map((part) => {
               const intensity = Math.min(part.tokens / maxWeekday, 1);
               const bg =
-                part.tokens > 0 ? `rgba(255, 77, 77, ${0.12 + intensity * 0.6})` : "transparent";
+                part.tokens > 0
+                  ? `color-mix(in srgb, var(--accent) ${(12 + intensity * 60).toFixed(1)}%, transparent)`
+                  : "transparent";
               return html`
                 <div class="usage-daypart-cell" style="background: ${bg};">
                   <div class="usage-daypart-label">${part.label}</div>
@@ -221,15 +250,21 @@ function renderUsageMosaic(
         </div>
         <div class="usage-mosaic-section">
           <div class="usage-mosaic-section-title">
-            <span>${t("usageView.hours")}</span>
+            <span>${t("usage.filters.hours")}</span>
             <span class="usage-mosaic-sub">0 → 23</span>
           </div>
           <div class="usage-hour-grid">
             ${stats.hourTotals.map((value, hour) => {
               const intensity = Math.min(value / maxHour, 1);
-              const bg = value > 0 ? `rgba(255, 77, 77, ${0.08 + intensity * 0.7})` : "transparent";
-              const title = `${hour}:00 · ${formatTokens(value)} tokens`;
-              const border = intensity > 0.7 ? "rgba(255, 77, 77, 0.6)" : "rgba(255, 77, 77, 0.2)";
+              const bg =
+                value > 0
+                  ? `color-mix(in srgb, var(--accent) ${(8 + intensity * 70).toFixed(1)}%, transparent)`
+                  : "transparent";
+              const title = `${hour}:00 · ${formatTokens(value)} ${t("usage.metrics.tokens").toLowerCase()}`;
+              const border =
+                intensity > 0.7
+                  ? "color-mix(in srgb, var(--accent) 60%, transparent)"
+                  : "color-mix(in srgb, var(--accent) 24%, transparent)";
               const selected = selectedHours.includes(hour);
               return html`
                 <div
@@ -242,16 +277,16 @@ function renderUsageMosaic(
             })}
           </div>
           <div class="usage-hour-labels">
-            <span>${t("usageView.midnight")}</span>
-            <span>4am</span>
-            <span>8am</span>
-            <span>${t("usageView.noon")}</span>
-            <span>4pm</span>
-            <span>8pm</span>
+            <span>${t("usage.mosaic.midnight")}</span>
+            <span>${t("usage.mosaic.fourAm")}</span>
+            <span>${t("usage.mosaic.eightAm")}</span>
+            <span>${t("usage.mosaic.noon")}</span>
+            <span>${t("usage.mosaic.fourPm")}</span>
+            <span>${t("usage.mosaic.eightPm")}</span>
           </div>
           <div class="usage-hour-legend">
             <span></span>
-            ${t("usageView.lowHighDensity")}
+            ${t("usage.mosaic.legend")}
           </div>
         </div>
       </div>

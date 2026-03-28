@@ -61,7 +61,7 @@ function ChatSessionTitle() {
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) {return;}
     function onOutsideClick(e: MouseEvent) {
       const t = e.target as Node;
       if (!menuRef.current?.contains(t) && !triggerRef.current?.contains(t)) {
@@ -113,8 +113,8 @@ function ChatSessionTitle() {
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={handleRenameSave}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleRenameSave();
-            if (e.key === "Escape") setRenaming(false);
+            if (e.key === "Enter") {handleRenameSave();}
+            if (e.key === "Escape") {setRenaming(false);}
           }}
         />
       </div>

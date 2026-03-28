@@ -1,6 +1,10 @@
 import { execSync } from "node:child_process";
 import os from "node:os";
 import { resolveMainSessionKeyFromConfig } from "../../config/sessions.js";
+import {
+  loadOrCreateDeviceIdentity,
+  publicKeyRawBase64UrlFromPem,
+} from "../../infra/device-identity.js";
 import { getLastHeartbeatEvent } from "../../infra/heartbeat-events.js";
 import { setHeartbeatsEnabled } from "../../infra/heartbeat-runner.js";
 import { enqueueSystemEvent, isSystemEventContextChanged } from "../../infra/system-events.js";
@@ -48,6 +52,17 @@ export function getAvailableMemory(): number {
 }
 
 export const systemHandlers: GatewayRequestHandlers = {
+  "gateway.identity.get": ({ respond }) => {
+    const identity = loadOrCreateDeviceIdentity();
+    respond(
+      true,
+      {
+        deviceId: identity.deviceId,
+        publicKey: publicKeyRawBase64UrlFromPem(identity.publicKeyPem),
+      },
+      undefined,
+    );
+  },
   "last-heartbeat": ({ respond }) => {
     respond(true, getLastHeartbeatEvent(), undefined);
   },

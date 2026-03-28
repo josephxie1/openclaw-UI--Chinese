@@ -1,6 +1,4 @@
 import { html, nothing } from "lit";
-import { t } from "../../i18n/index.ts";
-import type { ChannelPairingGroup } from "../controllers/channel-pairing.ts";
 import type {
   DevicePairingList,
   DeviceTokenSummary,
@@ -48,39 +46,25 @@ export type NodesProps = {
   onSaveExecApprovals: () => void;
 };
 
-export type ChannelPairingsProps = {
-  channelPairingsLoading: boolean;
-  channelPairings: ChannelPairingGroup[];
-  channelPairingsError: string | null;
-  onChannelPairingsRefresh: () => void;
-  onChannelPairingApprove: (channel: string, code: string) => void;
-};
-
 export function renderNodes(props: NodesProps) {
   const bindingState = resolveBindingsState(props);
   const approvalsState = resolveExecApprovalsState(props);
   return html`
-    ${renderExecApprovals(approvalsState)}
-    ${renderBindings(bindingState)}
-    ${renderDevices(props)}
+    ${renderExecApprovals(approvalsState)} ${renderBindings(bindingState)} ${renderDevices(props)}
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">${t("nodesView.nodesTitle")}</div>
-          <div class="card-sub">${t("nodesView.nodesSub")}</div>
+          <div class="card-title">Nodes</div>
+          <div class="card-sub">Paired devices and live links.</div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? t("shared.loading") : t("shared.refresh")}
+          ${props.loading ? "Loading…" : "Refresh"}
         </button>
       </div>
       <div class="list" style="margin-top: 16px;">
-        ${
-          props.nodes.length === 0
-            ? html`
-                <div class="muted">${t("nodesView.noNodesFound")}</div>
-              `
-            : props.nodes.map((n) => renderNode(n))
-        }
+        ${props.nodes.length === 0
+          ? html` <div class="muted">No nodes found.</div> `
+          : props.nodes.map((n) => renderNode(n))}
       </div>
     </section>
   `;
@@ -94,102 +78,32 @@ function renderDevices(props: NodesProps) {
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">${t("nodesView.devicesTitle")}</div>
-          <div class="card-sub">${t("nodesView.devicesSub")}</div>
+          <div class="card-title">Devices</div>
+          <div class="card-sub">Pairing requests + role tokens.</div>
         </div>
         <button class="btn" ?disabled=${props.devicesLoading} @click=${props.onDevicesRefresh}>
-          ${props.devicesLoading ? t("shared.loading") : t("shared.refresh")}
+          ${props.devicesLoading ? "Loading…" : "Refresh"}
         </button>
       </div>
-      ${
-        props.devicesError
-          ? html`<div class="callout danger" style="margin-top: 12px;">${props.devicesError}</div>`
-          : nothing
-      }
+      ${props.devicesError
+        ? html`<div class="callout danger" style="margin-top: 12px;">${props.devicesError}</div>`
+        : nothing}
       <div class="list" style="margin-top: 16px;">
-        ${
-          pending.length > 0
-            ? html`
-              <div class="muted" style="margin-bottom: 8px;">${t("nodesView.pending")}</div>
+        ${pending.length > 0
+          ? html`
+              <div class="muted" style="margin-bottom: 8px;">Pending</div>
               ${pending.map((req) => renderPendingDevice(req, props))}
             `
-            : nothing
-        }
-        ${
-          paired.length > 0
-            ? html`
-              <div class="muted" style="margin-top: 12px; margin-bottom: 8px;">${t("nodesView.paired")}</div>
+          : nothing}
+        ${paired.length > 0
+          ? html`
+              <div class="muted" style="margin-top: 12px; margin-bottom: 8px;">Paired</div>
               ${paired.map((device) => renderPairedDevice(device, props))}
             `
-            : nothing
-        }
-        ${
-          pending.length === 0 && paired.length === 0
-            ? html`
-                <div class="muted">${t("nodesView.noPairedDevices")}</div>
-              `
-            : nothing
-        }
-      </div>
-    </section>
-  `;
-}
-
-export function renderChannelPairings(props: ChannelPairingsProps) {
-  const groups = props.channelPairings ?? [];
-  const totalPending = groups.reduce((sum, g) => sum + g.requests.length, 0);
-  return html`
-    <section class="card">
-      <div class="row" style="justify-content: space-between;">
-        <div>
-          <div class="card-title">渠道配对请求</div>
-          <div class="card-sub">来自飞书、Telegram 等渠道的用户配对审批</div>
-        </div>
-        <button class="btn" ?disabled=${props.channelPairingsLoading} @click=${props.onChannelPairingsRefresh}>
-          ${props.channelPairingsLoading ? "加载中..." : "刷新"}
-        </button>
-      </div>
-      ${
-        props.channelPairingsError
-          ? html`<div class="callout danger" style="margin-top: 12px;">${props.channelPairingsError}</div>`
-          : nothing
-      }
-      <div class="list" style="margin-top: 16px;">
-        ${
-          totalPending === 0
-            ? html`
-                <div class="muted">暂无待审批的渠道配对请求。</div>
-              `
-            : groups.map(
-                (group) => html`
-              <div class="muted" style="margin-bottom: 8px; margin-top: 4px;">
-                📢 ${group.channel}
-                <span style="opacity: 0.6;">(${group.requests.length})</span>
-              </div>
-              ${group.requests.map(
-                (req) => html`
-                <div class="list-item">
-                  <div class="list-main">
-                    <div class="list-title">用户 ID: ${req.id}</div>
-                    <div class="list-sub">
-                      配对码: ${req.code} · 时间: ${req.createdAt}
-                      ${req.meta ? ` · ${JSON.stringify(req.meta)}` : ""}
-                    </div>
-                  </div>
-                  <div class="list-meta">
-                    <button
-                      class="btn btn--sm primary"
-                      @click=${() => props.onChannelPairingApprove(group.channel, req.code)}
-                    >
-                      批准
-                    </button>
-                  </div>
-                </div>
-              `,
-              )}
-            `,
-              )
-        }
+          : nothing}
+        ${pending.length === 0 && paired.length === 0
+          ? html` <div class="muted">No paired devices.</div> `
+          : nothing}
       </div>
     </section>
   `;
@@ -198,10 +112,9 @@ export function renderChannelPairings(props: ChannelPairingsProps) {
 function renderPendingDevice(req: PendingDevice, props: NodesProps) {
   const name = req.displayName?.trim() || req.deviceId;
   const age = typeof req.ts === "number" ? formatRelativeTimestamp(req.ts) : "n/a";
-  const role = req.role?.trim()
-    ? `${t("nodesView.role")}: ${req.role}`
-    : `${t("nodesView.role")}: -`;
-  const repair = req.isRepair ? ` · ${t("nodesView.repair")}` : "";
+  const roleValue = req.role?.trim() || formatList(req.roles);
+  const scopesValue = formatList(req.scopes);
+  const repair = req.isRepair ? " · repair" : "";
   const ip = req.remoteIp ? ` · ${req.remoteIp}` : "";
   return html`
     <div class="list-item">
@@ -209,16 +122,16 @@ function renderPendingDevice(req: PendingDevice, props: NodesProps) {
         <div class="list-title">${name}</div>
         <div class="list-sub">${req.deviceId}${ip}</div>
         <div class="muted" style="margin-top: 6px;">
-          ${role} · ${t("nodesView.requested")} ${age}${repair}
+          role: ${roleValue} · scopes: ${scopesValue} · requested ${age}${repair}
         </div>
       </div>
       <div class="list-meta">
         <div class="row" style="justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button class="btn btn--sm primary" @click=${() => props.onDeviceApprove(req.requestId)}>
-            ${t("nodesView.approve")}
+            Approve
           </button>
           <button class="btn btn--sm" @click=${() => props.onDeviceReject(req.requestId)}>
-            ${t("nodesView.reject")}
+            Reject
           </button>
         </div>
       </div>
@@ -229,8 +142,8 @@ function renderPendingDevice(req: PendingDevice, props: NodesProps) {
 function renderPairedDevice(device: PairedDevice, props: NodesProps) {
   const name = device.displayName?.trim() || device.deviceId;
   const ip = device.remoteIp ? ` · ${device.remoteIp}` : "";
-  const roles = `${t("nodesView.roles")}: ${formatList(device.roles)}`;
-  const scopes = `${t("nodesView.scopes")}: ${formatList(device.scopes)}`;
+  const roles = `roles: ${formatList(device.roles)}`;
+  const scopes = `scopes: ${formatList(device.scopes)}`;
   const tokens = Array.isArray(device.tokens) ? device.tokens : [];
   return html`
     <div class="list-item">
@@ -238,26 +151,22 @@ function renderPairedDevice(device: PairedDevice, props: NodesProps) {
         <div class="list-title">${name}</div>
         <div class="list-sub">${device.deviceId}${ip}</div>
         <div class="muted" style="margin-top: 6px;">${roles} · ${scopes}</div>
-        ${
-          tokens.length === 0
-            ? html`
-                <div class="muted" style="margin-top: 6px">${t("nodesView.tokensNone")}</div>
-              `
-            : html`
-              <div class="muted" style="margin-top: 10px;">${t("nodesView.tokens")}</div>
+        ${tokens.length === 0
+          ? html` <div class="muted" style="margin-top: 6px">Tokens: none</div> `
+          : html`
+              <div class="muted" style="margin-top: 10px;">Tokens</div>
               <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
                 ${tokens.map((token) => renderTokenRow(device.deviceId, token, props))}
               </div>
-            `
-        }
+            `}
       </div>
     </div>
   `;
 }
 
 function renderTokenRow(deviceId: string, token: DeviceTokenSummary, props: NodesProps) {
-  const status = token.revokedAtMs ? t("nodesView.revoked") : t("nodesView.active");
-  const scopes = `${t("nodesView.scopes")}: ${formatList(token.scopes)}`;
+  const status = token.revokedAtMs ? "revoked" : "active";
+  const scopes = `scopes: ${formatList(token.scopes)}`;
   const when = formatRelativeTimestamp(
     token.rotatedAtMs ?? token.createdAtMs ?? token.lastUsedAtMs ?? null,
   );
@@ -269,20 +178,18 @@ function renderTokenRow(deviceId: string, token: DeviceTokenSummary, props: Node
           class="btn btn--sm"
           @click=${() => props.onDeviceRotate(deviceId, token.role, token.scopes)}
         >
-          ${t("nodesView.rotate")}
+          Rotate
         </button>
-        ${
-          token.revokedAtMs
-            ? nothing
-            : html`
+        ${token.revokedAtMs
+          ? nothing
+          : html`
               <button
                 class="btn btn--sm danger"
                 @click=${() => props.onDeviceRevoke(deviceId, token.role)}
               >
-                ${t("nodesView.revoke")}
+                Revoke
               </button>
-            `
-        }
+            `}
       </div>
     </div>
   `;
@@ -344,9 +251,9 @@ function renderBindings(state: BindingState) {
     <section class="card">
       <div class="row" style="justify-content: space-between; align-items: center;">
         <div>
-          <div class="card-title">${t("nodesView.execNodeBinding")}</div>
+          <div class="card-title">Exec node binding</div>
           <div class="card-sub">
-            ${t("nodesView.execNodeBindingSub")}
+            Pin agents to a specific node when using <span class="mono">exec host=node</span>.
           </div>
         </div>
         <button
@@ -354,38 +261,34 @@ function renderBindings(state: BindingState) {
           ?disabled=${state.disabled || !state.configDirty}
           @click=${state.onSave}
         >
-          ${state.configSaving ? t("shared.saving") : t("shared.save")}
+          ${state.configSaving ? "Saving…" : "Save"}
         </button>
       </div>
 
-      ${
-        state.formMode === "raw"
-          ? html`
-              <div class="callout warn" style="margin-top: 12px">
-                ${t("nodesView.switchToForm")}
-              </div>
-            `
-          : nothing
-      }
-
-      ${
-        !state.ready
-          ? html`<div class="row" style="margin-top: 12px; gap: 12px;">
-            <div class="muted">${t("nodesView.loadConfigHint")}</div>
+      ${state.formMode === "raw"
+        ? html`
+            <div class="callout warn" style="margin-top: 12px">
+              Switch the Config tab to <strong>Form</strong> mode to edit bindings here.
+            </div>
+          `
+        : nothing}
+      ${!state.ready
+        ? html`<div class="row" style="margin-top: 12px; gap: 12px;">
+            <div class="muted">Load config to edit bindings.</div>
             <button class="btn" ?disabled=${state.configLoading} @click=${state.onLoadConfig}>
-              ${state.configLoading ? t("shared.loading") : t("shared.loadConfig")}
+              ${state.configLoading ? "Loading…" : "Load config"}
             </button>
           </div>`
-          : html`
+        : html`
             <div class="list" style="margin-top: 16px;">
               <div class="list-item">
                 <div class="list-main">
-                  <div class="list-title">${t("nodesView.defaultBinding")}</div>
-                  <div class="list-sub">${t("nodesView.defaultBindingSub")}</div>
+                  <div class="list-title">Default binding</div>
+                  <div class="list-sub">Used when agents do not override a node binding.</div>
                 </div>
                 <div class="list-meta">
                   <label class="field">
-                    <span>${t("nodesView.node")}</span>
+                    <span>Node</span>
                     <select
                       ?disabled=${state.disabled || !supportsBinding}
                       @change=${(event: Event) => {
@@ -394,38 +297,26 @@ function renderBindings(state: BindingState) {
                         state.onBindDefault(value ? value : null);
                       }}
                     >
-                      <option value="" ?selected=${defaultValue === ""}>${t("nodesView.anyNode")}</option>
+                      <option value="" ?selected=${defaultValue === ""}>Any node</option>
                       ${state.nodes.map(
                         (node) =>
-                          html`<option
-                            value=${node.id}
-                            ?selected=${defaultValue === node.id}
-                          >
+                          html`<option value=${node.id} ?selected=${defaultValue === node.id}>
                             ${node.label}
                           </option>`,
                       )}
                     </select>
                   </label>
-                  ${
-                    !supportsBinding
-                      ? html`
-                          <div class="muted">${t("nodesView.noNodesAvailable")}</div>
-                        `
-                      : nothing
-                  }
+                  ${!supportsBinding
+                    ? html` <div class="muted">No nodes with system.run available.</div> `
+                    : nothing}
                 </div>
               </div>
 
-              ${
-                state.agents.length === 0
-                  ? html`
-                      <div class="muted">${t("nodesView.noAgents")}</div>
-                    `
-                  : state.agents.map((agent) => renderAgentBinding(agent, state))
-              }
+              ${state.agents.length === 0
+                ? html` <div class="muted">No agents found.</div> `
+                : state.agents.map((agent) => renderAgentBinding(agent, state))}
             </div>
-          `
-      }
+          `}
     </section>
   `;
 }
@@ -439,17 +330,15 @@ function renderAgentBinding(agent: BindingAgent, state: BindingState) {
       <div class="list-main">
         <div class="list-title">${label}</div>
         <div class="list-sub">
-          ${agent.isDefault ? t("nodesView.defaultAgent") : t("nodesView.agent")} ·
-          ${
-            bindingValue === "__default__"
-              ? `uses default (${state.defaultBinding ?? "any"})`
-              : `override: ${agent.binding}`
-          }
+          ${agent.isDefault ? "default agent" : "agent"} ·
+          ${bindingValue === "__default__"
+            ? `uses default (${state.defaultBinding ?? "any"})`
+            : `override: ${agent.binding}`}
         </div>
       </div>
       <div class="list-meta">
         <label class="field">
-          <span>${t("nodesView.binding")}</span>
+          <span>Binding</span>
           <select
             ?disabled=${state.disabled || !supportsBinding}
             @change=${(event: Event) => {
@@ -459,14 +348,11 @@ function renderAgentBinding(agent: BindingAgent, state: BindingState) {
             }}
           >
             <option value="__default__" ?selected=${bindingValue === "__default__"}>
-              ${t("nodesView.useDefault")}
+              Use default
             </option>
             ${state.nodes.map(
               (node) =>
-                html`<option
-                  value=${node.id}
-                  ?selected=${bindingValue === node.id}
-                >
+                html`<option value=${node.id} ?selected=${bindingValue === node.id}>
                   ${node.label}
                 </option>`,
             )}
@@ -544,9 +430,9 @@ function renderNode(node: Record<string, unknown>) {
           ${typeof node.version === "string" ? ` · ${node.version}` : ""}
         </div>
         <div class="chip-row" style="margin-top: 6px;">
-          <span class="chip">${paired ? t("nodesView.chipPaired") : t("nodesView.chipUnpaired")}</span>
+          <span class="chip">${paired ? "paired" : "unpaired"}</span>
           <span class="chip ${connected ? "chip-ok" : "chip-warn"}">
-            ${connected ? t("nodesView.chipConnected") : t("nodesView.chipOffline")}
+            ${connected ? "connected" : "offline"}
           </span>
           ${caps.slice(0, 12).map((c) => html`<span class="chip">${String(c)}</span>`)}
           ${commands.slice(0, 8).map((c) => html`<span class="chip">${String(c)}</span>`)}

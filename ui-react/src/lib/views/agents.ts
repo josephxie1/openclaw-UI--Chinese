@@ -42,7 +42,7 @@ function resolveDisplayAvatarSrc(
   agentIdentity: Parameters<typeof resolveAgentAvatarSrc>[1],
 ): string | null {
   const preview = _avatarPreviewMap.get(agent.id);
-  if (preview) return preview;
+  if (preview) {return preview;}
   return resolveAgentAvatarSrc(agent, agentIdentity);
 }
 
@@ -79,7 +79,7 @@ function resolveAgentChannelTypes(
   // Fuente 2: channelAccounts (canales que tienen cuentas activas para el agente)
   if (channelsSnapshot?.channelAccounts) {
     for (const [channelId, accounts] of Object.entries(channelsSnapshot.channelAccounts)) {
-      if (!Array.isArray(accounts)) continue;
+      if (!Array.isArray(accounts)) {continue;}
       for (const acct of accounts) {
         if (acct.accountId?.toLowerCase() === agentId.toLowerCase()) {
           channelTypes.add(channelId);
@@ -428,7 +428,7 @@ function renderAgentHeader(
       : "";
 
   const handleUrlInput = (e: Event) => {
-    if (!opts) return;
+    if (!opts) {return;}
     const url = (e.target as HTMLInputElement).value.trim();
     if (url) {
       _avatarPreviewMap.set(agent.id, url);
@@ -439,7 +439,7 @@ function renderAgentHeader(
   };
 
   const handleUrlCommit = () => {
-    if (!opts) return;
+    if (!opts) {return;}
     opts.onConfigSave();
   };
 

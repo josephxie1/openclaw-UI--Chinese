@@ -1,6 +1,7 @@
 import { normalizeChatType } from "../../channels/chat-type.js";
 import { resolveSenderLabel } from "../../channels/sender-label.js";
-import { formatZonedTimestamp } from "../../infra/format-time/format-datetime.js";
+import type { EnvelopeFormatOptions } from "../envelope.js";
+import { formatEnvelopeTimestamp } from "../envelope.js";
 import type { TemplateContext } from "../templating.js";
 
 function safeTrim(value: unknown): string | undefined {
@@ -11,24 +12,25 @@ function safeTrim(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function formatConversationTimestamp(value: unknown): string | undefined {
+function formatConversationTimestamp(
+  value: unknown,
+  envelope?: EnvelopeFormatOptions,
+): string | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return undefined;
   }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
+  return formatEnvelopeTimestamp(value, envelope);
+}
+
+function resolveInboundChannel(ctx: TemplateContext): string | undefined {
+  let channelValue = safeTrim(ctx.OriginatingChannel) ?? safeTrim(ctx.Surface);
+  if (!channelValue) {
+    const provider = safeTrim(ctx.Provider);
+    if (provider !== "webchat" && ctx.Surface !== "webchat") {
+      channelValue = provider;
+    }
   }
-  const formatted = formatZonedTimestamp(date);
-  if (!formatted) {
-    return undefined;
-  }
-  try {
-    const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
-    return weekday ? `${weekday} ${formatted}` : formatted;
-  } catch {
-    return formatted;
-  }
+  return channelValue;
 }
 
 export function buildInboundMetaSystemPrompt(ctx: TemplateContext): string {
@@ -44,18 +46,7 @@ export function buildInboundMetaSystemPrompt(ctx: TemplateContext): string {
   // Resolve channel identity: prefer explicit channel, then surface, then provider.
   // For webchat/Hub Chat sessions (when Surface is 'webchat' or undefined with no real channel),
   // omit the channel field entirely rather than falling back to an unrelated provider.
-  let channelValue = safeTrim(ctx.OriginatingChannel) ?? safeTrim(ctx.Surface);
-  if (!channelValue) {
-    // Only fall back to Provider if it represents a real messaging channel.
-    // For webchat/internal sessions, ctx.Provider may be unrelated (e.g., the user's configured
-    // default channel), so skip it to avoid incorrect runtime labels like "channel=whatsapp".
-    const provider = safeTrim(ctx.Provider);
-    // Check if provider is "webchat" or if we're in an internal/webchat context
-    if (provider !== "webchat" && ctx.Surface !== "webchat") {
-      channelValue = provider;
-    }
-    // Otherwise leave channelValue undefined (no channel label)
-  }
+  const channelValue = resolveInboundChannel(ctx);
 
   const payload = {
     schema: "openclaw.inbound_meta.v1",
@@ -81,27 +72,35 @@ export function buildInboundMetaSystemPrompt(ctx: TemplateContext): string {
   ].join("\n");
 }
 
-export function buildInboundUserContextPrefix(ctx: TemplateContext): string {
+export function buildInboundUserContextPrefix(
+  ctx: TemplateContext,
+  envelope?: EnvelopeFormatOptions,
+): string {
   const blocks: string[] = [];
   const chatType = normalizeChatType(ctx.ChatType);
   const isDirect = !chatType || chatType === "direct";
+  const directChannelValue = resolveInboundChannel(ctx);
+  const includeDirectConversationInfo = Boolean(
+    directChannelValue && directChannelValue !== "webchat",
+  );
+  const shouldIncludeConversationInfo = !isDirect || includeDirectConversationInfo;
 
   const messageId = safeTrim(ctx.MessageSid);
   const messageIdFull = safeTrim(ctx.MessageSidFull);
   const resolvedMessageId = messageId ?? messageIdFull;
-  const timestampStr = formatConversationTimestamp(ctx.Timestamp);
+  const timestampStr = formatConversationTimestamp(ctx.Timestamp, envelope);
 
   const conversationInfo = {
-    message_id: isDirect ? undefined : resolvedMessageId,
-    reply_to_id: isDirect ? undefined : safeTrim(ctx.ReplyToId),
-    sender_id: isDirect ? undefined : safeTrim(ctx.SenderId),
+    message_id: shouldIncludeConversationInfo ? resolvedMessageId : undefined,
+    reply_to_id: shouldIncludeConversationInfo ? safeTrim(ctx.ReplyToId) : undefined,
+    sender_id: shouldIncludeConversationInfo ? safeTrim(ctx.SenderId) : undefined,
     conversation_label: isDirect ? undefined : safeTrim(ctx.ConversationLabel),
-    sender: isDirect
-      ? undefined
-      : (safeTrim(ctx.SenderName) ??
+    sender: shouldIncludeConversationInfo
+      ? (safeTrim(ctx.SenderName) ??
         safeTrim(ctx.SenderE164) ??
         safeTrim(ctx.SenderId) ??
-        safeTrim(ctx.SenderUsername)),
+        safeTrim(ctx.SenderUsername))
+      : undefined,
     timestamp: timestampStr,
     group_subject: safeTrim(ctx.GroupSubject),
     group_channel: safeTrim(ctx.GroupChannel),

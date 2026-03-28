@@ -298,7 +298,7 @@ export function NavSidebar() {
               href={href}
               className={`nav-item${tab === t_ ? " active" : ""}`}
               onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {return;}
                 e.preventDefault();
                 setTab(t_);
               }}
@@ -341,7 +341,7 @@ function SessionItem({ sessionKey, name, time, isActive, onSwitch }: SessionItem
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) {return;}
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       if (
@@ -395,8 +395,8 @@ function SessionItem({ sessionKey, name, time, isActive, onSwitch }: SessionItem
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={handleRenameSave}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleRenameSave();
-            if (e.key === "Escape") setRenaming(false);
+            if (e.key === "Enter") {handleRenameSave();}
+            if (e.key === "Escape") {setRenaming(false);}
           }}
         />
       </div>

@@ -7,8 +7,7 @@ import {
   parseCameraClipPayload,
   parseCameraSnapPayload,
   writeCameraClipPayloadToFile,
-  writeBase64ToFile,
-  writeUrlToFile,
+  writeCameraPayloadToFile,
 } from "../../cli/nodes-camera.js";
 import { parseEnvPairs, parseTimeoutMs } from "../../cli/nodes-run.js";
 import {
@@ -18,8 +17,9 @@ import {
 } from "../../cli/nodes-screen.js";
 import { parseDurationMs } from "../../cli/parse-duration.js";
 import type { OpenClawConfig } from "../../config/config.js";
+import type { OperatorScope } from "../../gateway/method-scopes.js";
+import { NODE_SYSTEM_RUN_COMMANDS } from "../../infra/node-commands.js";
 import { parsePreparedSystemRunPayload } from "../../infra/system-run-approval-context.js";
-import { formatExecCommand } from "../../infra/system-run-command.js";
 import { imageMimeFromFormat } from "../../media/mime.js";
 import type { GatewayMessageChannel } from "../../utils/message-channel.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
@@ -28,7 +28,7 @@ import { optionalStringEnum, stringEnum } from "../schema/typebox.js";
 import { sanitizeToolResultImages } from "../tool-images.js";
 import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
 import { callGatewayTool, readGatewayCallOptions } from "./gateway.js";
-import { listNodes, resolveNodeIdFromList, resolveNodeId } from "./nodes-utils.js";
+import { listNodes, resolveNode, resolveNodeId, resolveNodeIdFromList } from "./nodes-utils.js";
 
 const NODES_TOOL_ACTIONS = [
   "status",
@@ -40,6 +40,7 @@ const NODES_TOOL_ACTIONS = [
   "camera_snap",
   "camera_list",
   "camera_clip",
+  "photos_latest",
   "screen_record",
   "location_get",
   "notifications_list",
@@ -57,6 +58,12 @@ const NOTIFY_DELIVERIES = ["system", "overlay", "auto"] as const;
 const NOTIFICATIONS_ACTIONS = ["open", "dismiss", "reply"] as const;
 const CAMERA_FACING = ["front", "back", "both"] as const;
 const LOCATION_ACCURACY = ["coarse", "balanced", "precise"] as const;
+const MEDIA_INVOKE_ACTIONS = {
+  "camera.snap": "camera_snap",
+  "camera.clip": "camera_clip",
+  "photos.latest": "photos_latest",
+  "screen.record": "screen_record",
+} as const;
 const NODE_READ_ACTION_COMMANDS = {
   camera_list: "camera.list",
   notifications_list: "notifications.list",
@@ -66,6 +73,33 @@ const NODE_READ_ACTION_COMMANDS = {
   device_health: "device.health",
 } as const;
 type GatewayCallOptions = ReturnType<typeof readGatewayCallOptions>;
+
+function resolveApproveScopes(commands: unknown): OperatorScope[] {
+  const normalized = Array.isArray(commands)
+    ? commands.filter((value): value is string => typeof value === "string")
+    : [];
+  if (
+    normalized.some((command) => NODE_SYSTEM_RUN_COMMANDS.some((allowed) => allowed === command))
+  ) {
+    return ["operator.admin"];
+  }
+  if (normalized.length > 0) {
+    return ["operator.write"];
+  }
+  return ["operator.write"];
+}
+
+async function resolveNodePairApproveScopes(
+  gatewayOpts: GatewayCallOptions,
+  requestId: string,
+): Promise<OperatorScope[]> {
+  const pairing = await callGatewayTool<{
+    pending?: Array<{ requestId?: string; commands?: unknown }>;
+  }>("node.pair.list", gatewayOpts, {}, { scopes: ["operator.pairing", "operator.write"] });
+  const pending = Array.isArray(pairing?.pending) ? pairing.pending : [];
+  const match = pending.find((entry) => entry?.requestId === requestId);
+  return resolveApproveScopes(match?.commands);
+}
 
 async function invokeNodeCommandPayload(params: {
   gatewayOpts: GatewayCallOptions;
@@ -119,6 +153,7 @@ const NodesToolSchema = Type.Object({
   quality: Type.Optional(Type.Number()),
   delayMs: Type.Optional(Type.Number()),
   deviceId: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.Number()),
   duration: Type.Optional(Type.String()),
   durationMs: Type.Optional(Type.Number({ maximum: 300_000 })),
   includeAudio: Type.Optional(Type.Boolean()),
@@ -153,6 +188,8 @@ export function createNodesTool(options?: {
   currentChannelId?: string;
   currentThreadTs?: string | number;
   config?: OpenClawConfig;
+  modelHasVision?: boolean;
+  allowMediaInvokeCommands?: boolean;
 }): AnyAgentTool {
   const sessionKey = options?.agentSessionKey?.trim() || undefined;
   const turnSourceChannel = options?.agentChannel?.trim() || undefined;
@@ -167,8 +204,9 @@ export function createNodesTool(options?: {
   return {
     label: "Nodes",
     name: "nodes",
+    ownerOnly: true,
     description:
-      "Discover and control paired nodes (status/describe/pairing/notify/camera/screen/location/notifications/run/invoke).",
+      "Discover and control paired nodes (status/describe/pairing/notify/camera/photos/screen/location/notifications/run/invoke).",
     parameters: NodesToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -190,10 +228,16 @@ export function createNodesTool(options?: {
             const requestId = readStringParam(params, "requestId", {
               required: true,
             });
+            const scopes = await resolveNodePairApproveScopes(gatewayOpts, requestId);
             return jsonResult(
-              await callGatewayTool("node.pair.approve", gatewayOpts, {
-                requestId,
-              }),
+              await callGatewayTool(
+                "node.pair.approve",
+                gatewayOpts,
+                {
+                  requestId,
+                },
+                { scopes },
+              ),
             );
           }
           case "reject": {
@@ -230,7 +274,8 @@ export function createNodesTool(options?: {
           }
           case "camera_snap": {
             const node = readStringParam(params, "node", { required: true });
-            const nodeId = await resolveNodeId(gatewayOpts, node);
+            const resolvedNode = await resolveNode(gatewayOpts, node);
+            const nodeId = resolvedNode.nodeId;
             const facingRaw =
               typeof params.facing === "string" ? params.facing.toLowerCase() : "front";
             const facings: CameraFacing[] =
@@ -294,13 +339,13 @@ export function createNodesTool(options?: {
                 facing,
                 ext: isJpeg ? "jpg" : "png",
               });
-              if (payload.url) {
-                await writeUrlToFile(filePath, payload.url);
-              } else if (payload.base64) {
-                await writeBase64ToFile(filePath, payload.base64);
-              }
-              content.push({ type: "text", text: `MEDIA:${filePath}` });
-              if (payload.base64) {
+              await writeCameraPayloadToFile({
+                filePath,
+                payload,
+                expectedHost: resolvedNode.remoteIp,
+                invalidPayloadMessage: "invalid camera.snap payload",
+              });
+              if (options?.modelHasVision && payload.base64) {
                 content.push({
                   type: "image",
                   data: payload.base64,
@@ -316,8 +361,124 @@ export function createNodesTool(options?: {
               });
             }
 
-            const result: AgentToolResult<unknown> = { content, details };
+            const result: AgentToolResult<unknown> = {
+              content,
+              details: {
+                snaps: details,
+                media: {
+                  mediaUrls: details
+                    .map((entry) => entry.path)
+                    .filter((path): path is string => typeof path === "string"),
+                },
+              },
+            };
             return await sanitizeToolResultImages(result, "nodes:camera_snap", imageSanitization);
+          }
+          case "photos_latest": {
+            const node = readStringParam(params, "node", { required: true });
+            const resolvedNode = await resolveNode(gatewayOpts, node);
+            const nodeId = resolvedNode.nodeId;
+            const limitRaw =
+              typeof params.limit === "number" && Number.isFinite(params.limit)
+                ? Math.floor(params.limit)
+                : DEFAULT_PHOTOS_LIMIT;
+            const limit = Math.max(1, Math.min(limitRaw, MAX_PHOTOS_LIMIT));
+            const maxWidth =
+              typeof params.maxWidth === "number" && Number.isFinite(params.maxWidth)
+                ? params.maxWidth
+                : DEFAULT_PHOTOS_MAX_WIDTH;
+            const quality =
+              typeof params.quality === "number" && Number.isFinite(params.quality)
+                ? params.quality
+                : DEFAULT_PHOTOS_QUALITY;
+            const raw = await callGatewayTool<{ payload: unknown }>("node.invoke", gatewayOpts, {
+              nodeId,
+              command: "photos.latest",
+              params: {
+                limit,
+                maxWidth,
+                quality,
+              },
+              idempotencyKey: crypto.randomUUID(),
+            });
+            const payload =
+              raw?.payload && typeof raw.payload === "object" && !Array.isArray(raw.payload)
+                ? (raw.payload as Record<string, unknown>)
+                : {};
+            const photos = Array.isArray(payload.photos) ? payload.photos : [];
+
+            if (photos.length === 0) {
+              const result: AgentToolResult<unknown> = {
+                content: [],
+                details: [],
+              };
+              return await sanitizeToolResultImages(
+                result,
+                "nodes:photos_latest",
+                imageSanitization,
+              );
+            }
+
+            const content: AgentToolResult<unknown>["content"] = [];
+            const details: Array<Record<string, unknown>> = [];
+
+            for (const [index, photoRaw] of photos.entries()) {
+              const photo = parseCameraSnapPayload(photoRaw);
+              const normalizedFormat = photo.format.toLowerCase();
+              if (
+                normalizedFormat !== "jpg" &&
+                normalizedFormat !== "jpeg" &&
+                normalizedFormat !== "png"
+              ) {
+                throw new Error(`unsupported photos.latest format: ${photo.format}`);
+              }
+              const isJpeg = normalizedFormat === "jpg" || normalizedFormat === "jpeg";
+              const filePath = cameraTempPath({
+                kind: "snap",
+                ext: isJpeg ? "jpg" : "png",
+                id: crypto.randomUUID(),
+              });
+              await writeCameraPayloadToFile({
+                filePath,
+                payload: photo,
+                expectedHost: resolvedNode.remoteIp,
+                invalidPayloadMessage: "invalid photos.latest payload",
+              });
+
+              if (options?.modelHasVision && photo.base64) {
+                content.push({
+                  type: "image",
+                  data: photo.base64,
+                  mimeType:
+                    imageMimeFromFormat(photo.format) ?? (isJpeg ? "image/jpeg" : "image/png"),
+                });
+              }
+
+              const createdAt =
+                photoRaw && typeof photoRaw === "object" && !Array.isArray(photoRaw)
+                  ? (photoRaw as Record<string, unknown>).createdAt
+                  : undefined;
+              details.push({
+                index,
+                path: filePath,
+                width: photo.width,
+                height: photo.height,
+                ...(typeof createdAt === "string" ? { createdAt } : {}),
+              });
+            }
+
+            const result: AgentToolResult<unknown> = {
+              content,
+              details: {
+                photos: details,
+                media: {
+                  mediaUrls: details
+                    .map((entry) => entry.path)
+                    .filter((path): path is string => typeof path === "string"),
+                },
+              },
+            };
+            return await sanitizeToolResultImages(result, "nodes:photos_latest", imageSanitization);
           }
           case "camera_list":
           case "notifications_list":
@@ -373,7 +534,8 @@ export function createNodesTool(options?: {
           }
           case "camera_clip": {
             const node = readStringParam(params, "node", { required: true });
-            const nodeId = await resolveNodeId(gatewayOpts, node);
+            const resolvedNode = await resolveNode(gatewayOpts, node);
+            const nodeId = resolvedNode.nodeId;
             const facing =
               typeof params.facing === "string" ? params.facing.toLowerCase() : "front";
             if (facing !== "front" && facing !== "back") {
@@ -407,6 +569,7 @@ export function createNodesTool(options?: {
             const filePath = await writeCameraClipPayloadToFile({
               payload,
               facing,
+              expectedHost: resolvedNode.remoteIp,
             });
             return {
               content: [{ type: "text", text: `FILE:${filePath}` }],
@@ -541,7 +704,6 @@ export function createNodesTool(options?: {
                 command: "system.run.prepare",
                 params: {
                   command,
-                  rawCommand: formatExecCommand(command),
                   cwd,
                   agentId,
                   sessionKey,
@@ -556,7 +718,7 @@ export function createNodesTool(options?: {
             }
             const runParams = {
               command: prepared.plan.argv,
-              rawCommand: prepared.plan.rawCommand ?? prepared.cmdText,
+              rawCommand: prepared.plan.commandText,
               cwd: prepared.plan.cwd ?? cwd,
               env,
               timeoutMs: commandTimeoutMs,
@@ -591,8 +753,6 @@ export function createNodesTool(options?: {
               { ...gatewayOpts, timeoutMs: APPROVAL_TIMEOUT_MS + 5_000 },
               {
                 id: approvalId,
-                command: prepared.cmdText,
-                commandArgv: prepared.plan.argv,
                 systemRunPlan: prepared.plan,
                 cwd: prepared.plan.cwd ?? cwd,
                 nodeId,
@@ -642,6 +802,14 @@ export function createNodesTool(options?: {
             const node = readStringParam(params, "node", { required: true });
             const nodeId = await resolveNodeId(gatewayOpts, node);
             const invokeCommand = readStringParam(params, "invokeCommand", { required: true });
+            const invokeCommandNormalized = invokeCommand.trim().toLowerCase();
+            const dedicatedAction =
+              MEDIA_INVOKE_ACTIONS[invokeCommandNormalized as keyof typeof MEDIA_INVOKE_ACTIONS];
+            if (dedicatedAction && !options?.allowMediaInvokeCommands) {
+              throw new Error(
+                `invokeCommand "${invokeCommand}" returns media payloads and is blocked to prevent base64 context bloat; use action="${dedicatedAction}"`,
+              );
+            }
             const invokeParamsJson =
               typeof params.invokeParamsJson === "string" ? params.invokeParamsJson.trim() : "";
             let invokeParams: unknown = {};
@@ -692,3 +860,8 @@ export function createNodesTool(options?: {
     },
   };
 }
+
+const DEFAULT_PHOTOS_LIMIT = 1;
+const MAX_PHOTOS_LIMIT = 20;
+const DEFAULT_PHOTOS_MAX_WIDTH = 1600;
+const DEFAULT_PHOTOS_QUALITY = 0.85;

@@ -59,15 +59,15 @@ export function ModelsView() {
   const onPresetModelToggle = useCallback((modelId: string) => {
     const st = s.getState();
     const ids = new Set(st.modelsQuickAddSelectedIds);
-    if (ids.has(modelId)) ids.delete(modelId);
-    else ids.add(modelId);
+    if (ids.has(modelId)) {ids.delete(modelId);}
+    else {ids.add(modelId);}
     st.set({ modelsQuickAddSelectedIds: [...ids] });
   }, []);
 
   const onPresetSelectAll = useCallback(() => {
     const st = s.getState();
     const p = PROVIDER_PRESETS.find((pp) => pp.id === st.modelsQuickAddPreset);
-    if (!p) return;
+    if (!p) {return;}
     if (st.modelsQuickAddSelectedIds.length === p.models.length) {
       st.set({ modelsQuickAddSelectedIds: [] });
     } else {
@@ -216,8 +216,8 @@ export function ModelsView() {
             hasVis = true;
           }
         }
-        if (allItems.length > 0) mg.push({ label: pid, items: allItems });
-        if (visItems.length > 0) vmg.push({ label: pid, items: visItems });
+        if (allItems.length > 0) {mg.push({ label: pid, items: allItems });}
+        if (visItems.length > 0) {vmg.push({ label: pid, items: visItems });}
       }
     }
 

@@ -136,7 +136,7 @@ export function ChatControls() {
   }, []);
 
   const handleToggleThinking = useCallback(() => {
-    if (disableThinkingToggle) return;
+    if (disableThinkingToggle) {return;}
     applySettings({
       ...settings,
       chatShowThinking: !settings.chatShowThinking,
@@ -144,7 +144,7 @@ export function ChatControls() {
   }, [disableThinkingToggle, applySettings, settings]);
 
   const handleToggleFocus = useCallback(() => {
-    if (disableFocusToggle) return;
+    if (disableFocusToggle) {return;}
     applySettings({
       ...settings,
       chatFocusMode: !settings.chatFocusMode,
