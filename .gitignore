@@ -137,3 +137,6 @@ openclaw-office/
 # Build artifacts
 *.tgz
 .env.example
+
+# Desktop build artifacts
+desktop/gateway/dist/
