@@ -234,7 +234,7 @@ export class OpenClawApp extends LitElement {
   @state() channelQuickAddBusy = false;
   @state() channelQuickAddError: string | null = null;
   @state() channelQuickAddForm = {
-    channelType: "telegram" as "telegram" | "feishu",
+    channelType: "telegram" as "telegram" | "feishu" | "discord" | "whatsapp" | "weixin",
     accountId: "",
     botToken: "",
     appId: "",

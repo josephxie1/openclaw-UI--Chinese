@@ -33,7 +33,12 @@ const ConfigApplyLikeParamsSchema = Type.Object(
 export const ConfigApplyParamsSchema = ConfigApplyLikeParamsSchema;
 export const ConfigPatchParamsSchema = ConfigApplyLikeParamsSchema;
 
-export const ConfigSchemaParamsSchema = Type.Object({}, { additionalProperties: false });
+export const ConfigSchemaParamsSchema = Type.Object(
+  {
+    section: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
 
 export const ConfigSchemaLookupParamsSchema = Type.Object(
   {

@@ -1,11 +1,12 @@
 import React, { useCallback, useRef, useState } from "react";
 import { t } from "../../i18n/index.ts";
 import { generateRandomAvatars } from "../../lib/helpers/multiavatar.ts";
+import { QrCode } from "../common/QrCode.tsx";
 import { Dropdown, type DropdownGroup, type DropdownItem } from "../Dropdown.tsx";
 
 // ─── Types ───────────────────────────────────────────────────
 
-export type ChannelType = "telegram" | "feishu" | "discord" | "whatsapp";
+export type ChannelType = "telegram" | "feishu" | "discord" | "whatsapp" | "weixin";
 
 export interface ChannelQuickAddForm {
   channelType: ChannelType;
@@ -52,19 +53,42 @@ export type ChannelQuickAddProps = {
   whatsappLoginMessage?: string | null;
   whatsappBusy?: boolean;
   onWhatsAppLogin?: () => void;
+  /* WeChat QR login */
+  weixinQrDataUrl?: string | null;
+  weixinLoginMessage?: string | null;
+  weixinBusy?: boolean;
+  onWeixinLogin?: () => void;
 };
 
 // ─── Component ───────────────────────────────────────────────
 
 export function ChannelQuickAdd(props: ChannelQuickAddProps) {
   const {
-    form, expanded, busy, error,
-    availableModels, modelGroups, availableAgents,
-    onToggle, onChannelTypeChange, onFieldChange, onSubmit,
-    agentDropdownOpen, onAgentDropdownToggle,
-    modelDropdownOpen, modelDropdownExpandedGroups,
-    onModelDropdownToggle, onModelDropdownGroupToggle,
-    whatsappQrDataUrl, whatsappLoginMessage, whatsappBusy, onWhatsAppLogin,
+    form,
+    expanded,
+    busy,
+    error,
+    availableModels,
+    modelGroups,
+    availableAgents,
+    onToggle,
+    onChannelTypeChange,
+    onFieldChange,
+    onSubmit,
+    agentDropdownOpen,
+    onAgentDropdownToggle,
+    modelDropdownOpen,
+    modelDropdownExpandedGroups,
+    onModelDropdownToggle,
+    onModelDropdownGroupToggle,
+    whatsappQrDataUrl,
+    whatsappLoginMessage,
+    whatsappBusy,
+    onWhatsAppLogin,
+    weixinQrDataUrl,
+    weixinLoginMessage,
+    weixinBusy,
+    onWeixinLogin,
   } = props;
 
   // Estado local para avatares aleatorios
@@ -78,16 +102,23 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
   if (channelType === "telegram") {
     hasChannelInfo = form.accountId.trim() !== "" && form.botToken.trim() !== "";
   } else if (channelType === "feishu") {
-    hasChannelInfo = form.accountId.trim() !== "" && form.appId.trim() !== "" && form.appSecret.trim() !== "";
+    hasChannelInfo =
+      form.accountId.trim() !== "" && form.appId.trim() !== "" && form.appSecret.trim() !== "";
   } else if (channelType === "discord") {
     hasChannelInfo = form.discordToken.trim() !== "";
   } else if (channelType === "whatsapp") {
     // WhatsApp solo necesita habilitarse; el enlace QR se hace via CLI
     hasChannelInfo = true;
+  } else if (channelType === "weixin") {
+    // WeChat plugin solo necesita habilitarse; el enlace QR se hace via CLI
+    hasChannelInfo = true;
   }
   const hasAgentInfo =
     !form.createAgent ||
-    ((form.agentId.trim() !== "" || form.accountId.trim() !== "") && form.agentModel.trim() !== "");
+    // Seleccionó un agent existente: no necesita modelo
+    form.agentId.trim() !== "" ||
+    // Nuevo agent: necesita accountId y modelo
+    (form.accountId.trim() !== "" && form.agentModel.trim() !== "");
   const canSubmit = !busy && hasChannelInfo && hasAgentInfo;
 
   // Handlers
@@ -104,13 +135,15 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
+      if (!file) {
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.addEventListener("load", () => {
         if (typeof reader.result === "string") {
           onFieldChange("agentEmoji", reader.result);
         }
-      };
+      });
       reader.readAsDataURL(file);
     },
     [onFieldChange],
@@ -146,7 +179,14 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
           <div className="card-sub">{t("channelsQuickAdd.subtitle")}</div>
         </div>
         <span className={`channel-quick-add__toggle${expanded ? " open" : ""}`}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </span>
@@ -154,20 +194,32 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
 
       {/* Chips siempre visibles — clicar abre el fold y selecciona el tipo */}
       <div className="quick-add__presets" style={{ marginTop: 10 }}>
-        {([["telegram", "Telegram", "/Telegram_(software)-Logo.wine.svg"],
-           ["feishu", t("channelsQuickAdd.feishu") ?? "飞书", "/feishu-logo.svg"],
-           ["discord", "Discord", "/discord-svgrepo-com.svg"],
-           ["whatsapp", "WhatsApp", "/whatsapp-color-svgrepo-com.svg"],
-          ] as const).map(([ct, label, icon]) => (
+        {(
+          [
+            ["telegram", "Telegram", "/Telegram_(software)-Logo.wine.svg"],
+            ["feishu", t("channelsQuickAdd.feishu") ?? "飞书", "/feishu-logo.svg"],
+            ["discord", "Discord", "/discord-svgrepo-com.svg"],
+            ["whatsapp", "WhatsApp", "/whatsapp-color-svgrepo-com.svg"],
+            ["weixin", "微信", "/weixin-logo.svg"],
+          ] as const
+        ).map(([ct, label, icon]) => (
           <button
             key={ct}
             className={`quick-add__preset-chip${expanded && channelType === ct ? " active" : ""}`}
             onClick={() => {
               onChannelTypeChange(ct as ChannelType);
-              if (!expanded) onToggle();
+              if (!expanded) {
+                onToggle();
+              }
             }}
           >
-            <img src={icon} alt="" width="16" height="16" style={{ verticalAlign: "middle", marginRight: 4, borderRadius: 2 }} />
+            <img
+              src={icon}
+              alt=""
+              width="16"
+              height="16"
+              style={{ verticalAlign: "middle", marginRight: 4, borderRadius: 2 }}
+            />
             {label}
           </button>
         ))}
@@ -176,7 +228,6 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
       {/* ── Body (expandible) ── */}
       {expanded && (
         <div className="channel-quick-add__body">
-
           {error && <div className="quick-add__error">{error}</div>}
 
           {/* ── Campos del canal ── */}
@@ -217,7 +268,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     onClick={() => {
                       const next = !form.telegramStreaming;
                       onFieldChange("telegramStreaming", next);
-                      if (next) onFieldChange("telegramBlockStreaming", false);
+                      if (next) {
+                        onFieldChange("telegramBlockStreaming", false);
+                      }
                     }}
                   />
                   <span className="quick-add__toggle-text">
@@ -234,7 +287,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     onClick={() => {
                       const next = !form.telegramBlockStreaming;
                       onFieldChange("telegramBlockStreaming", next);
-                      if (next) onFieldChange("telegramStreaming", false);
+                      if (next) {
+                        onFieldChange("telegramStreaming", false);
+                      }
                     }}
                   />
                   <span className="quick-add__toggle-text">
@@ -245,8 +300,24 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                   </span>
                 </div>
                 <div className="quick-add__tutorial-link" style={{ gridColumn: "span 2" }}>
-                  <a href="https://docs.openclaw.ai/channels/telegram" target="_blank" rel="noopener noreferrer">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: "middle", marginRight: 4}}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Telegram 配置教程
+                  <a
+                    href="https://docs.openclaw.ai/channels/telegram"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ verticalAlign: "middle", marginRight: 4 }}
+                    >
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                    </svg>{" "}
+                    Telegram 配置教程
                   </a>
                 </div>
               </>
@@ -256,7 +327,15 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
             {channelType === "feishu" && (
               <>
                 {/* Todos los campos de credenciales en una sola fila de 4 columnas */}
-                <div style={{ gridColumn: "span 2", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, alignItems: "start" }}>
+                <div
+                  style={{
+                    gridColumn: "span 2",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                    gap: 12,
+                    alignItems: "start",
+                  }}
+                >
                   <label className="quick-add__field">
                     <span className="quick-add__label">{t("channelsQuickAdd.accountId")}</span>
                     <input
@@ -279,7 +358,11 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     />
                     <span className="quick-add__hint">
                       {t("channelsQuickAdd.appIdHint")}{" "}
-                      <a href="https://open.feishu.cn/app?lang=zh-CN" target="_blank" rel="noopener noreferrer">
+                      <a
+                        href="https://open.feishu.cn/app?lang=zh-CN"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {t("channelsQuickAdd.feishuConsoleLink")}
                       </a>
                     </span>
@@ -311,7 +394,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                 <div className="quick-add__toggle-row">
                   <span
                     className={`quick-add__toggle-track${form.feishuRequireMention ? " on" : ""}`}
-                    onClick={() => onFieldChange("feishuRequireMention", !form.feishuRequireMention)}
+                    onClick={() =>
+                      onFieldChange("feishuRequireMention", !form.feishuRequireMention)
+                    }
                   />
                   <span className="quick-add__toggle-text">
                     <strong>群组消息需要 @</strong>
@@ -327,7 +412,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     onClick={() => {
                       const next = !form.feishuStreaming;
                       onFieldChange("feishuStreaming", next);
-                      if (next) onFieldChange("feishuBlockStreaming", false);
+                      if (next) {
+                        onFieldChange("feishuBlockStreaming", false);
+                      }
                     }}
                   />
                   <span className="quick-add__toggle-text">
@@ -344,7 +431,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     onClick={() => {
                       const next = !form.feishuBlockStreaming;
                       onFieldChange("feishuBlockStreaming", next);
-                      if (next) onFieldChange("feishuStreaming", false);
+                      if (next) {
+                        onFieldChange("feishuStreaming", false);
+                      }
                     }}
                   />
                   <span className="quick-add__toggle-text">
@@ -355,11 +444,31 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                   </span>
                 </div>
                 <div className="quick-add__tutorial-link" style={{ gridColumn: "span 2" }}>
-                  <a href="https://docs.openclaw.ai/channels/feishu" target="_blank" rel="noopener noreferrer">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: "middle", marginRight: 4}}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 飞书配置教程
+                  <a
+                    href="https://docs.openclaw.ai/channels/feishu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ verticalAlign: "middle", marginRight: 4 }}
+                    >
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                    </svg>{" "}
+                    飞书配置教程
                   </a>
                   {" · "}
-                  <a href="https://open.feishu.cn/app?lang=zh-CN" target="_blank" rel="noopener noreferrer">
+                  <a
+                    href="https://open.feishu.cn/app?lang=zh-CN"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     飞书开放平台 ↗
                   </a>
                   {" · "}
@@ -368,31 +477,63 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     className="quick-add__copy-perms-btn"
                     onClick={(e) => {
                       e.preventDefault();
-                      const permsJson = JSON.stringify({
-                        scopes: {
-                          tenant: [
-                            "aily:file:read", "aily:file:write",
-                            "application:application.app_message_stats.overview:readonly",
-                            "application:application:self_manage",
-                            "application:bot.menu:write",
-                            "cardkit:card:read", "cardkit:card:write",
-                            "contact:user.employee_id:readonly",
-                            "corehr:file:download", "event:ip_list",
-                            "im:chat.access_event.bot_p2p_chat:read",
-                            "im:chat.members:bot_access",
-                            "im:message", "im:message.group_at_msg:readonly",
-                            "im:message.p2p_msg:readonly", "im:message:readonly",
-                            "im:message:send_as_bot", "im:resource",
-                          ],
-                          user: ["aily:file:read", "aily:file:write", "im:chat.access_event.bot_p2p_chat:read"],
+                      const permsJson = JSON.stringify(
+                        {
+                          scopes: {
+                            tenant: [
+                              "aily:file:read",
+                              "aily:file:write",
+                              "application:application.app_message_stats.overview:readonly",
+                              "application:application:self_manage",
+                              "application:bot.menu:write",
+                              "cardkit:card:read",
+                              "cardkit:card:write",
+                              "contact:user.employee_id:readonly",
+                              "corehr:file:download",
+                              "event:ip_list",
+                              "im:chat.access_event.bot_p2p_chat:read",
+                              "im:chat.members:bot_access",
+                              "im:message",
+                              "im:message.group_at_msg:readonly",
+                              "im:message.p2p_msg:readonly",
+                              "im:message:readonly",
+                              "im:message:send_as_bot",
+                              "im:resource",
+                            ],
+                            user: [
+                              "aily:file:read",
+                              "aily:file:write",
+                              "im:chat.access_event.bot_p2p_chat:read",
+                            ],
+                          },
                         },
-                      }, null, 2);
-                      navigator.clipboard.writeText(permsJson);
+                        null,
+                        2,
+                      );
+                      void navigator.clipboard.writeText(permsJson);
                       setPermsCopied(true);
                       setTimeout(() => setPermsCopied(false), 2000);
                     }}
                   >
-                    {permsCopied ? "✓ 已复制" : <><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: "middle", marginRight: 4}}><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>复制权限 JSON</>}
+                    {permsCopied ? (
+                      "✓ 已复制"
+                    ) : (
+                      <>
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="14"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          style={{ verticalAlign: "middle", marginRight: 4 }}
+                        >
+                          <rect x="8" y="2" width="8" height="4" rx="1" />
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        </svg>
+                        复制权限 JSON
+                      </>
+                    )}
                   </button>
                 </div>
               </>
@@ -410,14 +551,37 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     value={form.discordToken}
                     onChange={(e) => onFieldChange("discordToken", e.target.value)}
                   />
-                  <span className="quick-add__hint">从 Discord Developer Portal 获取 Bot Token。需先创建 Application → Bot，并开启 Message Content Intent。</span>
+                  <span className="quick-add__hint">
+                    从 Discord Developer Portal 获取 Bot Token。需先创建 Application → Bot，并开启
+                    Message Content Intent。
+                  </span>
                 </label>
                 <div className="quick-add__tutorial-link" style={{ gridColumn: "span 2" }}>
-                  <a href="https://docs.openclaw.ai/channels/discord" target="_blank" rel="noopener noreferrer">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: "middle", marginRight: 4}}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Discord 配置教程
+                  <a
+                    href="https://docs.openclaw.ai/channels/discord"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ verticalAlign: "middle", marginRight: 4 }}
+                    >
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                    </svg>{" "}
+                    Discord 配置教程
                   </a>
                   {" · "}
-                  <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">
+                  <a
+                    href="https://discord.com/developers/applications"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Discord Developer Portal ↗
                   </a>
                 </div>
@@ -440,7 +604,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                       setDmPolicyDropdownOpen(false);
                     }}
                   />
-                  <span className="quick-add__hint">控制谁可以向机器人发送私信。推荐使用 pairing 模式。</span>
+                  <span className="quick-add__hint">
+                    控制谁可以向机器人发送私信。推荐使用 pairing 模式。
+                  </span>
                 </label>
 
                 {/* AllowFrom phone list */}
@@ -453,17 +619,31 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                     value={form.whatsappAllowFrom}
                     onChange={(e) => onFieldChange("whatsappAllowFrom", e.target.value)}
                   />
-                  <span className="quick-add__hint">逗号分隔的手机号。allowlist 模式下必填，pairing 模式下可留空。</span>
+                  <span className="quick-add__hint">
+                    逗号分隔的手机号。allowlist 模式下必填，pairing 模式下可留空。
+                  </span>
                 </label>
 
                 {/* QR Login section */}
                 <div style={{ gridColumn: "span 2" }}>
-                  <div className="callout" style={{ marginBottom: 8, fontSize: 13, lineHeight: 1.6 }}>
+                  <div
+                    className="callout"
+                    style={{ marginBottom: 8, fontSize: 13, lineHeight: 1.6 }}
+                  >
                     <strong>📱 WhatsApp 链接</strong>
                     <p style={{ margin: "6px 0 0" }}>
                       启用后需扫描 QR 码完成链接。可以点击下方按钮直接获取 QR 码，或通过 CLI 运行：
                     </p>
-                    <code style={{ display: "block", margin: "6px 0", padding: "6px 10px", background: "var(--bg-elevated)", borderRadius: "var(--radius-md)", fontSize: 12 }}>
+                    <code
+                      style={{
+                        display: "block",
+                        margin: "6px 0",
+                        padding: "6px 10px",
+                        background: "var(--bg-elevated)",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: 12,
+                      }}
+                    >
                       openclaw channels login --channel whatsapp
                     </code>
                   </div>
@@ -487,7 +667,9 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                           style={{
                             marginTop: 8,
                             padding: "6px 10px",
-                            background: whatsappQrDataUrl ? "var(--ok-subtle)" : "var(--danger-subtle)",
+                            background: whatsappQrDataUrl
+                              ? "var(--ok-subtle)"
+                              : "var(--danger-subtle)",
                             borderRadius: "var(--radius-md)",
                             color: whatsappQrDataUrl ? "var(--ok)" : "var(--danger)",
                           }}
@@ -502,7 +684,11 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                           <img
                             src={whatsappQrDataUrl}
                             alt="WhatsApp QR"
-                            style={{ maxWidth: 240, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}
+                            style={{
+                              maxWidth: 240,
+                              borderRadius: "var(--radius-md)",
+                              border: "1px solid var(--border)",
+                            }}
                           />
                           <div className="quick-add__hint" style={{ marginTop: 6 }}>
                             用 WhatsApp 扫描此二维码完成链接
@@ -513,9 +699,127 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                   )}
 
                   <div className="quick-add__tutorial-link" style={{ marginTop: 10 }}>
-                    <a href="https://docs.openclaw.ai/channels/whatsapp" target="_blank" rel="noopener noreferrer">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: "middle", marginRight: 4}}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> WhatsApp 配置教程
+                    <a
+                      href="https://docs.openclaw.ai/channels/whatsapp"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        style={{ verticalAlign: "middle", marginRight: 4 }}
+                      >
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                      </svg>{" "}
+                      WhatsApp 配置教程
                     </a>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── WeChat (微信) ── */}
+            {channelType === "weixin" && (
+              <>
+                <div style={{ gridColumn: "span 2" }}>
+                  <div
+                    className="callout"
+                    style={{ marginBottom: 8, fontSize: 13, lineHeight: 1.6 }}
+                  >
+                    <strong>📱 微信渠道</strong>
+                    <p style={{ margin: "6px 0 0" }}>
+                      微信渠道通过插件方式接入。启用后需用手机微信扫描二维码完成登录授权。
+                    </p>
+                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                      ⚠️ 所有消息经腾讯服务器传输，请注意隐私安全。建议使用专用微信号。
+                    </p>
+                  </div>
+                  <div className="quick-add__tutorial-link" style={{ marginTop: 10 }}>
+                    <a
+                      href="https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        style={{ verticalAlign: "middle", marginRight: 4 }}
+                      >
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                      </svg>{" "}
+                      微信插件文档
+                    </a>
+                  </div>
+                  {/* Botón de login QR para WeChat */}
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <button
+                      className="btn btn--sm btn--primary"
+                      onClick={onWeixinLogin}
+                      disabled={weixinBusy}
+                      style={{ minWidth: 160 }}
+                    >
+                      {weixinBusy ? "正在获取二维码..." : "获取登录二维码"}
+                    </button>
+                    {weixinQrDataUrl && (
+                      <div style={{ textAlign: "center" }}>
+                        <p style={{ fontSize: 13, margin: "0 0 8px", color: "var(--text-muted)" }}>
+                          使用微信扫描以下二维码：
+                        </p>
+                        {/* weixinQrDataUrl es una URL que debe codificarse EN un código QR
+                            (igual que la CLI hace con qrcode-terminal). */}
+                        <QrCode data={weixinQrDataUrl} size={200} />
+                        <p
+                          style={{
+                            fontSize: 11,
+                            marginTop: 8,
+                            color: "var(--text-muted)",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          或在浏览器打开：
+                          <a
+                            href={weixinQrDataUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            {weixinQrDataUrl.length > 60
+                              ? weixinQrDataUrl.substring(0, 60) + "..."
+                              : weixinQrDataUrl}
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                    {weixinLoginMessage && (
+                      <div
+                        className={
+                          weixinLoginMessage.startsWith("✅")
+                            ? "callout success"
+                            : "callout warning"
+                        }
+                        style={{ fontSize: 13, width: "100%" }}
+                      >
+                        {weixinLoginMessage}
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -566,7 +870,7 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                           type="text"
                           placeholder="brainstorm"
                           value={form.accountId}
-                          readOnly
+                          onChange={(e) => onFieldChange("accountId", e.target.value)}
                         />
                         <span className="quick-add__hint">{t("channelsQuickAdd.agentIdHint")}</span>
                       </label>
@@ -579,12 +883,16 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                           value={form.agentName}
                           onChange={(e) => onFieldChange("agentName", e.target.value)}
                         />
-                        <span className="quick-add__hint">{t("channelsQuickAdd.agentNameHint")}</span>
+                        <span className="quick-add__hint">
+                          {t("channelsQuickAdd.agentNameHint")}
+                        </span>
                       </label>
 
                       {/* Avatar grid */}
                       <label className="quick-add__field" style={{ gridColumn: "span 2" }}>
-                        <span className="quick-add__label">{t("channelsQuickAdd.avatar") ?? "头像"}</span>
+                        <span className="quick-add__label">
+                          {t("channelsQuickAdd.avatar") ?? "头像"}
+                        </span>
                         <div className="channel-quick-add__avatar-grid">
                           {avatarOptions.map((opt, idx) => (
                             <button
@@ -621,7 +929,16 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                             title={t("channelsQuickAdd.refreshAvatars") ?? "换一批"}
                             onClick={handleRefreshAvatars}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <path d="M23 4v6h-6" />
                               <path d="M1 20v-6h6" />
                               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -635,7 +952,16 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                             title="从本地文件选择"
                             onClick={handleFileUpload}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <rect x="3" y="3" width="18" height="18" rx="2" />
                               <circle cx="8.5" cy="8.5" r="1.5" />
                               <polyline points="21 15 16 10 5 21" />
@@ -651,17 +977,36 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
                         </div>
                         <span className="quick-add__hint" style={{ marginTop: 6 }}>
                           点击图片选择，
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ verticalAlign: "middle" }}>
-                            <path d="M23 4v6h-6" /><path d="M1 20v-6h6" />
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            style={{ verticalAlign: "middle" }}
+                          >
+                            <path d="M23 4v6h-6" />
+                            <path d="M1 20v-6h6" />
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                          </svg>
-                          {" "}换一批，
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ verticalAlign: "middle" }}>
+                          </svg>{" "}
+                          换一批，
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            style={{ verticalAlign: "middle" }}
+                          >
                             <rect x="3" y="3" width="18" height="18" rx="2" />
                             <circle cx="8.5" cy="8.5" r="1.5" />
                             <polyline points="21 15 16 10 5 21" />
-                          </svg>
-                          {" "}上传本地图片
+                          </svg>{" "}
+                          上传本地图片
                         </span>
                       </label>
 
@@ -689,7 +1034,11 @@ export function ChannelQuickAdd(props: ChannelQuickAddProps) {
 
           {/* ── Submit ── */}
           <div className="quick-add__actions">
-            <button className="btn primary quick-add__submit" disabled={!canSubmit} onClick={onSubmit}>
+            <button
+              className="btn primary quick-add__submit"
+              disabled={!canSubmit}
+              onClick={onSubmit}
+            >
               {busy ? t("channelsQuickAdd.adding") : t("channelsQuickAdd.addAndApply")}
             </button>
           </div>

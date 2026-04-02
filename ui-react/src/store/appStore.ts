@@ -1,8 +1,21 @@
 import { create } from "zustand";
-import { loadSettings, saveSettings, type UiSettings } from "../lib/storage.ts";
+import { DEFAULT_CRON_FORM, DEFAULT_LOG_LEVEL_FILTERS } from "../lib/app-defaults.ts";
+import type { ToolStreamEntry, CompactionStatus, FallbackStatus } from "../lib/app-tool-stream.ts";
+import { normalizeAssistantIdentity } from "../lib/assistant-identity.ts";
+import type { ChannelPairingGroup } from "../lib/controllers/channel-pairing.ts";
+import type { CronFieldErrors } from "../lib/controllers/cron.ts";
+import type { DevicePairingList } from "../lib/controllers/devices.ts";
+import type { ExecApprovalRequest } from "../lib/controllers/exec-approval.ts";
+import type {
+  ExecApprovalsFile,
+  ExecApprovalsSnapshot,
+} from "../lib/controllers/exec-approvals.ts";
+import type { SkillMessage } from "../lib/controllers/skills.ts";
+import type { GatewayBrowserClient, GatewayHelloOk } from "../lib/gateway.ts";
 // NOTE: applySettings is imported lazily to avoid pulling in the Lit-dependent module tree at evaluation time
 import type { Tab } from "../lib/navigation.ts";
-import type { GatewayBrowserClient, GatewayHelloOk } from "../lib/gateway.ts";
+import { loadSettings, saveSettings, type UiSettings } from "../lib/storage.ts";
+import type { ResolvedTheme, ThemeMode } from "../lib/theme.ts";
 import type {
   AgentsListResult,
   AgentsFilesListResult,
@@ -23,17 +36,7 @@ import type {
   StatusSummary,
 } from "../lib/types.ts";
 import type { ChatAttachment, ChatQueueItem, CronFormState } from "../lib/ui-types.ts";
-import type { ResolvedTheme, ThemeMode } from "../lib/theme.ts";
-import type { ToolStreamEntry, CompactionStatus, FallbackStatus } from "../lib/app-tool-stream.ts";
-import type { DevicePairingList } from "../lib/controllers/devices.ts";
-import type { ExecApprovalRequest } from "../lib/controllers/exec-approval.ts";
-import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "../lib/controllers/exec-approvals.ts";
-import type { SkillMessage } from "../lib/controllers/skills.ts";
-import type { CronFieldErrors } from "../lib/controllers/cron.ts";
-import { normalizeAssistantIdentity } from "../lib/assistant-identity.ts";
-import { DEFAULT_CRON_FORM, DEFAULT_LOG_LEVEL_FILTERS } from "../lib/app-defaults.ts";
 import type { NostrProfileFormState } from "../lib/views/channels.nostr-profile-form.ts";
-import type { ChannelPairingGroup } from "../lib/controllers/channel-pairing.ts";
 
 // ---------------------------------------------------------------------------
 // Re-export to avoid spreading imports everywhere
@@ -46,10 +49,16 @@ function resolveOnboardingMode(): boolean {
   const desktop = (window as unknown as Record<string, unknown>).desktop as
     | { isOnboarding?: boolean }
     | undefined;
-  if (desktop?.isOnboarding) {return true;}
-  if (!window.location.search) {return false;}
+  if (desktop?.isOnboarding) {
+    return true;
+  }
+  if (!window.location.search) {
+    return false;
+  }
   const p = new URLSearchParams(window.location.search).get("onboarding");
-  if (!p) {return false;}
+  if (!p) {
+    return false;
+  }
   const n = p.trim().toLowerCase();
   return n === "1" || n === "true" || n === "yes" || n === "on";
 }
@@ -171,7 +180,7 @@ export type AppState = {
   channelQuickAddBusy: boolean;
   channelQuickAddError: string | null;
   channelQuickAddForm: {
-    channelType: "telegram" | "feishu" | "discord" | "whatsapp";
+    channelType: "telegram" | "feishu" | "discord" | "whatsapp" | "weixin";
     accountId: string;
     botToken: string;
     telegramStreaming: boolean;
@@ -203,6 +212,10 @@ export type AppState = {
   whatsappLoginQrDataUrl: string | null;
   whatsappLoginConnected: boolean | null;
   whatsappBusy: boolean;
+  weixinLoginMessage: string | null;
+  weixinLoginQrDataUrl: string | null;
+  weixinLoginSessionKey: string | null;
+  weixinBusy: boolean;
   nostrProfileFormState: NostrProfileFormState | null;
   nostrProfileAccountId: string | null;
 
@@ -533,6 +546,10 @@ function makeInitialState(): AppState {
     whatsappLoginQrDataUrl: null,
     whatsappLoginConnected: null,
     whatsappBusy: false,
+    weixinLoginMessage: null,
+    weixinLoginQrDataUrl: null,
+    weixinLoginSessionKey: null,
+    weixinBusy: false,
     nostrProfileFormState: null,
     nostrProfileAccountId: null,
 
@@ -614,7 +631,16 @@ function makeInitialState(): AppState {
     usageContextExpanded: false,
     usageHeaderPinned: false,
     usageSessionsTab: "all",
-    usageVisibleColumns: ["channel", "agent", "provider", "model", "messages", "tools", "errors", "duration"],
+    usageVisibleColumns: [
+      "channel",
+      "agent",
+      "provider",
+      "model",
+      "messages",
+      "tools",
+      "errors",
+      "duration",
+    ],
     usageLogFilterRoles: [],
     usageLogFilterTools: [],
     usageLogFilterHasTools: false,
@@ -718,11 +744,17 @@ export const useAppStore = create<AppState & AppActions>()((setState) => ({
   /** Lit's updateComplete — resolves immediately in React */
   updateComplete: Promise.resolve(),
   /** Lit's requestUpdate — no-op in React (Zustand handles reactivity) */
-  requestUpdate() { /* no-op */ },
+  requestUpdate() {
+    /* no-op */
+  },
   /** querySelector — delegate to document in React */
-  querySelector(sel: string) { return document.querySelector(sel); },
+  querySelector(sel: string) {
+    return document.querySelector(sel);
+  },
   /** style — delegate to root element */
-  get style() { return document.documentElement.style; },
+  get style() {
+    return document.documentElement.style;
+  },
   /** resetToolStream — imported lazily to avoid circular deps */
   resetToolStream() {
     void import("../lib/app-tool-stream.ts").then(({ resetToolStream: rst }) => {
@@ -745,14 +777,15 @@ export const useAppStore = create<AppState & AppActions>()((setState) => ({
     });
   },
 
-  set: (patch: Partial<AppState>) =>
-    setState((s) => ({ ...s, ...patch })),
+  set: (patch: Partial<AppState>) => setState((s) => ({ ...s, ...patch })),
 
   applySettings: (next: UiSettings) => {
     // Immediately apply theme to DOM (synchronous — no flicker/refresh needed)
     const resolved: ResolvedTheme =
       next.theme === "system"
-        ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
         : next.theme;
     document.documentElement.dataset.theme = resolved;
     document.documentElement.style.colorScheme = resolved;
@@ -799,7 +832,9 @@ let _flushScheduled = false;
 
 function flushPatch() {
   _flushScheduled = false;
-  if (Object.keys(_pendingPatch).length === 0) {return;}
+  if (Object.keys(_pendingPatch).length === 0) {
+    return;
+  }
   const patch = _pendingPatch;
   _pendingPatch = {};
   useAppStore.setState((s) => ({ ...s, ...patch }));
@@ -820,11 +855,15 @@ export function flushReactiveState() {
  * so Lit-style mutation patterns trigger React re-renders.
  */
 export function getReactiveState(): AppState & AppActions {
-  if (_reactiveProxy) {return _reactiveProxy;}
+  if (_reactiveProxy) {
+    return _reactiveProxy;
+  }
   _reactiveProxy = new Proxy({} as AppState & AppActions, {
     get(_target, prop, _receiver) {
       // Prefer pending patch values (for reads-after-writes within the same task)
-      if (prop in _pendingPatch) {return _pendingPatch[prop as string];}
+      if (prop in _pendingPatch) {
+        return _pendingPatch[prop as string];
+      }
       return (useAppStore.getState() as Record<string, unknown>)[prop as string];
     },
     set(_target, prop, value) {
@@ -836,7 +875,9 @@ export function getReactiveState(): AppState & AppActions {
       return true;
     },
     has(_target, prop) {
-      if (prop in _pendingPatch) {return true;}
+      if (prop in _pendingPatch) {
+        return true;
+      }
       return prop in useAppStore.getState();
     },
   });

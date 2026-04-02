@@ -107,7 +107,7 @@ function renderExtraChannelFields(value: Record<string, unknown>) {
 /** Fields shown by default for every channel */
 const BASIC_FIELDS = new Set(["accounts", "enabled"]);
 /** Fields shown by default for each account entry inside accounts */
-const BASIC_ACCOUNT_FIELDS = new Set(["appId", "appSecret", "botName", "enabled", "name"]);
+const BASIC_ACCOUNT_FIELDS = new Set(["appId", "appSecret", "name", "enabled"]);
 
 /**
  * Strip advanced sub-fields from the accounts schema so only basic
@@ -140,15 +140,11 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const analysis = analyzeConfigSchema(props.schema);
   const normalized = analysis.schema;
   if (!normalized) {
-    return html`
-      <div class="callout danger">${t("channelsView.schemaUnavailable")}</div>
-    `;
+    return html` <div class="callout danger">${t("channelsView.schemaUnavailable")}</div> `;
   }
   const node = resolveSchemaNode(normalized, ["channels", props.channelId]);
   if (!node) {
-    return html`
-      <div class="callout danger">${t("channelsView.channelSchemaUnavailable")}</div>
-    `;
+    return html` <div class="callout danger">${t("channelsView.channelSchemaUnavailable")}</div> `;
   }
   const configValue = props.configValue ?? {};
   const value = resolveChannelValue(configValue, props.channelId);
@@ -159,7 +155,7 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const advancedProps: Record<string, JsonSchema> = {};
   for (const [k, v] of Object.entries(allProps)) {
     if (BASIC_FIELDS.has(k)) {
-      // For accounts, further filter to only show basic account fields
+      // Para accounts, filtrar los campos avanzados de cada cuenta
       basicProps[k] = k === "accounts" ? filterAccountSchema(v) : v;
     } else {
       advancedProps[k] = v;
@@ -169,10 +165,22 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const basicSchema: JsonSchema = { ...node, properties: basicProps };
   const advancedSchema: JsonSchema = { ...node, properties: advancedProps };
 
+  // Re-analizar el schema filtrado del canal para que las rutas no soportadas
+  // reflejen la estructura real (después del filtrado de accounts)
+  const channelAnalysis = analyzeConfigSchema({
+    type: "object",
+    properties: {
+      channels: {
+        type: "object",
+        properties: { [props.channelId]: { ...node, properties: basicProps } },
+      },
+    },
+  });
+
   const commonOpts = {
     path: ["channels", props.channelId] as Array<string | number>,
     hints: props.uiHints,
-    unsupported: new Set(analysis.unsupportedPaths),
+    unsupported: new Set(channelAnalysis.unsupportedPaths),
     disabled: props.disabled,
     showLabel: false,
     onPatch: props.onPatch,
@@ -183,13 +191,20 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   return html`
     <div class="config-form">
       ${renderNode({ schema: basicSchema, value, ...commonOpts })}
-      ${
-        hasAdvanced
-          ? html`
+      ${hasAdvanced
+        ? html`
             <details class="channel-advanced-section">
               <summary class="channel-advanced-toggle">
                 <span>${t("channelsView.advancedSettings") ?? "高级设置"}</span>
-                <svg class="channel-advanced-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  class="channel-advanced-chevron"
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </summary>
@@ -198,8 +213,7 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
               </div>
             </details>
           `
-          : nothing
-      }
+        : nothing}
     </div>
     ${renderExtraChannelFields(value)}
   `;
@@ -214,20 +228,16 @@ export function renderChannelConfigSection(params: {
   const disabled = props.configSaving || props.configSchemaLoading;
   return html`
     <div style="margin-top: auto; padding-top: 16px;">
-      ${
-        props.configSchemaLoading
-          ? html`
-              <div class="muted">${t("channelsView.loadingSchema")}</div>
-            `
-          : renderChannelConfigForm({
-              channelId,
-              configValue: props.configForm,
-              schema: props.configSchema,
-              uiHints: props.configUiHints,
-              disabled,
-              onPatch: props.onConfigPatch,
-            })
-      }
+      ${props.configSchemaLoading
+        ? html` <div class="muted">${t("channelsView.loadingSchema")}</div> `
+        : renderChannelConfigForm({
+            channelId,
+            configValue: props.configForm,
+            schema: props.configSchema,
+            uiHints: props.configUiHints,
+            disabled,
+            onPatch: props.onConfigPatch,
+          })}
       <div class="row" style="margin-top: 12px; flex-wrap: wrap;">
         <button
           class="btn primary"
@@ -236,11 +246,7 @@ export function renderChannelConfigSection(params: {
         >
           ${props.configSaving ? t("shared.saving") : t("shared.save")}
         </button>
-        <button
-          class="btn"
-          ?disabled=${disabled}
-          @click=${() => props.onConfigReload()}
-        >
+        <button class="btn" ?disabled=${disabled} @click=${() => props.onConfigReload()}>
           ${t("shared.reload")}
         </button>
         ${extraButtons ?? nothing}

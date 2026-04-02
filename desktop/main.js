@@ -222,6 +222,9 @@ function startGateway(extraArgs = [], customHome = null) {
       env.ELECTRON_RUN_AS_NODE = "1";
       env.ELECTRON_NO_ATTACH_CONSOLE = "1";
     }
+    // Prevenir que el gateway genere un nuevo proceso del sistema al reiniciarse
+    // (el proceso del sistema usa la UI Lit antigua en lugar de la React UI del desktop)
+    env.OPENCLAW_NO_RESPAWN = "1";
     // Point gateway to bundled plugins (e.g. feishu plugin)
     const extensionsDir = path.join(bundled.dir, "extensions");
     if (fs.existsSync(extensionsDir)) {
@@ -356,7 +359,9 @@ function forceCleanPort(portNum) {
     try {
       const pids = execSync(`lsof -ti:${portNum} 2>/dev/null`, { encoding: "utf-8" }).trim();
       if (!pids) return true;
-      console.log(`[desktop] Port ${portNum} still held by pid ${pids.replace(/\n/g, ", ")}, killing...`);
+      console.log(
+        `[desktop] Port ${portNum} still held by pid ${pids.replace(/\n/g, ", ")}, killing...`,
+      );
       execSync(`kill -9 ${pids.replace(/\n/g, " ")} 2>/dev/null || true`);
       execSync("sleep 0.5");
     } catch {
@@ -437,9 +442,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     // macOS: 原生标题栏；Windows/Linux: 自定义 chrome
-    ...(process.platform === "darwin"
-      ? {}
-      : { titleBarStyle: "hidden", titleBarOverlay: true }),
+    ...(process.platform === "darwin" ? {} : { titleBarStyle: "hidden", titleBarOverlay: true }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,

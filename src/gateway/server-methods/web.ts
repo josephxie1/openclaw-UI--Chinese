@@ -1,4 +1,6 @@
 import { listChannelPlugins } from "../../channels/plugins/index.js";
+import type { ChannelPlugin } from "../../channels/plugins/types.js";
+import { getActivePluginRegistry } from "../../plugins/runtime.js";
 import {
   ErrorCodes,
   errorShape,
@@ -11,10 +13,42 @@ import type { GatewayRequestHandlers, RespondFn } from "./types.js";
 
 const WEB_LOGIN_METHODS = new Set(["web.login.start", "web.login.wait"]);
 
-const resolveWebLoginProvider = () =>
-  listChannelPlugins().find((plugin) =>
-    (plugin.gatewayMethods ?? []).some((method) => WEB_LOGIN_METHODS.has(method)),
-  ) ?? null;
+function hasQrLogin(plugin: ChannelPlugin): boolean {
+  return (
+    (plugin.gatewayMethods ?? []).some((m) => WEB_LOGIN_METHODS.has(m)) ||
+    plugin.gateway?.loginWithQrStart != null
+  );
+}
+
+/** Resolve a channel plugin that supports QR login.
+ *  Checks both the pinned channel registry (built-in channels) and
+ *  the full active registry (extension channels like openclaw-weixin). */
+const resolveWebLoginProvider = (channel?: string): ChannelPlugin | null => {
+  // Primero: buscar en el registro de canales pinned (built-in)
+  const pinnedPlugins = listChannelPlugins().filter(hasQrLogin);
+  if (channel) {
+    const match = pinnedPlugins.find((p) => p.id === channel);
+    if (match) {
+      return match;
+    }
+  } else if (pinnedPlugins.length > 0) {
+    return pinnedPlugins[0];
+  }
+
+  // Segundo: buscar en el registro activo completo (incluye extensiones)
+  const activeRegistry = getActivePluginRegistry();
+  if (activeRegistry) {
+    const extensionPlugins = activeRegistry.channels
+      .map((entry) => entry.plugin)
+      .filter(hasQrLogin);
+    if (channel) {
+      return extensionPlugins.find((p) => p.id === channel) ?? null;
+    }
+    return extensionPlugins[0] ?? null;
+  }
+
+  return null;
+};
 
 function resolveAccountId(params: unknown): string | undefined {
   return typeof (params as { accountId?: unknown }).accountId === "string"
@@ -53,7 +87,11 @@ export const webHandlers: GatewayRequestHandlers = {
     }
     try {
       const accountId = resolveAccountId(params);
-      const provider = resolveWebLoginProvider();
+      const channel =
+        typeof (params as { channel?: unknown }).channel === "string"
+          ? (params as { channel?: string }).channel
+          : undefined;
+      const provider = resolveWebLoginProvider(channel);
       if (!provider) {
         respondProviderUnavailable(respond);
         return;
@@ -91,7 +129,11 @@ export const webHandlers: GatewayRequestHandlers = {
     }
     try {
       const accountId = resolveAccountId(params);
-      const provider = resolveWebLoginProvider();
+      const channel =
+        typeof (params as { channel?: unknown }).channel === "string"
+          ? (params as { channel?: string }).channel
+          : undefined;
+      const provider = resolveWebLoginProvider(channel);
       if (!provider) {
         respondProviderUnavailable(respond);
         return;
@@ -106,6 +148,9 @@ export const webHandlers: GatewayRequestHandlers = {
             ? (params as { timeoutMs?: number }).timeoutMs
             : undefined,
         accountId,
+        ...(typeof (params as { sessionKey?: unknown }).sessionKey === "string"
+          ? { sessionKey: (params as { sessionKey?: string }).sessionKey }
+          : {}),
       });
       if (result.connected) {
         await context.startChannel(provider.id, accountId);

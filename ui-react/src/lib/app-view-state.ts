@@ -138,7 +138,7 @@ export type AppViewState = {
   channelQuickAddBusy: boolean;
   channelQuickAddError: string | null;
   channelQuickAddForm: {
-    channelType: "telegram" | "feishu";
+    channelType: "telegram" | "feishu" | "discord" | "whatsapp" | "weixin";
     accountId: string;
     botToken: string;
     appId: string;

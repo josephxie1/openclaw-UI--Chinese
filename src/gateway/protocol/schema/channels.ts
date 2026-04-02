@@ -203,6 +203,7 @@ export const WebLoginStartParamsSchema = Type.Object(
     timeoutMs: Type.Optional(Type.Integer({ minimum: 0 })),
     verbose: Type.Optional(Type.Boolean()),
     accountId: Type.Optional(Type.String()),
+    channel: Type.Optional(Type.String()),
   },
   { additionalProperties: false },
 );
@@ -211,6 +212,8 @@ export const WebLoginWaitParamsSchema = Type.Object(
   {
     timeoutMs: Type.Optional(Type.Integer({ minimum: 0 })),
     accountId: Type.Optional(Type.String()),
+    sessionKey: Type.Optional(Type.String()),
+    channel: Type.Optional(Type.String()),
   },
   { additionalProperties: false },
 );
